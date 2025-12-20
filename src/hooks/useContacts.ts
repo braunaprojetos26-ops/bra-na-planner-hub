@@ -14,22 +14,12 @@ export function useContacts() {
         .from('contacts')
         .select(`
           *,
-          owner:profiles!contacts_owner_id_fkey(full_name, email),
-          referred_by_contact:contacts!contacts_referred_by_fkey(id, full_name, phone)
+          owner:profiles!contacts_owner_id_fkey(full_name, email)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      // Normalize referred_by_contact (Supabase returns array when null)
-      const normalizedData = data?.map(contact => ({
-        ...contact,
-        referred_by_contact: Array.isArray(contact.referred_by_contact) 
-          ? contact.referred_by_contact[0] || null 
-          : contact.referred_by_contact
-      }));
-      
-      return normalizedData as Contact[];
+      return data as Contact[];
     },
     enabled: !!user,
   });
@@ -43,23 +33,13 @@ export function useContact(contactId: string) {
         .from('contacts')
         .select(`
           *,
-          owner:profiles!contacts_owner_id_fkey(full_name, email),
-          referred_by_contact:contacts!contacts_referred_by_fkey(id, full_name, phone)
+          owner:profiles!contacts_owner_id_fkey(full_name, email)
         `)
         .eq('id', contactId)
         .maybeSingle();
 
       if (error) throw error;
-      
-      // Normalize referred_by_contact
-      const normalizedData = data ? {
-        ...data,
-        referred_by_contact: Array.isArray(data.referred_by_contact) 
-          ? data.referred_by_contact[0] || null 
-          : data.referred_by_contact
-      } : null;
-      
-      return normalizedData as Contact | null;
+      return data as Contact | null;
     },
     enabled: !!contactId,
   });
