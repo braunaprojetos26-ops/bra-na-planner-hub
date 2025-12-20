@@ -29,7 +29,6 @@ const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Contatos', url: '/contacts', icon: Users },
   { title: 'Funil', url: '/pipeline', icon: Kanban },
-  { title: 'Importação', url: '/import', icon: Upload },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
 
