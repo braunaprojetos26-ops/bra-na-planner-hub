@@ -106,9 +106,9 @@ const statusColors: Record<string, string> = {
 };
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="flex flex-col py-1.5 border-b border-border/50 last:border-0">
-    <span className="text-xs text-muted-foreground">{label}</span>
-    <span className="text-sm font-medium">{value || '-'}</span>
+  <div className="flex flex-col py-0.5 border-b border-border/50 last:border-0">
+    <span className="text-[11px] text-muted-foreground">{label}</span>
+    <span className="text-xs font-medium">{value || '-'}</span>
   </div>
 );
 
@@ -161,55 +161,55 @@ export default function ContactDetail() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-3">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate('/contacts')}>
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-accent">{contact.full_name}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-xl font-bold text-accent">{contact.full_name}</h1>
+            <p className="text-xs text-muted-foreground">
               Contato desde: {formatDate(contact.created_at)}
             </p>
-            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
               <span>Consultor: <strong>{contact.owner?.full_name || 'Não atribuído'}</strong></span>
               {contact.referred_by_contact && (
                 <span>Indicado por: <strong>{contact.referred_by_contact.full_name}</strong></span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-1">
               {contact.qualification && (
-                <span className="text-yellow-500">
+                <span className="text-yellow-500 text-sm">
                   {'⭐'.repeat(contact.qualification)}
                 </span>
               )}
               {contact.temperature && (
-                <Badge className={temperatureColors[contact.temperature]}>
+                <Badge className={`${temperatureColors[contact.temperature]} text-xs`}>
                   {temperatureLabels[contact.temperature]}
                 </Badge>
               )}
             </div>
           </div>
         </div>
-        <Button onClick={() => setShowEditModal(true)}>
-          <Pencil className="w-4 h-4 mr-2" />
+        <Button size="sm" onClick={() => setShowEditModal(true)}>
+          <Pencil className="w-3 h-3 mr-1.5" />
           Editar
         </Button>
       </div>
 
       {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Personal Info Card */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="w-4 h-4 text-accent" />
+          <CardHeader className="pb-1 pt-3">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <User className="w-3 h-3 text-accent" />
               Informações do Contato
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <CardContent className="space-y-0 pb-3">
             <InfoItem label="Nome Completo" value={contact.full_name} />
             <InfoItem label="CPF" value={formatCPF(contact.cpf)} />
             <InfoItem 
@@ -226,31 +226,30 @@ export default function ContactDetail() {
           </CardContent>
         </Card>
 
-        {/* Address Card */}
+        {/* Address + Origin Card */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-accent" />
+          <CardHeader className="pb-1 pt-3">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 text-accent" />
               Endereço
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <CardContent className="space-y-0 pb-2">
             <InfoItem label="CEP" value={contact.zip_code} />
             <InfoItem label="Endereço" value={contact.address} />
             <InfoItem label="Número" value={contact.address_number} />
             <InfoItem label="Complemento" value={contact.address_complement} />
           </CardContent>
-        </Card>
-
-        {/* Origin Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Globe className="w-4 h-4 text-accent" />
+          
+          <Separator />
+          
+          <CardHeader className="pb-1 pt-2">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <Globe className="w-3 h-3 text-accent" />
               Origem
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <CardContent className="space-y-0 pb-3">
             <InfoItem label="Origem" value={contact.source} />
             <InfoItem label="Detalhe da Origem" value={contact.source_detail} />
             <InfoItem label="Campanha" value={contact.campaign} />
@@ -261,7 +260,7 @@ export default function ContactDetail() {
             <InfoItem 
               label="Base Suja" 
               value={
-                <Badge variant={contact.is_dirty_base ? "destructive" : "secondary"}>
+                <Badge variant={contact.is_dirty_base ? "destructive" : "secondary"} className="text-[10px]">
                   {contact.is_dirty_base ? 'Sim' : 'Não'}
                 </Badge>
               } 
@@ -272,31 +271,31 @@ export default function ContactDetail() {
 
       {/* Opportunities Section */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-1 pt-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-accent" />
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <Briefcase className="w-3 h-3 text-accent" />
               Oportunidades
             </CardTitle>
-            <Button size="sm" onClick={() => setShowNewOpportunityModal(true)}>
+            <Button size="sm" className="h-7 text-xs" onClick={() => setShowNewOpportunityModal(true)}>
               Nova Oportunidade
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-3">
           {opportunitiesLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <p className="text-xs text-muted-foreground">Carregando...</p>
           ) : !opportunities?.length ? (
-            <p className="text-sm text-muted-foreground">Nenhuma oportunidade cadastrada</p>
+            <p className="text-xs text-muted-foreground">Nenhuma oportunidade cadastrada</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {opportunities.map((opp) => (
-                <div key={opp.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <div key={opp.id} className="flex items-center justify-between p-2 bg-secondary/50 rounded-md">
                   <div>
-                    <p className="font-medium text-sm">{opp.current_funnel?.name}</p>
-                    <p className="text-xs text-muted-foreground">{opp.current_stage?.name}</p>
+                    <p className="font-medium text-xs">{opp.current_funnel?.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{opp.current_stage?.name}</p>
                   </div>
-                  <Badge className={statusColors[opp.status]}>
+                  <Badge className={`${statusColors[opp.status]} text-[10px]`}>
                     {statusLabels[opp.status]}
                   </Badge>
                 </div>
@@ -308,47 +307,47 @@ export default function ContactDetail() {
 
       {/* Contract Section - Placeholder */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="w-4 h-4 text-accent" />
+        <CardHeader className="pb-1 pt-3">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <FileText className="w-3 h-3 text-accent" />
             Contrato
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Nenhum contrato cadastrado</p>
+        <CardContent className="pb-3">
+          <p className="text-xs text-muted-foreground">Nenhum contrato cadastrado</p>
         </CardContent>
       </Card>
 
       {/* History Section */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <History className="w-4 h-4 text-accent" />
+        <CardHeader className="pb-1 pt-3">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <History className="w-3 h-3 text-accent" />
             Histórico
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-3">
           {historyLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
+            <p className="text-xs text-muted-foreground">Carregando...</p>
           ) : !history?.length ? (
-            <p className="text-sm text-muted-foreground">Nenhum histórico registrado</p>
+            <p className="text-xs text-muted-foreground">Nenhum histórico registrado</p>
           ) : (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-thin">
+            <div className="space-y-1.5 max-h-[200px] overflow-y-auto scrollbar-thin">
               {history.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-accent mt-2" />
+                <div key={entry.id} className="flex items-start gap-2 p-2 bg-secondary/50 rounded-md">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{entry.action}</p>
-                      <span className="text-xs text-muted-foreground">
+                      <p className="text-xs font-medium">{entry.action}</p>
+                      <span className="text-[10px] text-muted-foreground">
                         {formatDateTime(entry.created_at)}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground">
                       Por: {entry.changed_by_profile?.full_name || '-'}
                     </p>
                     {entry.notes && (
-                      <p className="text-sm mt-1">{entry.notes}</p>
+                      <p className="text-xs mt-0.5">{entry.notes}</p>
                     )}
                   </div>
                 </div>
@@ -360,22 +359,24 @@ export default function ContactDetail() {
 
       {/* Notes Section */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-accent" />
+        <CardHeader className="pb-1 pt-3">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <MessageSquare className="w-3 h-3 text-accent" />
             Anotações
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="space-y-3 pb-3">
+          <div className="space-y-1.5">
             <Textarea
               placeholder="Adicionar nova anotação..."
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
-              rows={3}
+              rows={2}
+              className="text-xs"
             />
             <Button 
               size="sm" 
+              className="h-7 text-xs"
               onClick={handleSaveNote}
               disabled={!newNote.trim() || updateContact.isPending}
             >
@@ -386,8 +387,8 @@ export default function ContactDetail() {
           {contact.notes && (
             <>
               <Separator />
-              <div className="bg-secondary/50 rounded-lg p-3">
-                <pre className="text-sm whitespace-pre-wrap font-sans">{contact.notes}</pre>
+              <div className="bg-secondary/50 rounded-md p-2">
+                <pre className="text-xs whitespace-pre-wrap font-sans">{contact.notes}</pre>
               </div>
             </>
           )}
