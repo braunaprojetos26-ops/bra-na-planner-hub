@@ -240,61 +240,64 @@ export default function Contacts() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
+                  <TableHead className="min-w-[200px]">Nome</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>E-mail</TableHead>
+                  <TableHead className="min-w-[180px]">E-mail</TableHead>
                   <TableHead>Origem</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Renda Mensal</TableHead>
-                  <TableHead className="text-center">Qualificação</TableHead>
-                  <TableHead className="text-center">Ações</TableHead>
+                  <TableHead className="text-center w-[70px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredContacts.map(contact => (
                   <TableRow key={contact.id}>
-                    <TableCell className="font-medium">{contact.full_name}</TableCell>
-                    <TableCell>{contact.phone}</TableCell>
-                    <TableCell>{contact.email || '-'}</TableCell>
+                    <TableCell className="min-w-[200px]">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{contact.full_name}</span>
+                        {contact.qualification && (
+                          <span className="text-yellow-500 text-xs">
+                            {'⭐'.repeat(contact.qualification)}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{contact.phone}</TableCell>
+                    <TableCell className="text-sm min-w-[180px]">{contact.email || '-'}</TableCell>
                     <TableCell>
                       {contact.source ? (
-                        <Badge variant="outline">{contact.source}</Badge>
+                        <Badge variant="outline" className="text-xs">{contact.source}</Badge>
                       ) : '-'}
                     </TableCell>
-                    <TableCell>{contact.owner?.full_name || '-'}</TableCell>
-                    <TableCell>{formatCurrency(contact.income)}</TableCell>
-                    <TableCell className="text-center">
-                      {contact.qualification ? (
-                        <span className="text-yellow-500">
-                          {'⭐'.repeat(contact.qualification)}
-                        </span>
-                      ) : '-'}
-                    </TableCell>
+                    <TableCell className="text-sm">{contact.owner?.full_name || '-'}</TableCell>
+                    <TableCell className="text-sm">{formatCurrency(contact.income)}</TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex flex-col items-center gap-0.5">
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="h-8 w-8"
+                          className="h-6 w-6"
                           onClick={() => setEditingContact(contact)}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3 h-3" />
                         </Button>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-8 w-8"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => setContactToDelete(contact)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-0.5">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-6 w-6"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-6 w-6 text-destructive hover:text-destructive"
+                            onClick={() => setContactToDelete(contact)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
