@@ -7,7 +7,8 @@ import {
   Upload, 
   Settings,
   UserCog,
-  GraduationCap
+  GraduationCap,
+  Bot
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,6 +40,7 @@ const managementNavItems = [
 const adminNavItems = [
   { title: 'Usuários', url: '/admin/users', icon: UserCog },
   { title: 'Pipelines', url: '/admin/pipelines', icon: Settings },
+  { title: 'Assistente IA', url: '/admin/assistant', icon: Bot },
 ];
 
 export function AppSidebar() {
