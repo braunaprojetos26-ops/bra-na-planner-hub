@@ -82,7 +82,7 @@ export interface Contact {
     id: string;
     full_name: string;
     phone: string;
-  };
+  } | null;
 }
 
 export interface ContactHistory {

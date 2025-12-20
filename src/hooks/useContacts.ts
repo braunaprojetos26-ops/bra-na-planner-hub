@@ -17,7 +17,8 @@ export function useContacts(funnelId?: string, status?: ContactStatus) {
           owner:profiles!contacts_owner_id_fkey(full_name, email),
           current_stage:funnel_stages!contacts_current_stage_id_fkey(*),
           current_funnel:funnels!contacts_current_funnel_id_fkey(*),
-          lost_reason:lost_reasons(*)
+          lost_reason:lost_reasons(*),
+          referred_by_contact:contacts!contacts_referred_by_fkey(id, full_name, phone)
         `)
         .order('stage_entered_at', { ascending: false });
 
@@ -32,7 +33,16 @@ export function useContacts(funnelId?: string, status?: ContactStatus) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Contact[];
+      
+      // Normalizar referred_by_contact (Supabase retorna array quando é null)
+      const normalizedData = data?.map(contact => ({
+        ...contact,
+        referred_by_contact: Array.isArray(contact.referred_by_contact) 
+          ? contact.referred_by_contact[0] || null 
+          : contact.referred_by_contact
+      }));
+      
+      return normalizedData as Contact[];
     },
     enabled: !!user,
   });
