@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Pencil, Eye, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Eye, Trash2, Upload } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores
 import { NewContactModal } from '@/components/contacts/NewContactModal';
 import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { ContactDetailModal } from '@/components/contacts/ContactDetailModal';
+import { ImportContactsModal } from '@/components/contacts/ImportContactsModal';
 import type { Contact } from '@/types/contacts';
 
 const formatCurrency = (value: number | null | undefined) => {
@@ -43,6 +44,7 @@ const formatCurrency = (value: number | null | undefined) => {
 export default function Contacts() {
   const navigate = useNavigate();
   const [showNewContactModal, setShowNewContactModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
@@ -133,10 +135,16 @@ export default function Contacts() {
             {filteredContacts.length} contatos encontrados
           </p>
         </div>
-        <Button onClick={() => setShowNewContactModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Novo Contato
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowImportModal(true)} className="gap-2">
+            <Upload className="w-4 h-4" />
+            Importar
+          </Button>
+          <Button onClick={() => setShowNewContactModal(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Novo Contato
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -323,6 +331,10 @@ export default function Contacts() {
         />
       )}
 
+      <ImportContactsModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+      />
 
       <AlertDialog open={!!contactToDelete} onOpenChange={(open) => !open && setContactToDelete(null)}>
         <AlertDialogContent>
