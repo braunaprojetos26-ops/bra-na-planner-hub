@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Pencil, Eye, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,8 +41,8 @@ const formatCurrency = (value: number | null | undefined) => {
 };
 
 export default function Contacts() {
+  const navigate = useNavigate();
   const [showNewContactModal, setShowNewContactModal] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
@@ -286,6 +287,7 @@ export default function Contacts() {
                             size="icon" 
                             variant="ghost" 
                             className="h-6 w-6"
+                            onClick={() => navigate(`/contacts/${contact.id}`)}
                           >
                             <Eye className="w-3 h-3" />
                           </Button>
@@ -321,13 +323,6 @@ export default function Contacts() {
         />
       )}
 
-      {selectedContact && (
-        <ContactDetailModal
-          open={!!selectedContact}
-          onOpenChange={(open) => !open && setSelectedContact(null)}
-          contact={selectedContact}
-        />
-      )}
 
       <AlertDialog open={!!contactToDelete} onOpenChange={(open) => !open && setContactToDelete(null)}>
         <AlertDialogContent>

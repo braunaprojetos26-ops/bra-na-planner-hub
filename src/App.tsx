@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Contacts from "./pages/Contacts";
+import ContactDetail from "./pages/ContactDetail";
 import Pipeline from "./pages/Pipeline";
 import AdminPipelines from "./pages/AdminPipelines";
 
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedPage><Index /></ProtectedPage>} />
               <Route path="/contacts" element={<ProtectedPage><Contacts /></ProtectedPage>} />
+              <Route path="/contacts/:contactId" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
               <Route path="/pipeline" element={<ProtectedPage><Pipeline /></ProtectedPage>} />
               <Route path="/admin/pipelines" element={<ProtectedPage><AdminPipelines /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
