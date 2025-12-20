@@ -63,28 +63,61 @@ export function useCreateMeeting() {
         });
 
       if (error) throw error;
+
+      // Add entry to contact_history
+      await supabase.from('contact_history').insert({
+        contact_id: contactId,
+        changed_by: user.id,
+        action: `Reunião agendada: ${data.meeting_type}`,
+        notes: data.notes || null,
+      });
     },
     onSuccess: (_, { contactId }) => {
       queryClient.invalidateQueries({ queryKey: ['meetings', contactId] });
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-history'] });
     },
   });
 }
 
 export function useUpdateMeetingStatus() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ meetingId, status }: { meetingId: string; status: string }) => {
+    mutationFn: async ({ meetingId, status, contactId, meetingType }: { 
+      meetingId: string; 
+      status: string;
+      contactId: string;
+      meetingType: string;
+    }) => {
+      if (!user) throw new Error('Usuário não autenticado');
+
       const { error } = await supabase
         .from('meetings')
         .update({ status })
         .eq('id', meetingId);
 
       if (error) throw error;
+
+      // Add entry to contact_history
+      const statusLabels: Record<string, string> = {
+        completed: 'Reunião realizada',
+        cancelled: 'Reunião cancelada',
+        no_show: 'Não compareceu à reunião',
+      };
+      
+      const actionLabel = statusLabels[status] || `Status da reunião alterado para: ${status}`;
+      
+      await supabase.from('contact_history').insert({
+        contact_id: contactId,
+        changed_by: user.id,
+        action: `${actionLabel}: ${meetingType}`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-history'] });
     },
   });
 }
@@ -138,9 +171,19 @@ export function useRescheduleMeeting() {
         });
 
       if (insertError) throw insertError;
+
+      // Add entry to contact_history
+      const formattedDate = newData.scheduled_at.toLocaleDateString('pt-BR');
+      await supabase.from('contact_history').insert({
+        contact_id: originalMeeting.contact_id,
+        changed_by: user.id,
+        action: `Reunião reagendada: ${newData.meeting_type} - Nova data: ${formattedDate}`,
+        notes: newData.notes || null,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-history'] });
     },
   });
 }

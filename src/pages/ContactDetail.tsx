@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Pencil, User, MapPin, Globe, FileText, History, MessageSquare, Briefcase, CalendarPlus } from 'lucide-react';
+import { ArrowLeft, Pencil, User, MapPin, Globe, FileText, History, MessageSquare, Briefcase, CalendarPlus, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
 import { MeetingsList } from '@/components/meetings/MeetingsList';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
 const formatCurrency = (value: number | null | undefined) => {
@@ -121,6 +122,7 @@ export default function ContactDetail() {
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState(false);
   const [newNote, setNewNote] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId || '');
   const { data: history, isLoading: historyLoading } = useContactHistory(contactId || '');
@@ -335,45 +337,6 @@ export default function ContactDetail() {
         </CardContent>
       </Card>
 
-      {/* History Section */}
-      <Card>
-        <CardHeader className="pb-1 pt-3">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <History className="w-3 h-3 text-accent" />
-            Histórico
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-3">
-          {historyLoading ? (
-            <p className="text-xs text-muted-foreground">Carregando...</p>
-          ) : !history?.length ? (
-            <p className="text-xs text-muted-foreground">Nenhum histórico registrado</p>
-          ) : (
-            <div className="space-y-1.5 max-h-[200px] overflow-y-auto scrollbar-thin">
-              {history.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-2 p-2 bg-secondary/50 rounded-md">
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium">{entry.action}</p>
-                      <span className="text-[10px] text-muted-foreground">
-                        {formatDateTime(entry.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Por: {entry.changed_by_profile?.full_name || '-'}
-                    </p>
-                    {entry.notes && (
-                      <p className="text-xs mt-0.5">{entry.notes}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Notes Section */}
       <Card>
         <CardHeader className="pb-1 pt-3">
@@ -408,6 +371,89 @@ export default function ContactDetail() {
                 <pre className="text-xs whitespace-pre-wrap font-sans">{contact.notes}</pre>
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* History Section - Collapsible */}
+      <Card>
+        <CardHeader className="pb-1 pt-3">
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <History className="w-3 h-3 text-accent" />
+            Histórico
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-3">
+          {historyLoading ? (
+            <p className="text-xs text-muted-foreground">Carregando...</p>
+          ) : !history?.length ? (
+            <p className="text-xs text-muted-foreground">Nenhum histórico registrado</p>
+          ) : (
+            <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+              {/* Always show the last entry */}
+              <div className="flex items-start gap-2 p-2 bg-secondary/50 rounded-md">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium">{history[0].action}</p>
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatDateTime(history[0].created_at)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Por: {history[0].changed_by_profile?.full_name || '-'}
+                  </p>
+                  {history[0].notes && (
+                    <p className="text-xs mt-0.5">{history[0].notes}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Collapsible content with remaining entries */}
+              {history.length > 1 && (
+                <>
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto scrollbar-thin">
+                      {history.slice(1).map((entry) => (
+                        <div key={entry.id} className="flex items-start gap-2 p-2 bg-secondary/50 rounded-md">
+                          <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium">{entry.action}</p>
+                              <span className="text-[10px] text-muted-foreground">
+                                {formatDateTime(entry.created_at)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Por: {entry.changed_by_profile?.full_name || '-'}
+                            </p>
+                            {entry.notes && (
+                              <p className="text-xs mt-0.5">{entry.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-xs text-muted-foreground hover:text-foreground">
+                      {historyOpen ? (
+                        <>
+                          <ChevronUp className="w-3 h-3 mr-1" />
+                          Ocultar histórico
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3 h-3 mr-1" />
+                          Ver histórico completo ({history.length - 1} {history.length - 1 === 1 ? 'registro' : 'registros'})
+                        </>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </>
+              )}
+            </Collapsible>
           )}
         </CardContent>
       </Card>

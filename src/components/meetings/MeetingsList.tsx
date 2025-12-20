@@ -35,9 +35,14 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   const { toast } = useToast();
   const [reschedulingMeeting, setReschedulingMeeting] = useState<Meeting | null>(null);
 
-  const handleStatusChange = async (meetingId: string, status: string) => {
+  const handleStatusChange = async (meeting: Meeting, status: string) => {
     try {
-      await updateStatus.mutateAsync({ meetingId, status });
+      await updateStatus.mutateAsync({ 
+        meetingId: meeting.id, 
+        status,
+        contactId: meeting.contact_id,
+        meetingType: meeting.meeting_type,
+      });
       toast({
         title: 'Status atualizado',
         description: `Reunião marcada como ${statusConfig[status as keyof typeof statusConfig]?.label || status}.`,
@@ -150,7 +155,7 @@ function MeetingCard({
   onReschedule,
 }: {
   meeting: Meeting;
-  onStatusChange: (id: string, status: string) => void;
+  onStatusChange: (meeting: Meeting, status: string) => void;
   onReschedule: (meeting: Meeting) => void;
 }) {
   const status = statusConfig[meeting.status as keyof typeof statusConfig] || statusConfig.scheduled;
@@ -211,7 +216,7 @@ function MeetingCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'completed')}>
+            <DropdownMenuItem onClick={() => onStatusChange(meeting, 'completed')}>
               <CheckCircle className="h-3.5 w-3.5 mr-2 text-green-600" />
               Realizada
             </DropdownMenuItem>
@@ -219,7 +224,7 @@ function MeetingCard({
               <RefreshCw className="h-3.5 w-3.5 mr-2 text-blue-600" />
               Reagendar
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'cancelled')}>
+            <DropdownMenuItem onClick={() => onStatusChange(meeting, 'cancelled')}>
               <XCircle className="h-3.5 w-3.5 mr-2 text-orange-600" />
               Cancelar
             </DropdownMenuItem>
