@@ -14,6 +14,272 @@ export type Database = {
   }
   public: {
     Tables: {
+      contact_history: {
+        Row: {
+          action: string
+          changed_by: string
+          contact_id: string
+          created_at: string
+          from_stage_id: string | null
+          id: string
+          notes: string | null
+          to_stage_id: string | null
+        }
+        Insert: {
+          action: string
+          changed_by: string
+          contact_id: string
+          created_at?: string
+          from_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          to_stage_id?: string | null
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          contact_id?: string
+          created_at?: string
+          from_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          to_stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contact_history_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_history_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_history_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          campaign: string | null
+          converted_at: string | null
+          created_at: string
+          created_by: string
+          current_funnel_id: string
+          current_stage_id: string
+          email: string | null
+          full_name: string
+          id: string
+          income: number | null
+          is_dirty_base: boolean
+          lost_at: string | null
+          lost_from_stage_id: string | null
+          lost_reason_id: string | null
+          owner_id: string | null
+          phone: string
+          source: string | null
+          stage_entered_at: string
+          status: Database["public"]["Enums"]["contact_status"]
+          updated_at: string
+        }
+        Insert: {
+          campaign?: string | null
+          converted_at?: string | null
+          created_at?: string
+          created_by: string
+          current_funnel_id: string
+          current_stage_id: string
+          email?: string | null
+          full_name: string
+          id?: string
+          income?: number | null
+          is_dirty_base?: boolean
+          lost_at?: string | null
+          lost_from_stage_id?: string | null
+          lost_reason_id?: string | null
+          owner_id?: string | null
+          phone: string
+          source?: string | null
+          stage_entered_at?: string
+          status?: Database["public"]["Enums"]["contact_status"]
+          updated_at?: string
+        }
+        Update: {
+          campaign?: string | null
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string
+          current_funnel_id?: string
+          current_stage_id?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          income?: number | null
+          is_dirty_base?: boolean
+          lost_at?: string | null
+          lost_from_stage_id?: string | null
+          lost_reason_id?: string | null
+          owner_id?: string | null
+          phone?: string
+          source?: string | null
+          stage_entered_at?: string
+          status?: Database["public"]["Enums"]["contact_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contacts_current_funnel_id_fkey"
+            columns: ["current_funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_lost_from_stage_id_fkey"
+            columns: ["lost_from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_lost_reason_id_fkey"
+            columns: ["lost_reason_id"]
+            isOneToOne: false
+            referencedRelation: "lost_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      funnel_stages: {
+        Row: {
+          color: string
+          created_at: string
+          funnel_id: string
+          id: string
+          name: string
+          order_position: number
+          sla_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          funnel_id: string
+          id?: string
+          name: string
+          order_position: number
+          sla_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          name?: string
+          order_position?: number
+          sla_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_stages_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funnels: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          order_position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order_position: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lost_reasons: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -98,6 +364,10 @@ export type Database = {
         Args: { _accessor_id: string; _target_id: string }
         Returns: boolean
       }
+      can_view_unassigned_contacts: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       get_accessible_user_ids: {
         Args: { _accessor_id: string }
         Returns: string[]
@@ -116,6 +386,7 @@ export type Database = {
     }
     Enums: {
       app_role: "planejador" | "lider" | "supervisor" | "gerente" | "superadmin"
+      contact_status: "active" | "lost" | "won"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -244,6 +515,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["planejador", "lider", "supervisor", "gerente", "superadmin"],
+      contact_status: ["active", "lost", "won"],
     },
   },
 } as const
