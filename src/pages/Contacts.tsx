@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
-import { Plus, Search, Phone, Mail, User } from 'lucide-react';
+import { Plus, Search, Pencil, Eye, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +14,36 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useContacts } from '@/hooks/useContacts';
-import { useContactOpportunities } from '@/hooks/useOpportunities';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useContacts, useDeleteContact } from '@/hooks/useContacts';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
 import { NewContactModal } from '@/components/contacts/NewContactModal';
+import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { ContactDetailModal } from '@/components/contacts/ContactDetailModal';
 import type { Contact } from '@/types/contacts';
+
+const formatCurrency = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return '-';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
 
 export default function Contacts() {
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +60,7 @@ export default function Contacts() {
   const { data: contacts, isLoading } = useContacts();
   const { data: planejadores } = usePlanejadores();
   const canViewPlanejadores = useCanViewPlanejadores();
+  const deleteContact = useDeleteContact();
 
   // Dynamic lists from contacts
   const sources = useMemo(() => {
@@ -49,35 +69,6 @@ export default function Contacts() {
       if (c.source) uniqueSources.add(c.source);
     });
     return Array.from(uniqueSources).sort();
-  }, [contacts]);
-
-  const sourceDetails = useMemo(() => {
-    const unique = new Set<string>();
-    contacts?.forEach(c => {
-      if (c.source_detail) unique.add(c.source_detail);
-    });
-    return Array.from(unique).sort();
-  }, [contacts]);
-
-  const campaigns = useMemo(() => {
-    const unique = new Set<string>();
-    contacts?.forEach(c => {
-      if (c.campaign) unique.add(c.campaign);
-    });
-    return Array.from(unique).sort();
-  }, [contacts]);
-
-  const referrers = useMemo(() => {
-    const map = new Map<string, { id: string; full_name: string }>();
-    contacts?.forEach(c => {
-      if (c.referred_by_contact && c.referred_by_contact.id) {
-        map.set(c.referred_by_contact.id, {
-          id: c.referred_by_contact.id,
-          full_name: c.referred_by_contact.full_name,
-        });
-      }
-    });
-    return Array.from(map.values()).sort((a, b) => a.full_name.localeCompare(b.full_name));
   }, [contacts]);
 
   // Filter contacts
@@ -123,6 +114,13 @@ export default function Contacts() {
   }, [contacts, searchTerm, filterSource, filterDirtyBase, filterOwner, 
       filterIncomeMin, filterIncomeMax, filterReferredBy, filterQualification, 
       filterSourceDetail, filterCampaign]);
+
+  const handleDeleteConfirm = async () => {
+    if (contactToDelete) {
+      await deleteContact.mutateAsync(contactToDelete.id);
+      setContactToDelete(null);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -243,56 +241,61 @@ export default function Contacts() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Contato</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>E-mail</TableHead>
                   <TableHead>Origem</TableHead>
                   <TableHead>Responsável</TableHead>
-                  <TableHead className="text-right">Criado em</TableHead>
+                  <TableHead>Renda Mensal</TableHead>
+                  <TableHead className="text-center">Qualificação</TableHead>
+                  <TableHead className="text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredContacts.map(contact => (
-                  <TableRow 
-                    key={contact.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedContact(contact)}
-                  >
+                  <TableRow key={contact.id}>
+                    <TableCell className="font-medium">{contact.full_name}</TableCell>
+                    <TableCell>{contact.phone}</TableCell>
+                    <TableCell>{contact.email || '-'}</TableCell>
                     <TableCell>
-                      <div className="font-medium">{contact.full_name}</div>
-                      {contact.qualification && (
-                        <div className="text-xs text-yellow-500">
-                          {'⭐'.repeat(contact.qualification)}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Phone className="w-3 h-3 text-muted-foreground" />
-                        {contact.phone}
-                      </div>
-                      {contact.email && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Mail className="w-3 h-3" />
-                          {contact.email}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {contact.source && (
+                      {contact.source ? (
                         <Badge variant="outline">{contact.source}</Badge>
-                      )}
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell>{contact.owner?.full_name || '-'}</TableCell>
+                    <TableCell>{formatCurrency(contact.income)}</TableCell>
+                    <TableCell className="text-center">
+                      {contact.qualification ? (
+                        <span className="text-yellow-500">
+                          {'⭐'.repeat(contact.qualification)}
+                        </span>
+                      ) : '-'}
                     </TableCell>
                     <TableCell>
-                      {contact.owner ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <User className="w-3 h-3 text-muted-foreground" />
-                          {contact.owner.full_name}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {format(new Date(contact.created_at), 'dd/MM/yyyy')}
+                      <div className="flex items-center justify-center gap-1">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8"
+                          onClick={() => setEditingContact(contact)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setContactToDelete(contact)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -307,6 +310,14 @@ export default function Contacts() {
         onOpenChange={setShowNewContactModal}
       />
 
+      {editingContact && (
+        <EditContactModal
+          open={!!editingContact}
+          onOpenChange={(open) => !open && setEditingContact(null)}
+          contact={editingContact}
+        />
+      )}
+
       {selectedContact && (
         <ContactDetailModal
           open={!!selectedContact}
@@ -314,6 +325,27 @@ export default function Contacts() {
           contact={selectedContact}
         />
       )}
+
+      <AlertDialog open={!!contactToDelete} onOpenChange={(open) => !open && setContactToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Contato</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja realmente excluir o contato <strong>{contactToDelete?.full_name}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteContact.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
