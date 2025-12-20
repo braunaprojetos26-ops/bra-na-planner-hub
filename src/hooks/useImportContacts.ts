@@ -65,8 +65,8 @@ export function useImportContacts() {
               throw new Error('Telefone é obrigatório');
             }
 
-            // Determine owner_id based on role
-            const owner_id = role === 'planejador' ? user.id : (contact.owner_id || null);
+            // Auto-assign to logged user if no owner specified
+            const owner_id = contact.owner_id || user.id;
 
             // Insert contact
             const { data: newContact, error: insertError } = await supabase
