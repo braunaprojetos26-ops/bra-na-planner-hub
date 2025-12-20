@@ -10,8 +10,17 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Contacts from "./pages/Contacts";
+import Pipeline from "./pages/Pipeline";
+import AdminPipelines from "./pages/AdminPipelines";
 
 const queryClient = new QueryClient();
+
+const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <AppLayout>{children}</AppLayout>
+  </ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -23,16 +32,10 @@ const App = () => (
           <ActingUserProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Index />
-                    </AppLayout>
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/" element={<ProtectedPage><Index /></ProtectedPage>} />
+              <Route path="/contacts" element={<ProtectedPage><Contacts /></ProtectedPage>} />
+              <Route path="/pipeline" element={<ProtectedPage><Pipeline /></ProtectedPage>} />
+              <Route path="/admin/pipelines" element={<ProtectedPage><AdminPipelines /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>
