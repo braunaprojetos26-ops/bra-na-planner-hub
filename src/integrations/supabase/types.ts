@@ -289,6 +289,76 @@ export type Database = {
         }
         Relationships: []
       }
+      meetings: {
+        Row: {
+          allows_companion: boolean
+          contact_id: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_type: string
+          notes: string | null
+          opportunity_id: string | null
+          participants: string[] | null
+          scheduled_at: string
+          scheduled_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allows_companion?: boolean
+          contact_id: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_type: string
+          notes?: string | null
+          opportunity_id?: string | null
+          participants?: string[] | null
+          scheduled_at: string
+          scheduled_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allows_companion?: boolean
+          contact_id?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_type?: string
+          notes?: string | null
+          opportunity_id?: string | null
+          participants?: string[] | null
+          scheduled_at?: string
+          scheduled_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_scheduled_by_fkey"
+            columns: ["scheduled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           contact_id: string
