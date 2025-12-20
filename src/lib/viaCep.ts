@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface ViaCepAddress {
   cep: string;
   logradouro: string;
@@ -17,14 +19,20 @@ export async function fetchAddressByCep(cep: string): Promise<ViaCepAddress | nu
   }
 
   try {
-    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-    const data: ViaCepAddress = await response.json();
+    const { data, error } = await supabase.functions.invoke('lookup-cep', {
+      body: { cep: cleanCep }
+    });
     
-    if (data.erro) {
+    if (error) {
+      console.error('Error invoking lookup-cep function:', error);
       return null;
     }
     
-    return data;
+    if (data?.erro) {
+      return null;
+    }
+    
+    return data as ViaCepAddress;
   } catch (error) {
     console.error('Error fetching address from ViaCEP:', error);
     return null;
