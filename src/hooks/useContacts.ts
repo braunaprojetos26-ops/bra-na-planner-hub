@@ -86,15 +86,19 @@ export function useContactHistory(contactId: string) {
 export function useCreateContact() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   return useMutation({
     mutationFn: async (data: ContactFormData) => {
+      // Se for planejador, auto-atribui o contato a ele mesmo
+      const ownerId = role === 'planejador' ? user?.id : undefined;
+
       const { data: contact, error } = await supabase
         .from('contacts')
         .insert({
           ...data,
           created_by: user?.id,
+          owner_id: ownerId,
         })
         .select()
         .single();
