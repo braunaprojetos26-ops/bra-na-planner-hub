@@ -83,6 +83,7 @@ export type Database = {
           address_number: string | null
           birth_date: string | null
           campaign: string | null
+          client_code: string | null
           cpf: string | null
           created_at: string
           created_by: string
@@ -114,6 +115,7 @@ export type Database = {
           address_number?: string | null
           birth_date?: string | null
           campaign?: string | null
+          client_code?: string | null
           cpf?: string | null
           created_at?: string
           created_by: string
@@ -145,6 +147,7 @@ export type Database = {
           address_number?: string | null
           birth_date?: string | null
           campaign?: string | null
+          client_code?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string

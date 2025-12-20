@@ -193,10 +193,17 @@ export default function ContactDetail() {
             </div>
           </div>
         </div>
-        <Button size="sm" onClick={() => setShowEditModal(true)}>
-          <Pencil className="w-3 h-3 mr-1.5" />
-          Editar
-        </Button>
+        <div className="flex items-center gap-3">
+          {contact.client_code && (
+            <Badge variant="outline" className="text-base font-bold px-3 py-1 border-2 border-accent text-accent">
+              {contact.client_code}
+            </Badge>
+          )}
+          <Button size="sm" onClick={() => setShowEditModal(true)}>
+            <Pencil className="w-3 h-3 mr-1.5" />
+            Editar
+          </Button>
+        </div>
       </div>
 
       {/* Info Cards */}
