@@ -399,6 +399,28 @@ export function EditContactModal({ open, onOpenChange, contact }: EditContactMod
                   )} />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
+                  <FormField control={form.control} name="rg" render={({ field }) => (
+                    <FormItem><FormLabel>RG</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="rg_issuer" render={({ field }) => (
+                    <FormItem><FormLabel>Órgão Emissor</FormLabel><FormControl><Input placeholder="SSP/SP" {...field} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="rg_issue_date" render={({ field }) => (
+                    <FormItem><FormLabel>Data Emissão</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="marital_status" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado Civil</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {maritalStatusOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+                <div className="grid grid-cols-3 gap-4">
                   <FormField control={form.control} name="zip_code" render={({ field }) => (
                     <FormItem>
                       <FormLabel>CEP</FormLabel>
@@ -412,6 +434,14 @@ export function EditContactModal({ open, onOpenChange, contact }: EditContactMod
                   )} />
                   <FormField control={form.control} name="address" render={({ field }) => (
                     <FormItem className="col-span-2"><FormLabel>Endereço</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="address_number" render={({ field }) => (
+                    <FormItem><FormLabel>Número</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="address_complement" render={({ field }) => (
+                    <FormItem><FormLabel>Complemento</FormLabel><FormControl><Input placeholder="Apto, Bloco..." {...field} /></FormControl></FormItem>
                   )} />
                 </div>
               </CollapsibleContent>
