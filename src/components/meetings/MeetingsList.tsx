@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw, Eye, ChevronUp } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useMeetings, useUpdateMeetingStatus } from '@/hooks/useMeetings';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleMeetingModal } from './ScheduleMeetingModal';
@@ -34,6 +35,7 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   const updateStatus = useUpdateMeetingStatus();
   const { toast } = useToast();
   const [reschedulingMeeting, setReschedulingMeeting] = useState<Meeting | null>(null);
+  const [meetingsOpen, setMeetingsOpen] = useState(false);
 
   const handleStatusChange = async (meeting: Meeting, status: string) => {
     try {
@@ -80,8 +82,14 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
     );
   }
 
-  const upcomingMeetings = meetings?.filter((m) => m.status === 'scheduled') || [];
-  const pastMeetings = meetings?.filter((m) => m.status !== 'scheduled') || [];
+  // Combinar todas as reuniões e ordenar por data (mais recentes primeiro)
+  const allMeetings = [...(meetings || [])].sort(
+    (a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
+  );
+  
+  const visibleMeetings = allMeetings.slice(0, 2);
+  const hiddenMeetings = allMeetings.slice(2);
+  const hasMoreMeetings = hiddenMeetings.length > 0;
 
   return (
     <>
@@ -89,44 +97,62 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
         <CardHeader className="py-3">
           <CardTitle className="text-sm font-medium flex items-center gap-1.5">
             <Calendar className="w-3 h-3" />
-            Reuniões ({meetings?.length || 0})
+            Reuniões ({allMeetings.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0 space-y-2">
-          {meetings?.length === 0 ? (
+          {allMeetings.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-2">
               Nenhuma reunião agendada.
             </p>
           ) : (
-            <div className="max-h-[200px] overflow-y-auto space-y-2">
-              {upcomingMeetings.length > 0 && (
-                <div className="space-y-1.5">
-                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase">Próximas</h4>
-                  {upcomingMeetings.map((meeting) => (
-                    <MeetingCard
-                      key={meeting.id}
-                      meeting={meeting}
-                      onStatusChange={handleStatusChange}
-                      onReschedule={handleReschedule}
-                    />
-                  ))}
-                </div>
-              )}
+            <Collapsible open={meetingsOpen} onOpenChange={setMeetingsOpen}>
+              <div className="space-y-1.5">
+                {visibleMeetings.map((meeting) => (
+                  <MeetingCard
+                    key={meeting.id}
+                    meeting={meeting}
+                    onStatusChange={handleStatusChange}
+                    onReschedule={handleReschedule}
+                  />
+                ))}
+              </div>
 
-              {pastMeetings.length > 0 && (
-                <div className="space-y-1.5">
-                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase">Histórico</h4>
-                  {pastMeetings.map((meeting) => (
-                    <MeetingCard
-                      key={meeting.id}
-                      meeting={meeting}
-                      onStatusChange={handleStatusChange}
-                      onReschedule={handleReschedule}
-                    />
-                  ))}
-                </div>
+              {hasMoreMeetings && (
+                <>
+                  <CollapsibleContent className="space-y-1.5 mt-1.5">
+                    {hiddenMeetings.map((meeting) => (
+                      <MeetingCard
+                        key={meeting.id}
+                        meeting={meeting}
+                        onStatusChange={handleStatusChange}
+                        onReschedule={handleReschedule}
+                      />
+                    ))}
+                  </CollapsibleContent>
+
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-2 text-xs h-7 text-muted-foreground hover:text-foreground"
+                    >
+                      {meetingsOpen ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 mr-1.5" />
+                          Ocultar reuniões
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-3 w-3 mr-1.5" />
+                          Ver mais reuniões ({hiddenMeetings.length} registros)
+                        </>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </>
               )}
-            </div>
+            </Collapsible>
           )}
         </CardContent>
       </Card>
