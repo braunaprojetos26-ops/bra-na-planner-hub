@@ -182,35 +182,34 @@ export default function Contacts() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6 space-y-4">
-          {/* Linha 1 - Busca */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground font-medium">Buscar</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, telefone, email, CPF ou RG..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+        <CardContent className="py-3 px-4">
+          <div className="flex flex-wrap gap-x-3 gap-y-2 items-end">
+            {/* Search */}
+            <div className="space-y-1 flex-1 min-w-[200px]">
+              <Label className="text-[10px] text-muted-foreground">Buscar</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Nome, telefone, email, CPF, RG..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Linha 2 - Filtros Principais */}
-          <div className="flex flex-wrap gap-4">
             {/* Funnel Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Funil de Venda</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Funil</Label>
               <Select value={filterFunnel} onValueChange={val => {
                 setFilterFunnel(val);
                 setFilterStage('all');
               }}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Todos os Funis" />
+                <SelectTrigger className="w-[140px] h-8 text-sm">
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os Funis</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {funnels?.map(f => (
                     <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                   ))}
@@ -219,14 +218,14 @@ export default function Contacts() {
             </div>
 
             {/* Stage Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Etapa</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Etapa</Label>
               <Select value={filterStage} onValueChange={setFilterStage} disabled={filterFunnel === 'all'}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Todas as Etapas" />
+                <SelectTrigger className="w-[130px] h-8 text-sm">
+                  <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as Etapas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {stages?.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
@@ -235,10 +234,10 @@ export default function Contacts() {
             </div>
 
             {/* Status Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Status</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Status</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[100px] h-8 text-sm">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,10 +251,10 @@ export default function Contacts() {
 
             {/* Owner Filter - apenas para admins */}
             {canViewPlanejadores && (
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground font-medium">Responsável</Label>
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">Responsável</Label>
                 <Select value={filterOwner} onValueChange={setFilterOwner}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[140px] h-8 text-sm">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -269,52 +268,49 @@ export default function Contacts() {
               </div>
             )}
 
-            {/* Dirty Base Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Base</Label>
+            {/* Base Filter */}
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Base</Label>
               <Select value={filterDirtyBase} onValueChange={setFilterDirtyBase}>
-                <SelectTrigger className="w-[130px]">
+                <SelectTrigger className="w-[100px] h-8 text-sm">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="yes">Base Suja</SelectItem>
-                  <SelectItem value="no">Base Limpa</SelectItem>
+                  <SelectItem value="yes">Suja</SelectItem>
+                  <SelectItem value="no">Limpa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Linha 3 - Filtros Financeiros */}
-          <div className="flex flex-wrap gap-4 items-end">
             {/* Income Range */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Renda de</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Renda de</Label>
               <Input
                 type="number"
                 placeholder="R$ 0"
                 value={filterIncomeMin}
                 onChange={e => setFilterIncomeMin(e.target.value)}
-                className="w-[120px]"
+                className="w-[90px] h-8 text-sm"
               />
             </div>
-            <span className="pb-2 text-muted-foreground">a</span>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Renda até</Label>
+            <span className="text-muted-foreground text-sm pb-1">a</span>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Renda até</Label>
               <Input
                 type="number"
                 placeholder="R$ ∞"
                 value={filterIncomeMax}
                 onChange={e => setFilterIncomeMax(e.target.value)}
-                className="w-[120px]"
+                className="w-[90px] h-8 text-sm"
               />
             </div>
 
             {/* Qualification Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Qualificação</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Qualificação</Label>
               <Select value={filterQualification} onValueChange={setFilterQualification}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[110px] h-8 text-sm">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -327,15 +323,12 @@ export default function Contacts() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Linha 4 - Filtros de Origem */}
-          <div className="flex flex-wrap gap-4">
             {/* Referred By Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Indicado Por</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Indicado Por</Label>
               <Select value={filterReferredBy} onValueChange={setFilterReferredBy}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[130px] h-8 text-sm">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -348,10 +341,10 @@ export default function Contacts() {
             </div>
 
             {/* Source Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Origem</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Origem</Label>
               <Select value={filterSource} onValueChange={setFilterSource}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[110px] h-8 text-sm">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -364,10 +357,10 @@ export default function Contacts() {
             </div>
 
             {/* Source Detail Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Fonte</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Fonte</Label>
               <Select value={filterSourceDetail} onValueChange={setFilterSourceDetail}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[110px] h-8 text-sm">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -380,10 +373,10 @@ export default function Contacts() {
             </div>
 
             {/* Campaign Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-medium">Campanha</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Campanha</Label>
               <Select value={filterCampaign} onValueChange={setFilterCampaign}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[110px] h-8 text-sm">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
