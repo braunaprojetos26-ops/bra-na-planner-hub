@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Pencil, User, MapPin, Globe, FileText, History, MessageSquare, Briefcase } from 'lucide-react';
+import { ArrowLeft, Pencil, User, MapPin, Globe, FileText, History, MessageSquare, Briefcase, CalendarPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { useContact, useContactHistory, useUpdateContact } from '@/hooks/useCont
 import { useContactOpportunities } from '@/hooks/useContactOpportunities';
 import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
+import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
+import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { useState } from 'react';
 
 const formatCurrency = (value: number | null | undefined) => {
@@ -117,6 +119,7 @@ export default function ContactDetail() {
   const navigate = useNavigate();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
+  const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState(false);
   const [newNote, setNewNote] = useState('');
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId || '');
@@ -193,12 +196,16 @@ export default function ContactDetail() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {contact.client_code && (
             <Badge variant="outline" className="text-base font-bold px-3 py-1 border-2 border-accent text-accent">
               {contact.client_code}
             </Badge>
           )}
+          <Button size="sm" variant="outline" onClick={() => setShowScheduleMeetingModal(true)}>
+            <CalendarPlus className="w-3 h-3 mr-1.5" />
+            Agendar
+          </Button>
           <Button size="sm" onClick={() => setShowEditModal(true)}>
             <Pencil className="w-3 h-3 mr-1.5" />
             Editar
@@ -312,6 +319,9 @@ export default function ContactDetail() {
         </CardContent>
       </Card>
 
+      {/* Meetings Section */}
+      {contactId && <MeetingsList contactId={contactId} />}
+
       {/* Contract Section - Placeholder */}
       <Card>
         <CardHeader className="pb-1 pt-3">
@@ -416,6 +426,15 @@ export default function ContactDetail() {
           open={showNewOpportunityModal}
           onOpenChange={setShowNewOpportunityModal}
           defaultContactId={contactId}
+        />
+      )}
+
+      {showScheduleMeetingModal && contactId && (
+        <ScheduleMeetingModal
+          open={showScheduleMeetingModal}
+          onOpenChange={setShowScheduleMeetingModal}
+          contactId={contactId}
+          contactName={contact.full_name}
         />
       )}
     </div>
