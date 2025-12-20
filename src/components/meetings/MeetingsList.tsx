@@ -58,16 +58,16 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Reuniões Agendadas
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+            <Calendar className="w-3 h-3" />
+            Reuniões
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-3">
+        <CardContent className="pt-0">
+          <div className="animate-pulse space-y-1.5">
             {[1, 2].map((i) => (
-              <div key={i} className="h-20 bg-muted rounded-lg" />
+              <div key={i} className="h-10 bg-muted rounded-md" />
             ))}
           </div>
         </CardContent>
@@ -81,22 +81,22 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+            <Calendar className="w-3 h-3" />
             Reuniões ({meetings?.length || 0})
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-0 space-y-2">
           {meetings?.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhuma reunião agendada para este contato.
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Nenhuma reunião agendada.
             </p>
           ) : (
-            <>
+            <div className="max-h-[200px] overflow-y-auto space-y-2">
               {upcomingMeetings.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground">Próximas</h4>
+                <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase">Próximas</h4>
                   {upcomingMeetings.map((meeting) => (
                     <MeetingCard
                       key={meeting.id}
@@ -109,8 +109,8 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
               )}
 
               {pastMeetings.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground">Histórico</h4>
+                <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase">Histórico</h4>
                   {pastMeetings.map((meeting) => (
                     <MeetingCard
                       key={meeting.id}
@@ -121,7 +121,7 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -137,6 +137,13 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   );
 }
 
+const statusColors = {
+  scheduled: 'bg-blue-500',
+  completed: 'bg-green-500',
+  cancelled: 'bg-orange-500',
+  rescheduled: 'bg-purple-500',
+};
+
 function MeetingCard({
   meeting,
   onStatusChange,
@@ -147,82 +154,78 @@ function MeetingCard({
   onReschedule: (meeting: Meeting) => void;
 }) {
   const status = statusConfig[meeting.status as keyof typeof statusConfig] || statusConfig.scheduled;
+  const statusColor = statusColors[meeting.status as keyof typeof statusColors] || statusColors.scheduled;
   const scheduledDate = new Date(meeting.scheduled_at);
 
   return (
-    <div className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium">{meeting.meeting_type}</span>
-            <Badge variant={status.variant} className="text-xs">
-              {status.label}
+    <div className="flex items-start gap-2 p-2 bg-secondary/50 rounded-md">
+      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${statusColor}`} />
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-medium">{meeting.meeting_type}</span>
+          <Badge variant={status.variant} className="text-[10px] px-1.5 py-0 h-4">
+            {status.label}
+          </Badge>
+          {meeting.reschedule_count > 0 && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+              <RefreshCw className="h-2.5 w-2.5" />
+              #{meeting.reschedule_count}
             </Badge>
-            {meeting.reschedule_count > 0 && (
-              <Badge variant="outline" className="text-xs gap-1">
-                <RefreshCw className="h-3 w-3" />
-                Reagendamento #{meeting.reschedule_count}
-              </Badge>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {format(scheduledDate, "dd/MM/yyyy", { locale: ptBR })}
+          )}
+        </div>
+        
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-0.5">
+            <Calendar className="h-3 w-3" />
+            {format(scheduledDate, "dd/MM/yy", { locale: ptBR })}
+          </span>
+          <span className="flex items-center gap-0.5">
+            <Clock className="h-3 w-3" />
+            {format(scheduledDate, "HH:mm", { locale: ptBR })}
+          </span>
+          {meeting.participants && meeting.participants.length > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Users className="h-3 w-3" />
+              {meeting.participants.length}
             </span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              {format(scheduledDate, "HH:mm", { locale: ptBR })} ({meeting.duration_minutes}min)
+          )}
+          {meeting.allows_companion && (
+            <span className="flex items-center gap-0.5 text-green-600">
+              <UserCheck className="h-3 w-3" />
             </span>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm">
-            {meeting.participants && meeting.participants.length > 0 && (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Users className="h-3.5 w-3.5" />
-                {meeting.participants.length} participante(s)
-              </span>
-            )}
-            {meeting.allows_companion && (
-              <span className="flex items-center gap-1 text-green-600">
-                <UserCheck className="h-3.5 w-3.5" />
-                Permite acompanhante
-              </span>
-            )}
-          </div>
-
-          {meeting.notes && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {meeting.notes}
-            </p>
           )}
         </div>
 
-        {meeting.status === 'scheduled' && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'completed')}>
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                Marcar como realizada
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onReschedule(meeting)}>
-                <RefreshCw className="h-4 w-4 mr-2 text-blue-600" />
-                Reagendar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'cancelled')}>
-                <XCircle className="h-4 w-4 mr-2 text-orange-600" />
-                Cancelar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {meeting.notes && (
+          <p className="text-[10px] text-muted-foreground line-clamp-1">
+            {meeting.notes}
+          </p>
         )}
       </div>
+
+      {meeting.status === 'scheduled' && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'completed')}>
+              <CheckCircle className="h-3.5 w-3.5 mr-2 text-green-600" />
+              Realizada
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onReschedule(meeting)}>
+              <RefreshCw className="h-3.5 w-3.5 mr-2 text-blue-600" />
+              Reagendar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'cancelled')}>
+              <XCircle className="h-3.5 w-3.5 mr-2 text-orange-600" />
+              Cancelar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }
