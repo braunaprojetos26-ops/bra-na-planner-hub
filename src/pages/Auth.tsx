@@ -9,6 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Building2 } from 'lucide-react';
 
+const ALLOWED_DOMAINS = [
+  '@braunaplanejamento.com.br',
+  '@braunacapital.com.br',
+  '@braunainvestimentos.com.br'
+];
+
+const isAllowedEmailDomain = (email: string): boolean => {
+  const lowerEmail = email.toLowerCase().trim();
+  return ALLOWED_DOMAINS.some(domain => lowerEmail.endsWith(domain));
+};
+
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -60,6 +71,15 @@ export default function Auth() {
       toast({
         title: 'Campos obrigatórios',
         description: 'Por favor, preencha todos os campos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isAllowedEmailDomain(email)) {
+      toast({
+        title: 'Domínio não permitido',
+        description: 'Apenas emails @braunaplanejamento.com.br, @braunacapital.com.br ou @braunainvestimentos.com.br são permitidos.',
         variant: 'destructive',
       });
       return;
