@@ -74,8 +74,8 @@ export function useCreateContact() {
 
   return useMutation({
     mutationFn: async (data: ContactFormData) => {
-      // If planejador, auto-assign contact to themselves
-      const ownerId = role === 'planejador' ? user?.id : data.owner_id;
+      // Auto-assign to logged user if no owner specified
+      const ownerId = data.owner_id || user?.id;
 
       const { data: contact, error } = await supabase
         .from('contacts')
