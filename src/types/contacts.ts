@@ -32,6 +32,7 @@ export interface LostReason {
 
 export interface Contact {
   id: string;
+  client_code: string | null;
   owner_id: string | null;
   full_name: string;
   phone: string;
