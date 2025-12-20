@@ -83,21 +83,15 @@ export type Database = {
           address_number: string | null
           birth_date: string | null
           campaign: string | null
-          converted_at: string | null
           cpf: string | null
           created_at: string
           created_by: string
-          current_funnel_id: string
-          current_stage_id: string
           email: string | null
           full_name: string
           gender: string | null
           id: string
           income: number | null
           is_dirty_base: boolean
-          lost_at: string | null
-          lost_from_stage_id: string | null
-          lost_reason_id: string | null
           marital_status: string | null
           notes: string | null
           owner_id: string | null
@@ -110,8 +104,6 @@ export type Database = {
           rg_issuer: string | null
           source: string | null
           source_detail: string | null
-          stage_entered_at: string
-          status: Database["public"]["Enums"]["contact_status"]
           temperature: string | null
           updated_at: string
           zip_code: string | null
@@ -122,21 +114,15 @@ export type Database = {
           address_number?: string | null
           birth_date?: string | null
           campaign?: string | null
-          converted_at?: string | null
           cpf?: string | null
           created_at?: string
           created_by: string
-          current_funnel_id: string
-          current_stage_id: string
           email?: string | null
           full_name: string
           gender?: string | null
           id?: string
           income?: number | null
           is_dirty_base?: boolean
-          lost_at?: string | null
-          lost_from_stage_id?: string | null
-          lost_reason_id?: string | null
           marital_status?: string | null
           notes?: string | null
           owner_id?: string | null
@@ -149,8 +135,6 @@ export type Database = {
           rg_issuer?: string | null
           source?: string | null
           source_detail?: string | null
-          stage_entered_at?: string
-          status?: Database["public"]["Enums"]["contact_status"]
           temperature?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -161,21 +145,15 @@ export type Database = {
           address_number?: string | null
           birth_date?: string | null
           campaign?: string | null
-          converted_at?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string
-          current_funnel_id?: string
-          current_stage_id?: string
           email?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           income?: number | null
           is_dirty_base?: boolean
-          lost_at?: string | null
-          lost_from_stage_id?: string | null
-          lost_reason_id?: string | null
           marital_status?: string | null
           notes?: string | null
           owner_id?: string | null
@@ -188,8 +166,6 @@ export type Database = {
           rg_issuer?: string | null
           source?: string | null
           source_detail?: string | null
-          stage_entered_at?: string
-          status?: Database["public"]["Enums"]["contact_status"]
           temperature?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -201,34 +177,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "contacts_current_funnel_id_fkey"
-            columns: ["current_funnel_id"]
-            isOneToOne: false
-            referencedRelation: "funnels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contacts_current_stage_id_fkey"
-            columns: ["current_stage_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_stages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contacts_lost_from_stage_id_fkey"
-            columns: ["lost_from_stage_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_stages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contacts_lost_reason_id_fkey"
-            columns: ["lost_reason_id"]
-            isOneToOne: false
-            referencedRelation: "lost_reasons"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "contacts_owner_id_fkey"
@@ -337,6 +285,154 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      opportunities: {
+        Row: {
+          contact_id: string
+          converted_at: string | null
+          created_at: string
+          created_by: string
+          current_funnel_id: string
+          current_stage_id: string
+          id: string
+          lost_at: string | null
+          lost_from_stage_id: string | null
+          lost_reason_id: string | null
+          notes: string | null
+          qualification: number | null
+          stage_entered_at: string
+          status: Database["public"]["Enums"]["contact_status"]
+          temperature: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          converted_at?: string | null
+          created_at?: string
+          created_by: string
+          current_funnel_id: string
+          current_stage_id: string
+          id?: string
+          lost_at?: string | null
+          lost_from_stage_id?: string | null
+          lost_reason_id?: string | null
+          notes?: string | null
+          qualification?: number | null
+          stage_entered_at?: string
+          status?: Database["public"]["Enums"]["contact_status"]
+          temperature?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string
+          current_funnel_id?: string
+          current_stage_id?: string
+          id?: string
+          lost_at?: string | null
+          lost_from_stage_id?: string | null
+          lost_reason_id?: string | null
+          notes?: string | null
+          qualification?: number | null
+          stage_entered_at?: string
+          status?: Database["public"]["Enums"]["contact_status"]
+          temperature?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_current_funnel_id_fkey"
+            columns: ["current_funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_lost_from_stage_id_fkey"
+            columns: ["lost_from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_lost_reason_id_fkey"
+            columns: ["lost_reason_id"]
+            isOneToOne: false
+            referencedRelation: "lost_reasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunity_history: {
+        Row: {
+          action: string
+          changed_by: string
+          created_at: string
+          from_stage_id: string | null
+          id: string
+          notes: string | null
+          opportunity_id: string
+          to_stage_id: string | null
+        }
+        Insert: {
+          action: string
+          changed_by: string
+          created_at?: string
+          from_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          opportunity_id: string
+          to_stage_id?: string | null
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          created_at?: string
+          from_stage_id?: string | null
+          id?: string
+          notes?: string | null
+          opportunity_id?: string
+          to_stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_history_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_history_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_history_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

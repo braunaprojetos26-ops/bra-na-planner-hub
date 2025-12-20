@@ -1,4 +1,3 @@
-export type ContactStatus = 'active' | 'lost' | 'won';
 export type ContactTemperature = 'cold' | 'warm' | 'hot';
 export type ContactGender = 'masculino' | 'feminino' | 'outro' | 'prefiro_nao_informar';
 export type MaritalStatus = 'solteiro' | 'casado' | 'divorciado' | 'viuvo' | 'uniao_estavel';
@@ -41,18 +40,10 @@ export interface Contact {
   source: string | null;
   campaign: string | null;
   is_dirty_base: boolean;
-  status: ContactStatus;
-  current_funnel_id: string;
-  current_stage_id: string;
-  stage_entered_at: string;
-  lost_at: string | null;
-  lost_from_stage_id: string | null;
-  lost_reason_id: string | null;
-  converted_at: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
-  // New fields
+  // Additional fields
   profession: string | null;
   gender: string | null;
   referred_by: string | null;
@@ -75,14 +66,13 @@ export interface Contact {
     full_name: string;
     email: string;
   };
-  current_stage?: FunnelStage;
-  current_funnel?: Funnel;
-  lost_reason?: LostReason;
   referred_by_contact?: {
     id: string;
     full_name: string;
     phone: string;
   } | null;
+  // Computed fields
+  active_opportunities_count?: number;
 }
 
 export interface ContactHistory {
@@ -110,9 +100,7 @@ export interface ContactFormData {
   source?: string;
   campaign?: string;
   owner_id?: string;
-  current_funnel_id: string;
-  current_stage_id: string;
-  // New fields
+  // Additional fields
   profession?: string;
   gender?: string;
   referred_by?: string;

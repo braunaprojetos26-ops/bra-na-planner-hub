@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Plus, Search, AlertTriangle, Phone, Mail, User } from 'lucide-react';
+import { Plus, Search, Phone, Mail, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,24 +16,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useContacts } from '@/hooks/useContacts';
-import { useFunnels, useFunnelStages } from '@/hooks/useFunnels';
+import { useContactOpportunities } from '@/hooks/useOpportunities';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
 import { NewContactModal } from '@/components/contacts/NewContactModal';
 import { ContactDetailModal } from '@/components/contacts/ContactDetailModal';
-import type { Contact, ContactStatus } from '@/types/contacts';
+import type { Contact } from '@/types/contacts';
 
 export default function Contacts() {
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   
-  // Filtros
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterFunnel, setFilterFunnel] = useState<string>('all');
-  const [filterStage, setFilterStage] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [filterDirtyBase, setFilterDirtyBase] = useState<string>('all');
-  // Novos filtros
   const [filterOwner, setFilterOwner] = useState<string>('all');
   const [filterIncomeMin, setFilterIncomeMin] = useState<string>('');
   const [filterIncomeMax, setFilterIncomeMax] = useState<string>('');
@@ -43,12 +39,10 @@ export default function Contacts() {
   const [filterCampaign, setFilterCampaign] = useState<string>('all');
 
   const { data: contacts, isLoading } = useContacts();
-  const { data: funnels } = useFunnels();
-  const { data: stages } = useFunnelStages(filterFunnel !== 'all' ? filterFunnel : undefined);
   const { data: planejadores } = usePlanejadores();
   const canViewPlanejadores = useCanViewPlanejadores();
 
-  // Listas dinâmicas extraídas dos contatos
+  // Dynamic lists from contacts
   const sources = useMemo(() => {
     const uniqueSources = new Set<string>();
     contacts?.forEach(c => {
@@ -91,7 +85,6 @@ export default function Contacts() {
     if (!contacts) return [];
 
     return contacts.filter(contact => {
-      // Search filter - expandido para incluir CPF e RG
       const searchLower = searchTerm.toLowerCase();
       const searchClean = searchTerm.replace(/\D/g, '');
       const matchesSearch = !searchTerm || 
@@ -101,29 +94,14 @@ export default function Contacts() {
         contact.cpf?.replace(/\D/g, '').includes(searchClean) ||
         contact.rg?.toLowerCase().includes(searchLower);
 
-      // Funnel filter
-      const matchesFunnel = filterFunnel === 'all' || contact.current_funnel_id === filterFunnel;
-
-      // Stage filter
-      const matchesStage = filterStage === 'all' || contact.current_stage_id === filterStage;
-
-      // Status filter
-      const matchesStatus = filterStatus === 'all' || contact.status === filterStatus;
-
-      // Source filter
       const matchesSource = filterSource === 'all' || contact.source === filterSource;
-
-      // Dirty base filter
       const matchesDirtyBase = filterDirtyBase === 'all' || 
         (filterDirtyBase === 'yes' && contact.is_dirty_base) ||
         (filterDirtyBase === 'no' && !contact.is_dirty_base);
-
-      // Owner filter
       const matchesOwner = filterOwner === 'all' || 
         (filterOwner === 'unassigned' && !contact.owner_id) ||
         contact.owner_id === filterOwner;
 
-      // Income range filter
       const minIncome = filterIncomeMin ? parseFloat(filterIncomeMin) : null;
       const maxIncome = filterIncomeMax ? parseFloat(filterIncomeMax) : null;
       const matchesIncome = 
@@ -132,37 +110,19 @@ export default function Contacts() {
           (minIncome === null || contact.income >= minIncome) &&
           (maxIncome === null || contact.income <= maxIncome));
 
-      // Referred by filter
       const matchesReferredBy = filterReferredBy === 'all' || contact.referred_by === filterReferredBy;
-
-      // Qualification filter
       const matchesQualification = filterQualification === 'all' || 
         contact.qualification === parseInt(filterQualification);
-
-      // Source detail filter
       const matchesSourceDetail = filterSourceDetail === 'all' || contact.source_detail === filterSourceDetail;
-
-      // Campaign filter
       const matchesCampaign = filterCampaign === 'all' || contact.campaign === filterCampaign;
 
-      return matchesSearch && matchesFunnel && matchesStage && matchesStatus && 
-             matchesSource && matchesDirtyBase && matchesOwner && matchesIncome &&
-             matchesReferredBy && matchesQualification && matchesSourceDetail && matchesCampaign;
+      return matchesSearch && matchesSource && matchesDirtyBase && matchesOwner && 
+             matchesIncome && matchesReferredBy && matchesQualification && 
+             matchesSourceDetail && matchesCampaign;
     });
-  }, [contacts, searchTerm, filterFunnel, filterStage, filterStatus, filterSource, 
-      filterDirtyBase, filterOwner, filterIncomeMin, filterIncomeMax, filterReferredBy,
-      filterQualification, filterSourceDetail, filterCampaign]);
-
-  const getStatusBadge = (status: ContactStatus) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default">Ativo</Badge>;
-      case 'lost':
-        return <Badge variant="destructive">Perdido</Badge>;
-      case 'won':
-        return <Badge variant="secondary">Ganho</Badge>;
-    }
-  };
+  }, [contacts, searchTerm, filterSource, filterDirtyBase, filterOwner, 
+      filterIncomeMin, filterIncomeMax, filterReferredBy, filterQualification, 
+      filterSourceDetail, filterCampaign]);
 
   return (
     <div className="p-6 space-y-6">
@@ -184,7 +144,6 @@ export default function Contacts() {
       <Card>
         <CardContent className="py-3 px-4">
           <div className="flex flex-wrap gap-x-3 gap-y-2 items-end">
-            {/* Search */}
             <div className="space-y-1 flex-1 min-w-[200px]">
               <Label className="text-[10px] text-muted-foreground">Buscar</Label>
               <div className="relative">
@@ -198,58 +157,6 @@ export default function Contacts() {
               </div>
             </div>
 
-            {/* Funnel Filter */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Funil</Label>
-              <Select value={filterFunnel} onValueChange={val => {
-                setFilterFunnel(val);
-                setFilterStage('all');
-              }}>
-                <SelectTrigger className="w-[140px] h-8 text-sm">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {funnels?.map(f => (
-                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Stage Filter */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Etapa</Label>
-              <Select value={filterStage} onValueChange={setFilterStage} disabled={filterFunnel === 'all'}>
-                <SelectTrigger className="w-[130px] h-8 text-sm">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {stages?.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[100px] h-8 text-sm">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="lost">Perdido</SelectItem>
-                  <SelectItem value="won">Ganho</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Owner Filter - apenas para admins */}
             {canViewPlanejadores && (
               <div className="space-y-1">
                 <Label className="text-[10px] text-muted-foreground">Responsável</Label>
@@ -268,7 +175,6 @@ export default function Contacts() {
               </div>
             )}
 
-            {/* Base Filter */}
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Base</Label>
               <Select value={filterDirtyBase} onValueChange={setFilterDirtyBase}>
@@ -283,30 +189,6 @@ export default function Contacts() {
               </Select>
             </div>
 
-            {/* Income Range */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Renda de</Label>
-              <Input
-                type="number"
-                placeholder="R$ 0"
-                value={filterIncomeMin}
-                onChange={e => setFilterIncomeMin(e.target.value)}
-                className="w-[90px] h-8 text-sm"
-              />
-            </div>
-            <span className="text-muted-foreground text-sm pb-1">a</span>
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Renda até</Label>
-              <Input
-                type="number"
-                placeholder="R$ ∞"
-                value={filterIncomeMax}
-                onChange={e => setFilterIncomeMax(e.target.value)}
-                className="w-[90px] h-8 text-sm"
-              />
-            </div>
-
-            {/* Qualification Filter */}
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Qualificação</Label>
               <Select value={filterQualification} onValueChange={setFilterQualification}>
@@ -324,23 +206,6 @@ export default function Contacts() {
               </Select>
             </div>
 
-            {/* Referred By Filter */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Indicado Por</Label>
-              <Select value={filterReferredBy} onValueChange={setFilterReferredBy}>
-                <SelectTrigger className="w-[130px] h-8 text-sm">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {referrers.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.full_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Source Filter */}
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Origem</Label>
               <Select value={filterSource} onValueChange={setFilterSource}>
@@ -351,38 +216,6 @@ export default function Contacts() {
                   <SelectItem value="all">Todas</SelectItem>
                   {sources.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Source Detail Filter */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Fonte</Label>
-              <Select value={filterSourceDetail} onValueChange={setFilterSourceDetail}>
-                <SelectTrigger className="w-[110px] h-8 text-sm">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {sourceDetails.map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Campaign Filter */}
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">Campanha</Label>
-              <Select value={filterCampaign} onValueChange={setFilterCampaign}>
-                <SelectTrigger className="w-[110px] h-8 text-sm">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {campaigns.map(c => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -411,50 +244,42 @@ export default function Contacts() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Contato</TableHead>
-                  <TableHead>Etapa</TableHead>
                   <TableHead>Origem</TableHead>
                   <TableHead>Responsável</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Criado em</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredContacts.map(contact => (
                   <TableRow 
-                    key={contact.id} 
-                    className="cursor-pointer hover:bg-muted/50"
+                    key={contact.id}
+                    className="cursor-pointer"
                     onClick={() => setSelectedContact(contact)}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{contact.full_name}</span>
-                        {contact.is_dirty_base && (
-                          <AlertTriangle className="w-4 h-4 text-warning" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Phone className="w-3 h-3" />
-                          {contact.phone}
+                      <div className="font-medium">{contact.full_name}</div>
+                      {contact.qualification && (
+                        <div className="text-xs text-yellow-500">
+                          {'⭐'.repeat(contact.qualification)}
                         </div>
-                        {contact.email && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Mail className="w-3 h-3" />
-                            {contact.email}
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{contact.current_stage?.name}</p>
-                        <p className="text-xs text-muted-foreground">{contact.current_funnel?.name}</p>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Phone className="w-3 h-3 text-muted-foreground" />
+                        {contact.phone}
                       </div>
+                      {contact.email && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Mail className="w-3 h-3" />
+                          {contact.email}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      {contact.source || '-'}
+                      {contact.source && (
+                        <Badge variant="outline">{contact.source}</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {contact.owner ? (
@@ -463,14 +288,11 @@ export default function Contacts() {
                           {contact.owner.full_name}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">Não atribuído</span>
+                        <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {getStatusBadge(contact.status)}
-                    </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {format(new Date(contact.created_at), "dd/MM/yy HH:mm")}
+                      {format(new Date(contact.created_at), 'dd/MM/yyyy')}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -480,7 +302,6 @@ export default function Contacts() {
         </CardContent>
       </Card>
 
-      {/* Modals */}
       <NewContactModal
         open={showNewContactModal}
         onOpenChange={setShowNewContactModal}
@@ -489,7 +310,7 @@ export default function Contacts() {
       {selectedContact && (
         <ContactDetailModal
           open={!!selectedContact}
-          onOpenChange={open => !open && setSelectedContact(null)}
+          onOpenChange={(open) => !open && setSelectedContact(null)}
           contact={selectedContact}
         />
       )}

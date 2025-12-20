@@ -13,7 +13,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StarRating } from '@/components/ui/star-rating';
-import { useFunnels, useFunnelStages } from '@/hooks/useFunnels';
 import { useCreateContact } from '@/hooks/useContacts';
 import { useOwnerContacts } from '@/hooks/useOwnerContacts';
 import { fetchAddressByCep } from '@/lib/viaCep';
@@ -32,9 +31,6 @@ const formSchema = z.object({
   qualification: z.coerce.number().min(1).max(5).optional(),
   temperature: z.enum(['cold', 'warm', 'hot']).optional(),
   notes: z.string().optional(),
-  current_funnel_id: z.string().min(1, 'Selecione um funil'),
-  current_stage_id: z.string().min(1, 'Selecione uma etapa'),
-  // Expanded fields
   source_detail: z.string().optional(),
   campaign: z.string().optional(),
   rg: z.string().optional(),
@@ -54,15 +50,7 @@ interface NewContactModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const sources = [
-  'Instagram',
-  'Facebook',
-  'Threads',
-  'WhatsApp',
-  'Indicação',
-  'Site',
-  'Outro',
-];
+const sources = ['Instagram', 'Facebook', 'Threads', 'WhatsApp', 'Indicação', 'Site', 'Outro'];
 
 const genderOptions = [
   { value: 'masculino', label: 'Masculino' },
@@ -80,9 +68,6 @@ const maritalStatusOptions = [
 ];
 
 export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
-  const { data: funnels } = useFunnels();
-  const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
-  const { data: stages } = useFunnelStages(selectedFunnelId);
   const { data: ownerContacts } = useOwnerContacts();
   const createContact = useCreateContact();
   const { toast } = useToast();
@@ -103,8 +88,6 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
       qualification: undefined,
       temperature: undefined,
       notes: '',
-      current_funnel_id: '',
-      current_stage_id: '',
       source_detail: '',
       campaign: '',
       rg: '',
@@ -124,8 +107,6 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
     const data: ContactFormData = {
       full_name: values.full_name,
       phone: values.phone,
-      current_funnel_id: values.current_funnel_id,
-      current_stage_id: values.current_stage_id,
       email: values.email || undefined,
       income: values.income,
       profession: values.profession || undefined,
@@ -155,12 +136,6 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
     onOpenChange(false);
   };
 
-  const handleFunnelChange = (funnelId: string) => {
-    setSelectedFunnelId(funnelId);
-    form.setValue('current_funnel_id', funnelId);
-    form.setValue('current_stage_id', '');
-  };
-
   const handleCepSearch = async () => {
     const cep = form.getValues('zip_code');
     if (!cep) return;
@@ -173,11 +148,7 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
       form.setValue('address', addressData.logradouro);
       toast({ title: 'Endereço encontrado!' });
     } else {
-      toast({ 
-        title: 'CEP não encontrado', 
-        description: 'Verifique o CEP informado',
-        variant: 'destructive' 
-      });
+      toast({ title: 'CEP não encontrado', variant: 'destructive' });
     }
   };
 
@@ -190,7 +161,6 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Basic Fields */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -241,53 +211,8 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
                   <FormItem>
                     <FormLabel>Renda Estimada</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0,00" 
-                        {...field}
-                        value={field.value ?? ''}
-                      />
+                      <Input type="number" placeholder="0,00" {...field} value={field.value ?? ''} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="profession"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profissão</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Profissão" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gênero</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {genderOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -309,9 +234,7 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
                       </FormControl>
                       <SelectContent>
                         {sources.map(source => (
-                          <SelectItem key={source} value={source}>
-                            {source}
-                          </SelectItem>
+                          <SelectItem key={source} value={source}>{source}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -345,7 +268,6 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
               />
             </div>
 
-            {/* Qualification */}
             <FormField
               control={form.control}
               name="qualification"
@@ -353,29 +275,21 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
                 <FormItem>
                   <FormLabel>Qualificação</FormLabel>
                   <FormControl>
-                    <StarRating 
-                      value={field.value ?? null} 
-                      onChange={field.onChange} 
-                    />
+                    <StarRating value={field.value ?? null} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Temperature */}
             <FormField
               control={form.control}
               name="temperature"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>Temperatura</FormLabel>
                   <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex gap-4"
-                    >
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="cold" id="cold" />
                         <Label htmlFor="cold" className="text-blue-500">Frio</Label>
@@ -395,7 +309,6 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
               )}
             />
 
-            {/* Notes */}
             <FormField
               control={form.control}
               name="notes"
@@ -403,290 +316,69 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
                 <FormItem>
                   <FormLabel>Anotações</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Observações sobre o contato..." 
-                      className="resize-none"
-                      {...field} 
-                    />
+                    <Textarea placeholder="Observações sobre o contato..." className="resize-none" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Funnel & Stage */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="current_funnel_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Funil *</FormLabel>
-                    <Select 
-                      onValueChange={handleFunnelChange} 
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {funnels?.map(funnel => (
-                          <SelectItem key={funnel.id} value={funnel.id}>
-                            {funnel.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="current_stage_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Etapa *</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value}
-                      disabled={!selectedFunnelId}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {stages?.map(stage => (
-                          <SelectItem key={stage.id} value={stage.id}>
-                            {stage.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Expandable Section */}
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
               <CollapsibleTrigger asChild>
                 <Button type="button" variant="ghost" className="w-full justify-between">
                   {isExpanded ? 'Ver Menos' : 'Ver Mais'}
-                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="source_detail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fonte</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Detalhe da fonte" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="campaign"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Campanha</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome da campanha" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="rg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>RG</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Número do RG" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="rg_issuer"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Órgão Emissor</FormLabel>
-                        <FormControl>
-                          <Input placeholder="SSP/SP" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="rg_issue_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data de Expedição</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="cpf"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CPF</FormLabel>
-                        <FormControl>
-                          <Input placeholder="000.000.000-00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="birth_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data de Nascimento</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="marital_status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estado Civil</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {maritalStatusOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Address Section */}
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="zip_code"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>CEP</FormLabel>
-                        <div className="flex gap-2">
-                          <FormControl>
-                            <Input placeholder="00000-000" {...field} />
-                          </FormControl>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="icon"
-                            onClick={handleCepSearch}
-                            disabled={isLoadingCep}
-                          >
-                            <Search className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
+                  <FormField control={form.control} name="profession" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Endereço</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Rua, Avenida..." {...field} />
-                      </FormControl>
-                      <FormMessage />
+                      <FormLabel>Profissão</FormLabel>
+                      <FormControl><Input placeholder="Profissão" {...field} /></FormControl>
                     </FormItem>
-                  )}
-                />
-
+                  )} />
+                  <FormField control={form.control} name="gender" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gênero</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {genderOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="address_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número</FormLabel>
-                        <FormControl>
-                          <Input placeholder="123" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="address_complement"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Complemento</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Apto, Bloco..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="cpf" render={({ field }) => (
+                    <FormItem><FormLabel>CPF</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={form.control} name="birth_date" render={({ field }) => (
+                    <FormItem><FormLabel>Data Nascimento</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField control={form.control} name="zip_code" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <div className="flex gap-1">
+                        <FormControl><Input {...field} /></FormControl>
+                        <Button type="button" size="icon" variant="outline" onClick={handleCepSearch} disabled={isLoadingCep}>
+                          <Search className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="address" render={({ field }) => (
+                    <FormItem className="col-span-2"><FormLabel>Endereço</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                  )} />
                 </div>
               </CollapsibleContent>
             </Collapsible>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button type="submit" disabled={createContact.isPending}>
                 {createContact.isPending ? 'Criando...' : 'Criar Contato'}
               </Button>
