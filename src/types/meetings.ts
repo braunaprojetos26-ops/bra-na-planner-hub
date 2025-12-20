@@ -13,7 +13,7 @@ export const MEETING_TYPES = [
 
 export type MeetingType = typeof MEETING_TYPES[number];
 
-export type MeetingStatus = 'scheduled' | 'completed' | 'cancelled';
+export type MeetingStatus = 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
 
 export interface Meeting {
   id: string;
@@ -27,6 +27,8 @@ export interface Meeting {
   allows_companion: boolean;
   notes: string | null;
   status: MeetingStatus;
+  parent_meeting_id: string | null;
+  reschedule_count: number;
   created_at: string;
   updated_at: string;
   // Joined fields

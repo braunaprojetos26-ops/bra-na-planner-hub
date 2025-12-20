@@ -299,7 +299,9 @@ export type Database = {
           meeting_type: string
           notes: string | null
           opportunity_id: string | null
+          parent_meeting_id: string | null
           participants: string[] | null
+          reschedule_count: number
           scheduled_at: string
           scheduled_by: string
           status: string
@@ -314,7 +316,9 @@ export type Database = {
           meeting_type: string
           notes?: string | null
           opportunity_id?: string | null
+          parent_meeting_id?: string | null
           participants?: string[] | null
+          reschedule_count?: number
           scheduled_at: string
           scheduled_by: string
           status?: string
@@ -329,7 +333,9 @@ export type Database = {
           meeting_type?: string
           notes?: string | null
           opportunity_id?: string | null
+          parent_meeting_id?: string | null
           participants?: string[] | null
+          reschedule_count?: number
           scheduled_at?: string
           scheduled_by?: string
           status?: string
@@ -348,6 +354,13 @@ export type Database = {
             columns: ["opportunity_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_parent_meeting_id_fkey"
+            columns: ["parent_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
           {
