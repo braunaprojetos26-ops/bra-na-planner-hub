@@ -193,3 +193,30 @@ export function useAssignContact() {
     },
   });
 }
+
+export function useDeleteContact() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (contactId: string) => {
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', contactId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast({ title: 'Contato excluído com sucesso!' });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Erro ao excluir contato', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+}
