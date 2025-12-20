@@ -5,18 +5,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useFunnelStages } from '@/hooks/useFunnels';
-import { useReactivateContact } from '@/hooks/useContacts';
-import type { Contact } from '@/types/contacts';
+import { useReactivateOpportunity } from '@/hooks/useOpportunities';
+import type { Opportunity } from '@/types/opportunities';
 
-interface ReactivateContactModalProps {
+interface ReactivateOpportunityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contact: Contact;
+  opportunity: Opportunity;
 }
 
-export function ReactivateContactModal({ open, onOpenChange, contact }: ReactivateContactModalProps) {
-  const { data: stages } = useFunnelStages(contact.current_funnel_id);
-  const reactivate = useReactivateContact();
+export function ReactivateOpportunityModal({ open, onOpenChange, opportunity }: ReactivateOpportunityModalProps) {
+  const { data: stages } = useFunnelStages(opportunity.current_funnel_id);
+  const reactivate = useReactivateOpportunity();
   const [stageId, setStageId] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -24,7 +24,7 @@ export function ReactivateContactModal({ open, onOpenChange, contact }: Reactiva
     if (!stageId) return;
 
     await reactivate.mutateAsync({
-      contactId: contact.id,
+      opportunityId: opportunity.id,
       toStageId: stageId,
       notes: notes || undefined,
     });
@@ -38,12 +38,12 @@ export function ReactivateContactModal({ open, onOpenChange, contact }: Reactiva
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Reativar Contato</DialogTitle>
+          <DialogTitle>Reativar Oportunidade</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <p className="text-sm text-muted-foreground">
-            Contato: <strong>{contact.full_name}</strong>
+            Oportunidade: <strong>{opportunity.contact?.full_name}</strong>
           </p>
 
           <div className="space-y-2">

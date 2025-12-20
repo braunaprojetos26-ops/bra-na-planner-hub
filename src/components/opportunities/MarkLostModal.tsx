@@ -5,18 +5,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useLostReasons } from '@/hooks/useFunnels';
-import { useMarkContactLost } from '@/hooks/useContacts';
-import type { Contact } from '@/types/contacts';
+import { useMarkOpportunityLost } from '@/hooks/useOpportunities';
+import type { Opportunity } from '@/types/opportunities';
 
 interface MarkLostModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contact: Contact;
+  opportunity: Opportunity;
 }
 
-export function MarkLostModal({ open, onOpenChange, contact }: MarkLostModalProps) {
+export function MarkLostModal({ open, onOpenChange, opportunity }: MarkLostModalProps) {
   const { data: lostReasons } = useLostReasons();
-  const markLost = useMarkContactLost();
+  const markLost = useMarkOpportunityLost();
   const [reasonId, setReasonId] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -24,8 +24,8 @@ export function MarkLostModal({ open, onOpenChange, contact }: MarkLostModalProp
     if (!reasonId) return;
 
     await markLost.mutateAsync({
-      contactId: contact.id,
-      fromStageId: contact.current_stage_id,
+      opportunityId: opportunity.id,
+      fromStageId: opportunity.current_stage_id,
       lostReasonId: reasonId,
       notes: notes || undefined,
     });
@@ -39,12 +39,12 @@ export function MarkLostModal({ open, onOpenChange, contact }: MarkLostModalProp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Marcar como Perdido</DialogTitle>
+          <DialogTitle>Marcar como Perdida</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <p className="text-sm text-muted-foreground">
-            Contato: <strong>{contact.full_name}</strong>
+            Oportunidade: <strong>{opportunity.contact?.full_name}</strong>
           </p>
 
           <div className="space-y-2">
@@ -81,7 +81,7 @@ export function MarkLostModal({ open, onOpenChange, contact }: MarkLostModalProp
               disabled={!reasonId || markLost.isPending}
               variant="destructive"
             >
-              {markLost.isPending ? 'Salvando...' : 'Marcar Perdido'}
+              {markLost.isPending ? 'Salvando...' : 'Marcar Perdida'}
             </Button>
           </div>
         </div>
