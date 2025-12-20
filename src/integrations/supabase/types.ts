@@ -78,70 +78,121 @@ export type Database = {
       }
       contacts: {
         Row: {
+          address: string | null
+          address_complement: string | null
+          address_number: string | null
+          birth_date: string | null
           campaign: string | null
           converted_at: string | null
+          cpf: string | null
           created_at: string
           created_by: string
           current_funnel_id: string
           current_stage_id: string
           email: string | null
           full_name: string
+          gender: string | null
           id: string
           income: number | null
           is_dirty_base: boolean
           lost_at: string | null
           lost_from_stage_id: string | null
           lost_reason_id: string | null
+          marital_status: string | null
+          notes: string | null
           owner_id: string | null
           phone: string
+          profession: string | null
+          qualification: number | null
+          referred_by: string | null
+          rg: string | null
+          rg_issue_date: string | null
+          rg_issuer: string | null
           source: string | null
+          source_detail: string | null
           stage_entered_at: string
           status: Database["public"]["Enums"]["contact_status"]
+          temperature: string | null
           updated_at: string
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
+          address_complement?: string | null
+          address_number?: string | null
+          birth_date?: string | null
           campaign?: string | null
           converted_at?: string | null
+          cpf?: string | null
           created_at?: string
           created_by: string
           current_funnel_id: string
           current_stage_id: string
           email?: string | null
           full_name: string
+          gender?: string | null
           id?: string
           income?: number | null
           is_dirty_base?: boolean
           lost_at?: string | null
           lost_from_stage_id?: string | null
           lost_reason_id?: string | null
+          marital_status?: string | null
+          notes?: string | null
           owner_id?: string | null
           phone: string
+          profession?: string | null
+          qualification?: number | null
+          referred_by?: string | null
+          rg?: string | null
+          rg_issue_date?: string | null
+          rg_issuer?: string | null
           source?: string | null
+          source_detail?: string | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["contact_status"]
+          temperature?: string | null
           updated_at?: string
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
+          address_complement?: string | null
+          address_number?: string | null
+          birth_date?: string | null
           campaign?: string | null
           converted_at?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string
           current_funnel_id?: string
           current_stage_id?: string
           email?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           income?: number | null
           is_dirty_base?: boolean
           lost_at?: string | null
           lost_from_stage_id?: string | null
           lost_reason_id?: string | null
+          marital_status?: string | null
+          notes?: string | null
           owner_id?: string | null
           phone?: string
+          profession?: string | null
+          qualification?: number | null
+          referred_by?: string | null
+          rg?: string | null
+          rg_issue_date?: string | null
+          rg_issuer?: string | null
           source?: string | null
+          source_detail?: string | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["contact_status"]
+          temperature?: string | null
           updated_at?: string
+          zip_code?: string | null
         }
         Relationships: [
           {
@@ -185,6 +236,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contacts_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
           },
         ]
       }

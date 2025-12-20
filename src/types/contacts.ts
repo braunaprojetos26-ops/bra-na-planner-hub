@@ -1,4 +1,7 @@
 export type ContactStatus = 'active' | 'lost' | 'won';
+export type ContactTemperature = 'cold' | 'warm' | 'hot';
+export type ContactGender = 'masculino' | 'feminino' | 'outro' | 'prefiro_nao_informar';
+export type MaritalStatus = 'solteiro' | 'casado' | 'divorciado' | 'viuvo' | 'uniao_estavel';
 
 export interface Funnel {
   id: string;
@@ -49,6 +52,24 @@ export interface Contact {
   created_by: string;
   created_at: string;
   updated_at: string;
+  // New fields
+  profession: string | null;
+  gender: string | null;
+  referred_by: string | null;
+  qualification: number | null;
+  temperature: ContactTemperature | null;
+  notes: string | null;
+  source_detail: string | null;
+  rg: string | null;
+  rg_issuer: string | null;
+  rg_issue_date: string | null;
+  cpf: string | null;
+  birth_date: string | null;
+  marital_status: string | null;
+  zip_code: string | null;
+  address: string | null;
+  address_number: string | null;
+  address_complement: string | null;
   // Joined fields
   owner?: {
     full_name: string;
@@ -57,6 +78,11 @@ export interface Contact {
   current_stage?: FunnelStage;
   current_funnel?: Funnel;
   lost_reason?: LostReason;
+  referred_by_contact?: {
+    id: string;
+    full_name: string;
+    phone: string;
+  };
 }
 
 export interface ContactHistory {
@@ -86,4 +112,22 @@ export interface ContactFormData {
   owner_id?: string;
   current_funnel_id: string;
   current_stage_id: string;
+  // New fields
+  profession?: string;
+  gender?: string;
+  referred_by?: string;
+  qualification?: number;
+  temperature?: ContactTemperature;
+  notes?: string;
+  source_detail?: string;
+  rg?: string;
+  rg_issuer?: string;
+  rg_issue_date?: string;
+  cpf?: string;
+  birth_date?: string;
+  marital_status?: string;
+  zip_code?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
 }
