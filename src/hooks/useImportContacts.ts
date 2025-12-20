@@ -10,6 +10,28 @@ interface ImportResult {
   errors: Array<{ row: number; error: string }>;
 }
 
+const translateError = (error: string): string => {
+  if (error.includes('duplicate key value violates unique constraint "contacts_phone_key"')) {
+    return 'Telefone já cadastrado no sistema';
+  }
+  if (error.includes('duplicate key value violates unique constraint "contacts_cpf_key"')) {
+    return 'CPF já cadastrado no sistema';
+  }
+  if (error.includes('duplicate key value violates unique constraint "contacts_email_key"')) {
+    return 'E-mail já cadastrado no sistema';
+  }
+  if (error.includes('duplicate key value')) {
+    return 'Registro duplicado';
+  }
+  if (error.includes('violates not-null constraint')) {
+    return 'Campo obrigatório não preenchido';
+  }
+  if (error.includes('invalid input syntax')) {
+    return 'Formato de dados inválido';
+  }
+  return error;
+};
+
 export function useImportContacts() {
   const queryClient = useQueryClient();
   const { user, role } = useAuth();
@@ -95,7 +117,7 @@ export function useImportContacts() {
             result.failed++;
             result.errors.push({
               row: rowNumber,
-              error: error.message || 'Erro desconhecido',
+              error: translateError(error.message || 'Erro desconhecido'),
             });
           }
         }
