@@ -6,7 +6,8 @@ import {
   Kanban, 
   Upload, 
   Settings,
-  UserCog
+  UserCog,
+  GraduationCap
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +30,7 @@ const mainNavItems = [
   { title: 'Contatos', url: '/contacts', icon: Users },
   { title: 'Funil', url: '/pipeline', icon: Kanban },
   { title: 'Importação', url: '/import', icon: Upload },
+  { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
 
 const managementNavItems = [
