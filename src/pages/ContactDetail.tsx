@@ -320,7 +320,7 @@ export default function ContactDetail() {
       </Card>
 
       {/* Meetings Section */}
-      {contactId && <MeetingsList contactId={contactId} />}
+      {contactId && contact && <MeetingsList contactId={contactId} contactName={contact.full_name} />}
 
       {/* Contract Section - Placeholder */}
       <Card>

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Meeting, MeetingFormData, MeetingType } from '@/types/meetings';
+import type { Meeting } from '@/types/meetings';
 
 export function useMeetings(contactId?: string) {
   const { user } = useAuth();
@@ -36,7 +36,17 @@ export function useCreateMeeting() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ contactId, data }: { contactId: string; data: MeetingFormData }) => {
+    mutationFn: async ({ contactId, data }: { 
+      contactId: string; 
+      data: {
+        meeting_type: string;
+        scheduled_at: Date;
+        duration_minutes: number;
+        participants: string[];
+        allows_companion: boolean;
+        notes?: string;
+      };
+    }) => {
       if (!user) throw new Error('Usuário não autenticado');
 
       const { error } = await supabase
@@ -44,7 +54,7 @@ export function useCreateMeeting() {
         .insert({
           contact_id: contactId,
           scheduled_by: user.id,
-          meeting_type: data.meeting_type as string,
+          meeting_type: data.meeting_type,
           scheduled_at: data.scheduled_at.toISOString(),
           duration_minutes: data.duration_minutes,
           participants: data.participants,
@@ -79,17 +89,55 @@ export function useUpdateMeetingStatus() {
   });
 }
 
-export function useDeleteMeeting() {
+export function useRescheduleMeeting() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (meetingId: string) => {
-      const { error } = await supabase
-        .from('meetings')
-        .delete()
-        .eq('id', meetingId);
+    mutationFn: async ({
+      originalMeeting,
+      newData,
+    }: {
+      originalMeeting: Meeting;
+      newData: {
+        meeting_type: string;
+        scheduled_at: Date;
+        duration_minutes: number;
+        participants: string[];
+        allows_companion: boolean;
+        notes?: string;
+      };
+    }) => {
+      if (!user) throw new Error('Usuário não autenticado');
 
-      if (error) throw error;
+      // Calculate new reschedule count
+      const newRescheduleCount = originalMeeting.reschedule_count + 1;
+
+      // Mark original meeting as rescheduled
+      const { error: updateError } = await supabase
+        .from('meetings')
+        .update({ status: 'rescheduled' })
+        .eq('id', originalMeeting.id);
+
+      if (updateError) throw updateError;
+
+      // Create new meeting linked to original
+      const { error: insertError } = await supabase
+        .from('meetings')
+        .insert({
+          contact_id: originalMeeting.contact_id,
+          scheduled_by: user.id,
+          meeting_type: newData.meeting_type,
+          scheduled_at: newData.scheduled_at.toISOString(),
+          duration_minutes: newData.duration_minutes,
+          participants: newData.participants,
+          allows_companion: newData.allows_companion,
+          notes: newData.notes || null,
+          parent_meeting_id: originalMeeting.parent_meeting_id || originalMeeting.id,
+          reschedule_count: newRescheduleCount,
+        });
+
+      if (insertError) throw insertError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });

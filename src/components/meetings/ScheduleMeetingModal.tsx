@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, Plus, X, Loader2 } from 'lucide-react';
+import { CalendarIcon, Plus, X, Loader2, RefreshCw } from 'lucide-react';
 
 import {
   Dialog,
@@ -39,8 +39,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useCreateMeeting } from '@/hooks/useMeetings';
-import { MEETING_TYPES } from '@/types/meetings';
+import { useCreateMeeting, useRescheduleMeeting } from '@/hooks/useMeetings';
+import { MEETING_TYPES, type Meeting } from '@/types/meetings';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -59,6 +59,7 @@ interface ScheduleMeetingModalProps {
   onOpenChange: (open: boolean) => void;
   contactId: string;
   contactName: string;
+  reschedulingMeeting?: Meeting | null;
 }
 
 export function ScheduleMeetingModal({
@@ -66,11 +67,15 @@ export function ScheduleMeetingModal({
   onOpenChange,
   contactId,
   contactName,
+  reschedulingMeeting,
 }: ScheduleMeetingModalProps) {
   const { toast } = useToast();
   const createMeeting = useCreateMeeting();
+  const rescheduleMeeting = useRescheduleMeeting();
   const [participants, setParticipants] = useState<string[]>([]);
   const [newParticipant, setNewParticipant] = useState('');
+
+  const isRescheduling = !!reschedulingMeeting;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -82,6 +87,31 @@ export function ScheduleMeetingModal({
       time: '',
     },
   });
+
+  // Pre-fill form when rescheduling
+  useEffect(() => {
+    if (reschedulingMeeting && open) {
+      const scheduledDate = new Date(reschedulingMeeting.scheduled_at);
+      form.reset({
+        meeting_type: reschedulingMeeting.meeting_type,
+        date: undefined, // User must select new date
+        time: '', // User must select new time
+        duration_minutes: reschedulingMeeting.duration_minutes,
+        allows_companion: reschedulingMeeting.allows_companion,
+        notes: reschedulingMeeting.notes || '',
+      });
+      setParticipants(reschedulingMeeting.participants || []);
+    } else if (!open) {
+      form.reset({
+        meeting_type: '',
+        duration_minutes: 60,
+        allows_companion: false,
+        notes: '',
+        time: '',
+      });
+      setParticipants([]);
+    }
+  }, [reschedulingMeeting, open, form]);
 
   const handleAddParticipant = () => {
     const email = newParticipant.trim().toLowerCase();
@@ -122,46 +152,82 @@ export function ScheduleMeetingModal({
       const scheduledAt = new Date(data.date);
       scheduledAt.setHours(hours, minutes, 0, 0);
 
-      await createMeeting.mutateAsync({
-        contactId,
-        data: {
-          meeting_type: data.meeting_type as any,
-          scheduled_at: scheduledAt,
-          duration_minutes: data.duration_minutes,
-          participants,
-          allows_companion: data.allows_companion,
-          notes: data.notes,
-        },
-      });
+      if (isRescheduling && reschedulingMeeting) {
+        await rescheduleMeeting.mutateAsync({
+          originalMeeting: reschedulingMeeting,
+          newData: {
+            meeting_type: data.meeting_type,
+            scheduled_at: scheduledAt,
+            duration_minutes: data.duration_minutes,
+            participants,
+            allows_companion: data.allows_companion,
+            notes: data.notes,
+          },
+        });
 
-      toast({
-        title: 'Reunião agendada!',
-        description: `Reunião de ${data.meeting_type} agendada para ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.`,
-      });
+        toast({
+          title: 'Reunião reagendada!',
+          description: `Reunião de ${data.meeting_type} reagendada para ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.`,
+        });
+      } else {
+        await createMeeting.mutateAsync({
+          contactId,
+          data: {
+            meeting_type: data.meeting_type as any,
+            scheduled_at: scheduledAt,
+            duration_minutes: data.duration_minutes,
+            participants,
+            allows_companion: data.allows_companion,
+            notes: data.notes,
+          },
+        });
+
+        toast({
+          title: 'Reunião agendada!',
+          description: `Reunião de ${data.meeting_type} agendada para ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.`,
+        });
+      }
 
       form.reset();
       setParticipants([]);
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Erro ao agendar',
-        description: 'Não foi possível agendar a reunião. Tente novamente.',
+        title: isRescheduling ? 'Erro ao reagendar' : 'Erro ao agendar',
+        description: 'Não foi possível processar a reunião. Tente novamente.',
         variant: 'destructive',
       });
     }
   };
+
+  const isPending = createMeeting.isPending || rescheduleMeeting.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5 text-primary" />
-            Agendar Reunião
+            {isRescheduling ? (
+              <>
+                <RefreshCw className="h-5 w-5 text-primary" />
+                Reagendar Reunião
+              </>
+            ) : (
+              <>
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                Agendar Reunião
+              </>
+            )}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Agendando para: <span className="font-medium text-foreground">{contactName}</span>
+            {isRescheduling ? 'Reagendando para: ' : 'Agendando para: '}
+            <span className="font-medium text-foreground">{contactName}</span>
           </p>
+          {isRescheduling && reschedulingMeeting && (
+            <p className="text-xs text-muted-foreground">
+              Reagendamento #{reschedulingMeeting.reschedule_count + 1}
+            </p>
+          )}
         </DialogHeader>
 
         <Form {...form}>
@@ -374,11 +440,11 @@ export function ScheduleMeetingModal({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createMeeting.isPending}>
-                {createMeeting.isPending && (
+              <Button type="submit" disabled={isPending}>
+                {isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Agendar Reunião
+                {isRescheduling ? 'Reagendar' : 'Agendar Reunião'}
               </Button>
             </div>
           </form>

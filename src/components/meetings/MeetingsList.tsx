@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Users, UserCheck, MoreVertical, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,25 +12,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useMeetings, useUpdateMeetingStatus, useDeleteMeeting } from '@/hooks/useMeetings';
+import { useMeetings, useUpdateMeetingStatus } from '@/hooks/useMeetings';
 import { useToast } from '@/hooks/use-toast';
+import { ScheduleMeetingModal } from './ScheduleMeetingModal';
 import type { Meeting } from '@/types/meetings';
 
 interface MeetingsListProps {
   contactId: string;
+  contactName: string;
 }
 
 const statusConfig = {
-  scheduled: { label: 'Agendada', variant: 'default' as const, color: 'bg-blue-500' },
-  completed: { label: 'Realizada', variant: 'secondary' as const, color: 'bg-green-500' },
-  cancelled: { label: 'Cancelada', variant: 'outline' as const, color: 'bg-gray-500' },
+  scheduled: { label: 'Agendada', variant: 'default' as const },
+  completed: { label: 'Realizada', variant: 'secondary' as const },
+  cancelled: { label: 'Cancelada', variant: 'outline' as const },
+  rescheduled: { label: 'Reagendada', variant: 'outline' as const },
 };
 
-export function MeetingsList({ contactId }: MeetingsListProps) {
+export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   const { data: meetings, isLoading } = useMeetings(contactId);
   const updateStatus = useUpdateMeetingStatus();
-  const deleteMeeting = useDeleteMeeting();
   const { toast } = useToast();
+  const [reschedulingMeeting, setReschedulingMeeting] = useState<Meeting | null>(null);
 
   const handleStatusChange = async (meetingId: string, status: string) => {
     try {
@@ -47,20 +51,8 @@ export function MeetingsList({ contactId }: MeetingsListProps) {
     }
   };
 
-  const handleDelete = async (meetingId: string) => {
-    try {
-      await deleteMeeting.mutateAsync(meetingId);
-      toast({
-        title: 'Reunião removida',
-        description: 'A reunião foi removida com sucesso.',
-      });
-    } catch {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível remover a reunião.',
-        variant: 'destructive',
-      });
-    }
+  const handleReschedule = (meeting: Meeting) => {
+    setReschedulingMeeting(meeting);
   };
 
   if (isLoading) {
@@ -87,66 +79,75 @@ export function MeetingsList({ contactId }: MeetingsListProps) {
   const pastMeetings = meetings?.filter((m) => m.status !== 'scheduled') || [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Reuniões ({meetings?.length || 0})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {meetings?.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhuma reunião agendada para este contato.
-          </p>
-        ) : (
-          <>
-            {upcomingMeetings.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Próximas</h4>
-                {upcomingMeetings.map((meeting) => (
-                  <MeetingCard
-                    key={meeting.id}
-                    meeting={meeting}
-                    onStatusChange={handleStatusChange}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            )}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Reuniões ({meetings?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {meetings?.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhuma reunião agendada para este contato.
+            </p>
+          ) : (
+            <>
+              {upcomingMeetings.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Próximas</h4>
+                  {upcomingMeetings.map((meeting) => (
+                    <MeetingCard
+                      key={meeting.id}
+                      meeting={meeting}
+                      onStatusChange={handleStatusChange}
+                      onReschedule={handleReschedule}
+                    />
+                  ))}
+                </div>
+              )}
 
-            {pastMeetings.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Histórico</h4>
-                {pastMeetings.map((meeting) => (
-                  <MeetingCard
-                    key={meeting.id}
-                    meeting={meeting}
-                    onStatusChange={handleStatusChange}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+              {pastMeetings.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Histórico</h4>
+                  {pastMeetings.map((meeting) => (
+                    <MeetingCard
+                      key={meeting.id}
+                      meeting={meeting}
+                      onStatusChange={handleStatusChange}
+                      onReschedule={handleReschedule}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <ScheduleMeetingModal
+        open={!!reschedulingMeeting}
+        onOpenChange={(open) => !open && setReschedulingMeeting(null)}
+        contactId={contactId}
+        contactName={contactName}
+        reschedulingMeeting={reschedulingMeeting}
+      />
+    </>
   );
 }
 
 function MeetingCard({
   meeting,
   onStatusChange,
-  onDelete,
+  onReschedule,
 }: {
   meeting: Meeting;
   onStatusChange: (id: string, status: string) => void;
-  onDelete: (id: string) => void;
+  onReschedule: (meeting: Meeting) => void;
 }) {
   const status = statusConfig[meeting.status as keyof typeof statusConfig] || statusConfig.scheduled;
   const scheduledDate = new Date(meeting.scheduled_at);
-  const isPast = scheduledDate < new Date();
 
   return (
     <div className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
@@ -157,6 +158,12 @@ function MeetingCard({
             <Badge variant={status.variant} className="text-xs">
               {status.label}
             </Badge>
+            {meeting.reschedule_count > 0 && (
+              <Badge variant="outline" className="text-xs gap-1">
+                <RefreshCw className="h-3 w-3" />
+                Reagendamento #{meeting.reschedule_count}
+              </Badge>
+            )}
           </div>
           
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -171,7 +178,7 @@ function MeetingCard({
           </div>
 
           <div className="flex items-center gap-4 text-sm">
-            {meeting.participants.length > 0 && (
+            {meeting.participants && meeting.participants.length > 0 && (
               <span className="flex items-center gap-1 text-muted-foreground">
                 <Users className="h-3.5 w-3.5" />
                 {meeting.participants.length} participante(s)
@@ -192,34 +199,29 @@ function MeetingCard({
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {meeting.status === 'scheduled' && (
-              <>
-                <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'completed')}>
-                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                  Marcar como realizada
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'cancelled')}>
-                  <XCircle className="h-4 w-4 mr-2 text-orange-600" />
-                  Cancelar
-                </DropdownMenuItem>
-              </>
-            )}
-            <DropdownMenuItem
-              onClick={() => onDelete(meeting.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remover
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {meeting.status === 'scheduled' && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'completed')}>
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                Marcar como realizada
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onReschedule(meeting)}>
+                <RefreshCw className="h-4 w-4 mr-2 text-blue-600" />
+                Reagendar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusChange(meeting.id, 'cancelled')}>
+                <XCircle className="h-4 w-4 mr-2 text-orange-600" />
+                Cancelar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   );
