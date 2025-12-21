@@ -213,9 +213,11 @@ export function useMoveOpportunityStage() {
         notes,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['contact-opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunity', variables.opportunityId] });
+      queryClient.invalidateQueries({ queryKey: ['opportunity-history', variables.opportunityId] });
       toast({ title: 'Oportunidade movida!' });
     },
     onError: (error: Error) => {
