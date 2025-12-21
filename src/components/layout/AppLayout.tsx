@@ -16,7 +16,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
       <ImpersonationBar />
-      <div className={`min-h-screen flex w-full ${isImpersonating ? 'pt-10' : ''}`}>
+      <div className={`min-h-screen flex w-full ${isImpersonating ? 'pt-8' : ''}`}>
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <AppHeader />

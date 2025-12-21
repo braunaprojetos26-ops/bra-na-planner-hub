@@ -8,10 +8,12 @@ import {
   Settings,
   UserCog,
   GraduationCap,
-  Bot
+  Bot,
+  Building2
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +26,6 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { Building2 } from 'lucide-react';
 
 const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -46,6 +47,7 @@ const adminNavItems = [
 export function AppSidebar() {
   const location = useLocation();
   const { role } = useAuth();
+  const { isImpersonating } = useActingUser();
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -56,7 +58,7 @@ export function AppSidebar() {
   const canSeeAdmin = role === 'superadmin';
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
+    <Sidebar className={`border-r border-sidebar-border ${isImpersonating ? 'pt-8' : ''}`}>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
