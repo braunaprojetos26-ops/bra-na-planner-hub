@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, ChevronDown, ChevronUp, Trash2, Pencil, Eye, Calendar, User } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Trash2, Eye, Calendar, User } from 'lucide-react';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,8 @@ const formatDate = (date: string) => {
 export function MeetingMinutesList({ contactId, contactName }: MeetingMinutesListProps) {
   const { data: minutes, isLoading } = useMeetingMinutes(contactId);
   const deleteMutation = useDeleteMeetingMinute();
+  const { isImpersonating } = useActingUser();
+  const isReadOnly = isImpersonating;
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMinute, setSelectedMinute] = useState<MeetingMinute | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -107,6 +110,7 @@ export function MeetingMinutesList({ contactId, contactName }: MeetingMinutesLis
                 onView={handleView}
                 onDelete={handleDelete}
                 isDeleting={deleteMutation.isPending}
+                isReadOnly={isReadOnly}
               />
 
               {/* Show remaining minutes in collapsible */}
@@ -120,6 +124,7 @@ export function MeetingMinutesList({ contactId, contactName }: MeetingMinutesLis
                         onView={handleView}
                         onDelete={handleDelete}
                         isDeleting={deleteMutation.isPending}
+                        isReadOnly={isReadOnly}
                       />
                     ))}
                   </CollapsibleContent>
@@ -186,9 +191,10 @@ interface MeetingMinuteItemProps {
   onView: (minute: MeetingMinute) => void;
   onDelete: (minute: MeetingMinute) => void;
   isDeleting: boolean;
+  isReadOnly?: boolean;
 }
 
-function MeetingMinuteItem({ minute, onView, onDelete, isDeleting }: MeetingMinuteItemProps) {
+function MeetingMinuteItem({ minute, onView, onDelete, isDeleting, isReadOnly = false }: MeetingMinuteItemProps) {
   // Get first 100 characters of content as preview
   const preview = minute.content.length > 100 
     ? minute.content.substring(0, 100) + '...'
@@ -216,32 +222,34 @@ function MeetingMinuteItem({ minute, onView, onDelete, isDeleting }: MeetingMinu
             >
               <Eye className="w-3 h-3" />
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-destructive hover:text-destructive"
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir ata?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. A ata de reunião será permanentemente excluída.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(minute)}>
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {!isReadOnly && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir ata?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. A ata de reunião será permanentemente excluída.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDelete(minute)}>
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
