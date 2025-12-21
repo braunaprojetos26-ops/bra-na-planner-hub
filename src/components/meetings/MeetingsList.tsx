@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw, Eye, ChevronUp } from 'lucide-react';
+import { useActingUser } from '@/contexts/ActingUserContext';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,8 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
   const { data: meetings, isLoading } = useMeetings(contactId);
   const updateStatus = useUpdateMeetingStatus();
   const { toast } = useToast();
+  const { isImpersonating } = useActingUser();
+  const isReadOnly = isImpersonating;
   const [reschedulingMeeting, setReschedulingMeeting] = useState<Meeting | null>(null);
   const [meetingsOpen, setMeetingsOpen] = useState(false);
 
@@ -114,6 +117,7 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
                     meeting={meeting}
                     onStatusChange={handleStatusChange}
                     onReschedule={handleReschedule}
+                    isReadOnly={isReadOnly}
                   />
                 ))}
               </div>
@@ -127,6 +131,7 @@ export function MeetingsList({ contactId, contactName }: MeetingsListProps) {
                         meeting={meeting}
                         onStatusChange={handleStatusChange}
                         onReschedule={handleReschedule}
+                        isReadOnly={isReadOnly}
                       />
                     ))}
                   </CollapsibleContent>
@@ -179,10 +184,12 @@ function MeetingCard({
   meeting,
   onStatusChange,
   onReschedule,
+  isReadOnly = false,
 }: {
   meeting: Meeting;
   onStatusChange: (meeting: Meeting, status: string) => void;
   onReschedule: (meeting: Meeting) => void;
+  isReadOnly?: boolean;
 }) {
   const status = statusConfig[meeting.status as keyof typeof statusConfig] || statusConfig.scheduled;
   const statusColor = statusColors[meeting.status as keyof typeof statusColors] || statusColors.scheduled;
@@ -234,7 +241,7 @@ function MeetingCard({
         )}
       </div>
 
-      {meeting.status === 'scheduled' && (
+      {meeting.status === 'scheduled' && !isReadOnly && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
