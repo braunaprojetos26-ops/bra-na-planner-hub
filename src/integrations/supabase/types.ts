@@ -330,6 +330,57 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_minutes: {
+        Row: {
+          contact_id: string
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          meeting_date: string
+          meeting_id: string | null
+          meeting_type: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          meeting_date: string
+          meeting_id?: string | null
+          meeting_type: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          meeting_date?: string
+          meeting_id?: string | null
+          meeting_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_minutes_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_minutes_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetings: {
         Row: {
           allows_companion: boolean
