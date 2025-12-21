@@ -22,10 +22,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useProducts, calculatePBs } from '@/hooks/useProducts';
+import { useProducts } from '@/hooks/useProducts';
 import { useFunnelSuggestedProducts } from '@/hooks/useFunnelProducts';
 import { useCreateContract } from '@/hooks/useContracts';
 import { useMarkOpportunityWon } from '@/hooks/useOpportunities';
+import {
+  CONTRACT_VARIABLES,
+  calculatePBsWithFormula,
+  type ContractVariableKey,
+} from '@/lib/pbFormulaParser';
 import type { Opportunity } from '@/types/opportunities';
 import type { Product, ContractFormData, PaymentType } from '@/types/contracts';
 import type { Funnel, FunnelStage } from '@/types/contacts';
@@ -39,6 +44,8 @@ interface ContractEntry {
   installments?: number;
   notes?: string;
   calculated_pbs: number;
+  // Dynamic variable values
+  variable_values: Partial<Record<ContractVariableKey, number>>;
 }
 
 interface WonWithContractModalProps {
@@ -96,6 +103,25 @@ export function WonWithContractModal({
     [contracts]
   );
 
+  const recalculatePBs = (contract: ContractEntry): number => {
+    if (!contract.product) return 0;
+    
+    // Use new formula system if available
+    if (contract.product.pb_formula) {
+      return calculatePBsWithFormula(
+        contract.product.pb_formula,
+        contract.variable_values,
+        contract.product.pb_constants || {}
+      );
+    }
+    
+    // Legacy calculation
+    if (contract.product.pb_calculation_type === 'fixed') {
+      return contract.product.pb_value;
+    }
+    return contract.contract_value * contract.product.pb_value;
+  };
+
   const handleAddContract = () => {
     setContracts((prev) => [
       ...prev,
@@ -105,6 +131,7 @@ export function WonWithContractModal({
         contract_value: 0,
         payment_type: '',
         calculated_pbs: 0,
+        variable_values: {},
       },
     ]);
   };
@@ -120,19 +147,40 @@ export function WonWithContractModal({
 
         const updated = { ...c, [field]: value };
 
-        // Recalculate PBs when product or value changes
+        // Recalculate PBs when product changes
         if (field === 'product_id') {
           const product = allProducts?.find((p) => p.id === value);
           updated.product = product;
-          if (product && updated.contract_value > 0) {
-            updated.calculated_pbs = calculatePBs(product, updated.contract_value);
-          }
+          updated.variable_values = {};
+          updated.calculated_pbs = 0;
         }
 
-        if (field === 'contract_value' && updated.product) {
-          updated.calculated_pbs = calculatePBs(updated.product, value as number);
+        // Recalculate when contract_value changes (for legacy products without formula)
+        if (field === 'contract_value' && updated.product && !updated.product.pb_formula) {
+          updated.calculated_pbs = recalculatePBs(updated);
         }
 
+        return updated;
+      })
+    );
+  };
+
+  const handleVariableChange = (contractId: string, variable: ContractVariableKey, value: number) => {
+    setContracts((prev) =>
+      prev.map((c) => {
+        if (c.id !== contractId) return c;
+
+        const updated = {
+          ...c,
+          variable_values: { ...c.variable_values, [variable]: value },
+        };
+        
+        // Also update contract_value to match valor_total if that's the variable
+        if (variable === 'valor_total') {
+          updated.contract_value = value;
+        }
+        
+        updated.calculated_pbs = recalculatePBs(updated);
         return updated;
       })
     );
@@ -155,7 +203,7 @@ export function WonWithContractModal({
   };
 
   const handleSubmitWithContracts = async () => {
-    const validContracts = contracts.filter((c) => c.product_id && c.contract_value > 0);
+    const validContracts = contracts.filter((c) => c.product_id && c.calculated_pbs > 0);
     if (validContracts.length === 0) {
       await handleMarkWonWithoutContract();
       return;
@@ -175,12 +223,22 @@ export function WonWithContractModal({
       for (const contract of validContracts) {
         if (!contract.product) continue;
 
+        // Calculate contract_value from variable_values if not directly set
+        const contractValue = contract.contract_value || 
+          contract.variable_values.valor_total ||
+          contract.variable_values.valor_mensal ||
+          contract.variable_values.credito ||
+          contract.variable_values.premio_mensal ||
+          contract.variable_values.valor_investido ||
+          0;
+
         const data: ContractFormData = {
           product_id: contract.product_id,
-          contract_value: contract.contract_value,
+          contract_value: contractValue,
           payment_type: contract.payment_type || undefined,
           installments: contract.installments,
           notes: contract.notes,
+          custom_data: contract.variable_values as Record<string, unknown>,
         };
 
         await createContract.mutateAsync({
@@ -188,6 +246,7 @@ export function WonWithContractModal({
           opportunityId: opportunity.id,
           product: contract.product,
           data,
+          calculatedPbs: contract.calculated_pbs,
         });
       }
 
@@ -301,7 +360,7 @@ export function WonWithContractModal({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 md:col-span-2">
                     <Label className="text-xs">Produto *</Label>
                     <Select
                       value={contract.product_id}
@@ -328,23 +387,48 @@ export function WonWithContractModal({
                     {contract.product?.category?.name && (
                       <p className="text-[10px] text-muted-foreground">
                         Categoria: {contract.product.category.name}
+                        {contract.product.partner_name && ` • Parceiro: ${contract.product.partner_name}`}
                       </p>
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Valor do Contrato *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0,00"
-                      value={contract.contract_value || ''}
-                      onChange={(e) =>
-                        handleContractChange(contract.id, 'contract_value', parseFloat(e.target.value) || 0)
-                      }
-                    />
-                  </div>
+                  {/* Dynamic Variable Fields */}
+                  {contract.product && contract.product.pb_formula && contract.product.pb_variables.length > 0 && (
+                    <>
+                      {contract.product.pb_variables.map((variable) => (
+                        <div key={variable} className="space-y-1.5">
+                          <Label className="text-xs">{CONTRACT_VARIABLES[variable].label} *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            value={contract.variable_values[variable] || ''}
+                            onChange={(e) =>
+                              handleVariableChange(contract.id, variable, parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Legacy: Show contract value field if no formula */}
+                  {contract.product && !contract.product.pb_formula && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Valor do Contrato *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={contract.contract_value || ''}
+                        onChange={(e) =>
+                          handleContractChange(contract.id, 'contract_value', parseFloat(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  )}
 
                   {contract.product?.requires_payment_type && (
                     <div className="space-y-1.5">
@@ -382,17 +466,19 @@ export function WonWithContractModal({
                 </div>
 
                 {/* PB Calculation Preview */}
-                {contract.product && contract.contract_value > 0 && (
+                {contract.product && contract.calculated_pbs > 0 && (
                   <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-md">
                     <Calculator className="w-4 h-4 text-primary" />
                     <span className="text-sm">
                       Este contrato = <strong>{contract.calculated_pbs.toFixed(2)} PBs</strong>
                     </span>
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      ({contract.product.pb_calculation_type === 'percentage'
-                        ? `${(contract.product.pb_value * 100).toFixed(1)}% do valor`
-                        : `${contract.product.pb_value} fixo`})
-                    </span>
+                    {contract.product.pb_formula && (
+                      <span className="text-xs text-muted-foreground ml-auto font-mono">
+                        {contract.product.pb_formula.length > 25
+                          ? contract.product.pb_formula.substring(0, 25) + '...'
+                          : contract.product.pb_formula}
+                      </span>
+                    )}
                   </div>
                 )}
 
