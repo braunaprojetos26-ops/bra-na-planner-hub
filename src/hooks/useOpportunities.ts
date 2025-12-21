@@ -297,8 +297,8 @@ export function useMarkOpportunityWon() {
     }: { 
       opportunityId: string; 
       fromStageId: string;
-      nextFunnelId: string;
-      nextStageId: string;
+      nextFunnelId?: string;
+      nextStageId?: string;
     }) => {
       // Update opportunity to won status first
       const { error: wonError } = await supabase
@@ -320,44 +320,53 @@ export function useMarkOpportunityWon() {
         notes: 'Oportunidade ganha',
       });
 
-      // Get the contact_id from the opportunity
-      const { data: opportunity } = await supabase
-        .from('opportunities')
-        .select('contact_id')
-        .eq('id', opportunityId)
-        .single();
+      // Only create new opportunity if there's a next funnel
+      if (nextFunnelId && nextStageId) {
+        // Get the contact_id from the opportunity
+        const { data: opportunity } = await supabase
+          .from('opportunities')
+          .select('contact_id')
+          .eq('id', opportunityId)
+          .single();
 
-      if (!opportunity) throw new Error('Oportunidade não encontrada');
+        if (!opportunity) throw new Error('Oportunidade não encontrada');
 
-      // Create new opportunity in next funnel
-      const { data: newOpportunity, error: createError } = await supabase
-        .from('opportunities')
-        .insert({
-          contact_id: opportunity.contact_id,
-          current_funnel_id: nextFunnelId,
-          current_stage_id: nextStageId,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+        // Create new opportunity in next funnel
+        const { data: newOpportunity, error: createError } = await supabase
+          .from('opportunities')
+          .insert({
+            contact_id: opportunity.contact_id,
+            current_funnel_id: nextFunnelId,
+            current_stage_id: nextStageId,
+            created_by: user?.id,
+          })
+          .select()
+          .single();
 
-      if (createError) throw createError;
+        if (createError) throw createError;
 
-      // Create history entry for new opportunity
-      await supabase.from('opportunity_history').insert({
-        opportunity_id: newOpportunity.id,
-        action: 'created',
-        to_stage_id: nextStageId,
-        changed_by: user?.id,
-        notes: 'Oportunidade criada após conversão',
-      });
+        // Create history entry for new opportunity
+        await supabase.from('opportunity_history').insert({
+          opportunity_id: newOpportunity.id,
+          action: 'created',
+          to_stage_id: nextStageId,
+          changed_by: user?.id,
+          notes: 'Oportunidade criada após conversão',
+        });
 
-      return newOpportunity;
+        return newOpportunity;
+      }
+
+      return null;
     },
-    onSuccess: () => {
+    onSuccess: (newOpportunity) => {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['contact-opportunities'] });
-      toast({ title: 'Oportunidade ganha! Nova oportunidade criada no próximo funil.' });
+      if (newOpportunity) {
+        toast({ title: 'Oportunidade ganha! Nova oportunidade criada no próximo funil.' });
+      } else {
+        toast({ title: 'Oportunidade marcada como ganha!' });
+      }
     },
     onError: (error: Error) => {
       toast({ 
