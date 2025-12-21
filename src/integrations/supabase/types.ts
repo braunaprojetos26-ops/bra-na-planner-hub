@@ -238,6 +238,91 @@ export type Database = {
           },
         ]
       }
+      contracts: {
+        Row: {
+          calculated_pbs: number
+          contact_id: string
+          contract_value: number
+          created_at: string
+          custom_data: Json
+          end_date: string | null
+          id: string
+          installment_value: number | null
+          installments: number | null
+          notes: string | null
+          opportunity_id: string | null
+          owner_id: string
+          payment_type: string | null
+          product_id: string
+          reported_at: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          calculated_pbs: number
+          contact_id: string
+          contract_value: number
+          created_at?: string
+          custom_data?: Json
+          end_date?: string | null
+          id?: string
+          installment_value?: number | null
+          installments?: number | null
+          notes?: string | null
+          opportunity_id?: string | null
+          owner_id: string
+          payment_type?: string | null
+          product_id: string
+          reported_at?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          calculated_pbs?: number
+          contact_id?: string
+          contract_value?: number
+          created_at?: string
+          custom_data?: Json
+          end_date?: string | null
+          id?: string
+          installment_value?: number | null
+          installments?: number | null
+          notes?: string | null
+          opportunity_id?: string | null
+          owner_id?: string
+          payment_type?: string | null
+          product_id?: string
+          reported_at?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnel_stages: {
         Row: {
           color: string
@@ -279,9 +364,50 @@ export type Database = {
           },
         ]
       }
+      funnel_suggested_products: {
+        Row: {
+          funnel_id: string
+          id: string
+          is_default: boolean
+          order_position: number
+          product_id: string
+        }
+        Insert: {
+          funnel_id: string
+          id?: string
+          is_default?: boolean
+          order_position?: number
+          product_id: string
+        }
+        Update: {
+          funnel_id?: string
+          id?: string
+          is_default?: boolean
+          order_position?: number
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_suggested_products_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funnel_suggested_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnels: {
         Row: {
+          contract_prompt_text: string | null
           created_at: string
+          generates_contract: boolean
           id: string
           is_active: boolean
           name: string
@@ -289,7 +415,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contract_prompt_text?: string | null
           created_at?: string
+          generates_contract?: boolean
           id?: string
           is_active?: boolean
           name: string
@@ -297,7 +425,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contract_prompt_text?: string | null
           created_at?: string
+          generates_contract?: boolean
           id?: string
           is_active?: boolean
           name?: string
@@ -608,6 +738,101 @@ export type Database = {
             columns: ["to_stage_id"]
             isOneToOne: false
             referencedRelation: "funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          order_position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          order_position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          base_value: number | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          custom_fields: Json
+          has_validity: boolean
+          id: string
+          is_active: boolean
+          name: string
+          order_position: number
+          partner_name: string | null
+          pb_calculation_type: string
+          pb_value: number
+          requires_payment_type: boolean
+          updated_at: string
+        }
+        Insert: {
+          base_value?: number | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json
+          has_validity?: boolean
+          id?: string
+          is_active?: boolean
+          name: string
+          order_position?: number
+          partner_name?: string | null
+          pb_calculation_type?: string
+          pb_value?: number
+          requires_payment_type?: boolean
+          updated_at?: string
+        }
+        Update: {
+          base_value?: number | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json
+          has_validity?: boolean
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_position?: number
+          partner_name?: string | null
+          pb_calculation_type?: string
+          pb_value?: number
+          requires_payment_type?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
             referencedColumns: ["id"]
           },
         ]
