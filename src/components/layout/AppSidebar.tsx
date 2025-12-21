@@ -29,7 +29,7 @@ import { Building2 } from 'lucide-react';
 const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Contatos', url: '/contacts', icon: Users },
-  { title: 'Funil', url: '/pipeline', icon: Kanban },
+  { title: 'Negociações', url: '/pipeline', icon: Kanban },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
 

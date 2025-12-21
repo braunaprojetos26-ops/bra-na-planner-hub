@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFunnels, useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { useOpportunities, useMoveOpportunityStage, useMarkOpportunityWon } from '@/hooks/useOpportunities';
+import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
 import { OpportunityDetailModal } from '@/components/opportunities/OpportunityDetailModal';
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
 import { ReactivateOpportunityModal } from '@/components/opportunities/ReactivateOpportunityModal';
@@ -39,6 +40,8 @@ const stageHeaderColors: Record<string, string> = {
 
 export default function Pipeline() {
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showLostModal, setShowLostModal] = useState(false);
@@ -49,6 +52,8 @@ export default function Pipeline() {
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const { data: stages } = useFunnelStages(selectedFunnelId);
   const { data: opportunities, isLoading: opportunitiesLoading } = useOpportunities(selectedFunnelId);
+  const { data: planejadores } = usePlanejadores();
+  const canViewPlanejadores = useCanViewPlanejadores();
   const moveStage = useMoveOpportunityStage();
   const markWon = useMarkOpportunityWon();
 
@@ -62,15 +67,41 @@ export default function Pipeline() {
   // Get next funnel info for "won" action
   const { nextFunnel, firstStage: nextFirstStage } = useNextFunnelFirstStage(selectedFunnelId);
 
-  // Separate active and lost opportunities
+  // Filter opportunities by status and owner
+  const filteredOpportunities = useMemo(() => {
+    let filtered = opportunities || [];
+    
+    // Filter by status
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(o => o.status === selectedStatus);
+    }
+    
+    // Filter by owner
+    if (selectedOwnerId !== 'all') {
+      if (selectedOwnerId === 'unassigned') {
+        filtered = filtered.filter(o => o.contact?.owner_id === null);
+      } else {
+        filtered = filtered.filter(o => o.contact?.owner_id === selectedOwnerId);
+      }
+    }
+    
+    return filtered;
+  }, [opportunities, selectedStatus, selectedOwnerId]);
+
+  // Separate active and lost opportunities from filtered list
   const activeOpportunities = useMemo(() => 
-    opportunities?.filter(o => o.status === 'active') || [], 
-    [opportunities]
+    filteredOpportunities.filter(o => o.status === 'active'), 
+    [filteredOpportunities]
   );
   
   const lostOpportunities = useMemo(() => 
-    opportunities?.filter(o => o.status === 'lost') || [], 
-    [opportunities]
+    filteredOpportunities.filter(o => o.status === 'lost'), 
+    [filteredOpportunities]
+  );
+  
+  const wonOpportunities = useMemo(() => 
+    filteredOpportunities.filter(o => o.status === 'won'), 
+    [filteredOpportunities]
   );
 
   // Group opportunities by stage
@@ -143,26 +174,57 @@ export default function Pipeline() {
   return (
     <div className="p-6 h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Pipeline</h1>
-          <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Selecione um funil" />
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Negociações</h1>
+        <Button onClick={() => setShowNewOpportunityModal(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Nova Negociação
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Selecione um funil" />
+          </SelectTrigger>
+          <SelectContent>
+            {funnels?.map(funnel => (
+              <SelectItem key={funnel.id} value={funnel.id}>
+                {funnel.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {canViewPlanejadores && (
+          <Select value={selectedOwnerId} onValueChange={setSelectedOwnerId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Responsável" />
             </SelectTrigger>
             <SelectContent>
-              {funnels?.map(funnel => (
-                <SelectItem key={funnel.id} value={funnel.id}>
-                  {funnel.name}
+              <SelectItem value="all">Todos os responsáveis</SelectItem>
+              <SelectItem value="unassigned">Sem responsável</SelectItem>
+              {planejadores?.map(p => (
+                <SelectItem key={p.user_id} value={p.user_id}>
+                  {p.full_name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <Button onClick={() => setShowNewOpportunityModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Nova Oportunidade
-        </Button>
+        )}
+
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="active">Em andamento</SelectItem>
+            <SelectItem value="won">Vendido</SelectItem>
+            <SelectItem value="lost">Perdido</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {!selectedFunnelId ? (
