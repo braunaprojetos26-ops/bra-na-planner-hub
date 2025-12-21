@@ -40,6 +40,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateMeeting, useRescheduleMeeting } from '@/hooks/useMeetings';
+import { useContactOpportunities } from '@/hooks/useContactOpportunities';
 import { MEETING_TYPES, type Meeting } from '@/types/meetings';
 import { cn } from '@/lib/utils';
 
@@ -59,6 +60,7 @@ interface ScheduleMeetingModalProps {
   onOpenChange: (open: boolean) => void;
   contactId: string;
   contactName: string;
+  opportunityId?: string | null;
   reschedulingMeeting?: Meeting | null;
 }
 
@@ -67,6 +69,7 @@ export function ScheduleMeetingModal({
   onOpenChange,
   contactId,
   contactName,
+  opportunityId: initialOpportunityId,
   reschedulingMeeting,
 }: ScheduleMeetingModalProps) {
   const { toast } = useToast();
@@ -74,6 +77,11 @@ export function ScheduleMeetingModal({
   const rescheduleMeeting = useRescheduleMeeting();
   const [participants, setParticipants] = useState<string[]>([]);
   const [newParticipant, setNewParticipant] = useState('');
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(initialOpportunityId || null);
+  
+  // Fetch opportunities for this contact (only if no initial opportunityId)
+  const { data: opportunities } = useContactOpportunities(contactId);
+  const activeOpportunities = opportunities?.filter(o => o.status === 'active') || [];
 
   const isRescheduling = !!reschedulingMeeting;
 
@@ -88,10 +96,9 @@ export function ScheduleMeetingModal({
     },
   });
 
-  // Pre-fill form when rescheduling
+  // Pre-fill form when rescheduling or reset on open/close
   useEffect(() => {
     if (reschedulingMeeting && open) {
-      const scheduledDate = new Date(reschedulingMeeting.scheduled_at);
       form.reset({
         meeting_type: reschedulingMeeting.meeting_type,
         date: undefined, // User must select new date
@@ -101,7 +108,12 @@ export function ScheduleMeetingModal({
         notes: reschedulingMeeting.notes || '',
       });
       setParticipants(reschedulingMeeting.participants || []);
-    } else if (!open) {
+      setSelectedOpportunityId(reschedulingMeeting.opportunity_id || null);
+    } else if (open) {
+      // When opening fresh, set initial opportunity if provided
+      setSelectedOpportunityId(initialOpportunityId || null);
+    } else {
+      // When closing, reset everything
       form.reset({
         meeting_type: '',
         duration_minutes: 60,
@@ -110,8 +122,9 @@ export function ScheduleMeetingModal({
         time: '',
       });
       setParticipants([]);
+      setSelectedOpportunityId(null);
     }
-  }, [reschedulingMeeting, open, form]);
+  }, [reschedulingMeeting, open, form, initialOpportunityId]);
 
   const handleAddParticipant = () => {
     const email = newParticipant.trim().toLowerCase();
@@ -172,6 +185,7 @@ export function ScheduleMeetingModal({
       } else {
         await createMeeting.mutateAsync({
           contactId,
+          opportunityId: selectedOpportunityId,
           data: {
             meeting_type: data.meeting_type as any,
             scheduled_at: scheduledAt,
@@ -190,6 +204,7 @@ export function ScheduleMeetingModal({
 
       form.reset();
       setParticipants([]);
+      setSelectedOpportunityId(null);
       onOpenChange(false);
     } catch (error) {
       toast({
@@ -257,6 +272,32 @@ export function ScheduleMeetingModal({
                 </FormItem>
               )}
             />
+
+            {/* Negociação (opcional, só mostra se não veio pré-definido e há negociações ativas) */}
+            {!initialOpportunityId && activeOpportunities.length > 0 && !isRescheduling && (
+              <div className="space-y-2">
+                <FormLabel>Vincular a Negociação (opcional)</FormLabel>
+                <Select 
+                  value={selectedOpportunityId || 'none'} 
+                  onValueChange={(v) => setSelectedOpportunityId(v === 'none' ? null : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma negociação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {activeOpportunities.map((opp) => (
+                      <SelectItem key={opp.id} value={opp.id}>
+                        {opp.current_funnel?.name} - {opp.current_stage?.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Vincule esta reunião a uma negociação específica
+                </p>
+              </div>
+            )}
 
             {/* Data e Hora */}
             <div className="grid grid-cols-2 gap-4">

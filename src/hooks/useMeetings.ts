@@ -31,13 +31,37 @@ export function useMeetings(contactId?: string) {
   });
 }
 
+export function useOpportunityMeetings(opportunityId?: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['meetings', 'opportunity', opportunityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('meetings')
+        .select(`
+          *,
+          contact:contacts(id, full_name, email),
+          scheduled_by_profile:profiles!meetings_scheduled_by_fkey(full_name, email)
+        `)
+        .eq('opportunity_id', opportunityId!)
+        .order('scheduled_at', { ascending: true });
+
+      if (error) throw error;
+      return data as Meeting[];
+    },
+    enabled: !!user && !!opportunityId,
+  });
+}
+
 export function useCreateMeeting() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ contactId, data }: { 
+    mutationFn: async ({ contactId, opportunityId, data }: { 
       contactId: string; 
+      opportunityId?: string | null;
       data: {
         meeting_type: string;
         scheduled_at: Date;
@@ -53,6 +77,7 @@ export function useCreateMeeting() {
         .from('meetings')
         .insert({
           contact_id: contactId,
+          opportunity_id: opportunityId || null,
           scheduled_by: user.id,
           meeting_type: data.meeting_type,
           scheduled_at: data.scheduled_at.toISOString(),
@@ -72,9 +97,10 @@ export function useCreateMeeting() {
         notes: data.notes || null,
       });
     },
-    onSuccess: (_, { contactId }) => {
+    onSuccess: (_, { contactId, opportunityId }) => {
       queryClient.invalidateQueries({ queryKey: ['meetings', contactId] });
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['meetings', 'opportunity', opportunityId] });
       queryClient.invalidateQueries({ queryKey: ['contact-history'] });
     },
   });
@@ -159,6 +185,7 @@ export function useRescheduleMeeting() {
         .from('meetings')
         .insert({
           contact_id: originalMeeting.contact_id,
+          opportunity_id: originalMeeting.opportunity_id,
           scheduled_by: user.id,
           meeting_type: newData.meeting_type,
           scheduled_at: newData.scheduled_at.toISOString(),
