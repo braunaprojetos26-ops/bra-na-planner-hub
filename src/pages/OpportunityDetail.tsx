@@ -9,14 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useOpportunity, useOpportunityHistory, useMarkOpportunityWon, useMoveOpportunityStage } from '@/hooks/useOpportunities';
+import { useOpportunity, useOpportunityHistory } from '@/hooks/useOpportunities';
 import { useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { FunnelStagesProgress } from '@/components/opportunities/FunnelStagesProgress';
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
 import { ReactivateOpportunityModal } from '@/components/opportunities/ReactivateOpportunityModal';
+import { WonWithContractModal } from '@/components/opportunities/WonWithContractModal';
 import { OpportunityMeetingsSection } from '@/components/opportunities/OpportunityMeetingsSection';
 import { OpportunityMeetingMinutesSection } from '@/components/opportunities/OpportunityMeetingMinutesSection';
 import { useActingUser } from '@/contexts/ActingUserContext';
+import { useMoveOpportunityStage } from '@/hooks/useOpportunities';
 
 const temperatureColors: Record<string, string> = {
   cold: 'bg-blue-100 text-blue-800',
@@ -89,13 +91,13 @@ export default function OpportunityDetail() {
   
   const [showLostModal, setShowLostModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
+  const [showWonModal, setShowWonModal] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const { data: opportunity, isLoading: opportunityLoading } = useOpportunity(opportunityId || '');
   const { data: history, isLoading: historyLoading } = useOpportunityHistory(opportunityId || '');
   const { data: stages } = useFunnelStages(opportunity?.current_funnel_id);
   const { nextFunnel, firstStage: nextFirstStage } = useNextFunnelFirstStage(opportunity?.current_funnel_id || '');
-  const markWon = useMarkOpportunityWon();
   const moveStage = useMoveOpportunityStage();
 
   const handleStageChange = async (newStageId: string) => {
@@ -107,16 +109,13 @@ export default function OpportunityDetail() {
       toStageId: newStageId,
     });
   };
-  const handleMarkWon = async () => {
-    if (!opportunity || !nextFunnel || !nextFirstStage) return;
 
-    await markWon.mutateAsync({
-      opportunityId: opportunity.id,
-      fromStageId: opportunity.current_stage_id,
-      nextFunnelId: nextFunnel.id,
-      nextStageId: nextFirstStage.id,
-    });
-    
+  const handleMarkWon = () => {
+    if (!opportunity || !nextFunnel || !nextFirstStage) return;
+    setShowWonModal(true);
+  };
+
+  const handleWonSuccess = () => {
     navigate('/pipeline');
   };
 
@@ -178,9 +177,9 @@ export default function OpportunityDetail() {
                 Marcar Perda
               </Button>
               {nextFunnel && (
-                <Button size="sm" onClick={handleMarkWon} disabled={markWon.isPending}>
+                <Button size="sm" onClick={handleMarkWon}>
                   <CheckCircle className="w-3 h-3 mr-1.5" />
-                  {markWon.isPending ? 'Processando...' : 'Marcar Venda'}
+                  Marcar Venda
                 </Button>
               )}
             </>
@@ -420,6 +419,17 @@ export default function OpportunityDetail() {
           open={showReactivateModal}
           onOpenChange={setShowReactivateModal}
           opportunity={opportunity}
+        />
+      )}
+
+      {showWonModal && nextFunnel && nextFirstStage && (
+        <WonWithContractModal
+          open={showWonModal}
+          onOpenChange={setShowWonModal}
+          opportunity={opportunity}
+          nextFunnel={nextFunnel}
+          nextStage={nextFirstStage}
+          onSuccess={handleWonSuccess}
         />
       )}
     </div>
