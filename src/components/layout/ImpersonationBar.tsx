@@ -10,7 +10,7 @@ export function ImpersonationBar() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-10 bg-warning text-warning-foreground z-50 flex items-center justify-center px-4 shadow-md">
+    <div className="fixed top-0 left-0 right-0 h-8 bg-warning text-warning-foreground z-50 flex items-center justify-center px-4 shadow-md">
       <div className="flex items-center gap-3">
         <Eye className="h-4 w-4" />
         <span className="text-sm font-medium">
