@@ -52,8 +52,8 @@ interface WonWithContractModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   opportunity: Opportunity;
-  nextFunnel: Funnel;
-  nextStage: FunnelStage;
+  nextFunnel: Funnel | null;
+  nextStage: FunnelStage | null;
   onSuccess?: () => void;
 }
 
@@ -192,8 +192,8 @@ export function WonWithContractModal({
       await markWon.mutateAsync({
         opportunityId: opportunity.id,
         fromStageId: opportunity.current_stage_id,
-        nextFunnelId: nextFunnel.id,
-        nextStageId: nextStage.id,
+        nextFunnelId: nextFunnel?.id,
+        nextStageId: nextStage?.id,
       });
       onOpenChange(false);
       onSuccess?.();
@@ -215,8 +215,8 @@ export function WonWithContractModal({
       await markWon.mutateAsync({
         opportunityId: opportunity.id,
         fromStageId: opportunity.current_stage_id,
-        nextFunnelId: nextFunnel.id,
-        nextStageId: nextStage.id,
+        nextFunnelId: nextFunnel?.id,
+        nextStageId: nextStage?.id,
       });
 
       // Then create all contracts
@@ -275,7 +275,9 @@ export function WonWithContractModal({
               Confirmar Venda
             </DialogTitle>
             <DialogDescription>
-              A oportunidade será marcada como ganha e uma nova será criada no funil "{nextFunnel.name}".
+              {nextFunnel 
+                ? `A oportunidade será marcada como ganha e uma nova será criada no funil "${nextFunnel.name}".`
+                : 'A oportunidade será marcada como ganha.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

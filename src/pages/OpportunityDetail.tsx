@@ -111,7 +111,7 @@ export default function OpportunityDetail() {
   };
 
   const handleMarkWon = () => {
-    if (!opportunity || !nextFunnel || !nextFirstStage) return;
+    if (!opportunity) return;
     setShowWonModal(true);
   };
 
@@ -176,12 +176,10 @@ export default function OpportunityDetail() {
                 <XCircle className="w-3 h-3 mr-1.5" />
                 Marcar Perda
               </Button>
-              {nextFunnel && (
-                <Button size="sm" onClick={handleMarkWon}>
-                  <CheckCircle className="w-3 h-3 mr-1.5" />
-                  Marcar Venda
-                </Button>
-              )}
+              <Button size="sm" onClick={handleMarkWon}>
+                <CheckCircle className="w-3 h-3 mr-1.5" />
+                Marcar Venda
+              </Button>
             </>
           )}
           {!isReadOnly && opportunity.status === 'lost' && (
@@ -422,13 +420,13 @@ export default function OpportunityDetail() {
         />
       )}
 
-      {showWonModal && nextFunnel && nextFirstStage && (
+      {showWonModal && (
         <WonWithContractModal
           open={showWonModal}
           onOpenChange={setShowWonModal}
           opportunity={opportunity}
-          nextFunnel={nextFunnel}
-          nextStage={nextFirstStage}
+          nextFunnel={nextFunnel || null}
+          nextStage={nextFirstStage || null}
           onSuccess={handleWonSuccess}
         />
       )}
