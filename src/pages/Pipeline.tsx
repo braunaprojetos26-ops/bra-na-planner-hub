@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { differenceInHours } from 'date-fns';
-import { Phone, User, AlertTriangle, Clock, CheckCircle2, XCircle, RotateCcw, Plus } from 'lucide-react';
+import { User, AlertTriangle, XCircle, Plus, Star } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFunnels, useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { useOpportunities, useMoveOpportunityStage, useMarkOpportunityWon } from '@/hooks/useOpportunities';
@@ -283,55 +284,25 @@ export default function Pipeline() {
                           )}
                         </div>
                         
-                        <div className="space-y-1 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            <span>{opportunity.contact?.phone}</span>
-                          </div>
-                          {opportunity.contact?.owner && (
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          {opportunity.qualification ? (
                             <div className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              <span>{opportunity.contact.owner.full_name}</span>
+                              <span>{opportunity.qualification}</span>
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                             </div>
+                          ) : (
+                            <div />
                           )}
-                          {stage.sla_hours && (
-                            <div className={`flex items-center gap-1 ${
-                              slaStatus === 'overdue' ? 'text-destructive' : 
-                              slaStatus === 'warning' ? 'text-warning' : ''
-                            }`}>
-                              <Clock className="w-3 h-3" />
-                              <span>
-                                {differenceInHours(new Date(), new Date(opportunity.stage_entered_at))}h / {stage.sla_hours}h
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="flex gap-1 mt-3" onClick={e => e.stopPropagation()}>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
-                            onClick={() => handleMarkWon(opportunity)}
-                            disabled={!nextFunnel}
-                            title={nextFunnel ? 'Marcar Ganho' : 'Último funil'}
-                          >
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Ganho
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
-                            onClick={() => {
-                              setSelectedOpportunity(opportunity);
-                              setShowLostModal(true);
-                            }}
-                          >
-                            <XCircle className="w-3 h-3 mr-1" />
-                            Perdido
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <User className="w-4 h-4 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{opportunity.contact?.owner?.full_name || 'Sem responsável'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </Card>
                     );
@@ -376,32 +347,28 @@ export default function Pipeline() {
                         </p>
                       </div>
                       
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          <span>{opportunity.contact?.phone}</span>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          {opportunity.qualification && (
+                            <div className="flex items-center gap-1">
+                              <span>{opportunity.qualification}</span>
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            </div>
+                          )}
+                          {opportunity.lost_reason && (
+                            <span className="text-destructive">{opportunity.lost_reason.name}</span>
+                          )}
                         </div>
-                        {opportunity.lost_reason && (
-                          <div className="flex items-center gap-1 text-destructive">
-                            <XCircle className="w-3 h-3" />
-                            <span>{opportunity.lost_reason.name}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-1 mt-3" onClick={e => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            setSelectedOpportunity(opportunity);
-                            setShowReactivateModal(true);
-                          }}
-                        >
-                          <RotateCcw className="w-3 h-3 mr-1" />
-                          Reativar
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <User className="w-4 h-4 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{opportunity.contact?.owner?.full_name || 'Sem responsável'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </Card>
                   ))}
