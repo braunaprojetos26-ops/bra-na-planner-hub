@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFunnels, useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { useOpportunities, useMoveOpportunityStage, useMarkOpportunityWon } from '@/hooks/useOpportunities';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import { OpportunityDetailModal } from '@/components/opportunities/OpportunityDetailModal';
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
 import { ReactivateOpportunityModal } from '@/components/opportunities/ReactivateOpportunityModal';
@@ -40,6 +41,7 @@ const stageHeaderColors: Record<string, string> = {
 };
 
 export default function Pipeline() {
+  const { isImpersonating } = useActingUser();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
@@ -57,6 +59,9 @@ export default function Pipeline() {
   const canViewPlanejadores = useCanViewPlanejadores();
   const moveStage = useMoveOpportunityStage();
   const markWon = useMarkOpportunityWon();
+
+  // Disable editing when impersonating
+  const isReadOnly = isImpersonating;
 
   // Auto-select first funnel
   useMemo(() => {
@@ -115,6 +120,10 @@ export default function Pipeline() {
   }, [stages, activeOpportunities]);
 
   const handleDragStart = (e: React.DragEvent, opportunityId: string) => {
+    if (isReadOnly) {
+      e.preventDefault();
+      return;
+    }
     setDraggedOpportunityId(opportunityId);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -177,10 +186,12 @@ export default function Pipeline() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Negociações</h1>
-        <Button onClick={() => setShowNewOpportunityModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Nova Negociação
-        </Button>
+        {!isReadOnly && (
+          <Button onClick={() => setShowNewOpportunityModal(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Nova Negociação
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -268,7 +279,7 @@ export default function Pipeline() {
                           slaStatus === 'overdue' ? 'ring-2 ring-destructive' : 
                           slaStatus === 'warning' ? 'ring-2 ring-warning' : ''
                         }`}
-                        draggable
+                        draggable={!isReadOnly}
                         onDragStart={e => handleDragStart(e, opportunity.id)}
                         onClick={() => {
                           setSelectedOpportunity(opportunity);

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useContacts, useDeleteContact } from '@/hooks/useContacts';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewContactModal } from '@/components/contacts/NewContactModal';
 import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { ContactDetailModal } from '@/components/contacts/ContactDetailModal';
@@ -43,6 +45,7 @@ const formatCurrency = (value: number | null | undefined) => {
 
 export default function Contacts() {
   const navigate = useNavigate();
+  const { isImpersonating } = useActingUser();
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -64,6 +67,9 @@ export default function Contacts() {
   const { data: planejadores } = usePlanejadores();
   const canViewPlanejadores = useCanViewPlanejadores();
   const deleteContact = useDeleteContact();
+
+  // Disable editing when impersonating
+  const isReadOnly = isImpersonating;
 
   // Dynamic lists from contacts
   const sources = useMemo(() => {
@@ -135,16 +141,18 @@ export default function Contacts() {
             {filteredContacts.length} contatos encontrados
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowImportModal(true)} className="gap-2">
-            <Upload className="w-4 h-4" />
-            Importar
-          </Button>
-          <Button onClick={() => setShowNewContactModal(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Novo Contato
-          </Button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowImportModal(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
+            <Button onClick={() => setShowNewContactModal(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Novo Contato
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -282,14 +290,36 @@ export default function Contacts() {
                     <TableCell className="text-sm">{formatCurrency(contact.income)}</TableCell>
                     <TableCell>
                       <div className="flex flex-col items-center gap-0.5">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-6 w-6"
-                          onClick={() => setEditingContact(contact)}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </Button>
+                        {isReadOnly ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-6 w-6 opacity-50 cursor-not-allowed"
+                                    disabled
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Modo visualização apenas</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-6 w-6"
+                            onClick={() => setEditingContact(contact)}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                        )}
                         <div className="flex items-center gap-0.5">
                           <Button 
                             size="icon" 
@@ -299,14 +329,36 @@ export default function Contacts() {
                           >
                             <Eye className="w-3 h-3" />
                           </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-6 w-6 text-destructive hover:text-destructive"
-                            onClick={() => setContactToDelete(contact)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {isReadOnly ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 opacity-50 cursor-not-allowed"
+                                      disabled
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Modo visualização apenas</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 text-destructive hover:text-destructive"
+                              onClick={() => setContactToDelete(contact)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </TableCell>
