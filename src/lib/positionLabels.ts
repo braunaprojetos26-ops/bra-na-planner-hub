@@ -7,7 +7,8 @@ export type UserPosition =
   | 'especialista_private'
   | 'coordenador_comercial'
   | 'coordenador_executivo'
-  | 'gerente_comercial';
+  | 'gerente_comercial'
+  | 'superintendente';
 
 export const positionLabels: Record<UserPosition, { label: string; short: string }> = {
   'planejador_financeiro': { label: 'Planejador Financeiro', short: 'PF' },
@@ -19,9 +20,11 @@ export const positionLabels: Record<UserPosition, { label: string; short: string
   'coordenador_comercial': { label: 'Coordenador Comercial', short: 'CC' },
   'coordenador_executivo': { label: 'Coordenador Executivo', short: 'CE' },
   'gerente_comercial': { label: 'Gerente Comercial', short: 'G' },
+  'superintendente': { label: 'Superintendente', short: 'S' },
 };
 
 export const positionOptions: { value: UserPosition; label: string }[] = [
+  { value: 'superintendente', label: 'Superintendente' },
   { value: 'gerente_comercial', label: 'Gerente Comercial' },
   { value: 'coordenador_executivo', label: 'Coordenador Executivo' },
   { value: 'coordenador_comercial', label: 'Coordenador Comercial' },
