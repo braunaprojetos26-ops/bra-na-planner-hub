@@ -15,6 +15,7 @@ import { FunnelStagesProgress } from '@/components/opportunities/FunnelStagesPro
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
 import { ReactivateOpportunityModal } from '@/components/opportunities/ReactivateOpportunityModal';
 import { OpportunityMeetingsSection } from '@/components/opportunities/OpportunityMeetingsSection';
+import { OpportunityMeetingMinutesSection } from '@/components/opportunities/OpportunityMeetingMinutesSection';
 import { useActingUser } from '@/contexts/ActingUserContext';
 
 const temperatureColors: Record<string, string> = {
@@ -251,6 +252,14 @@ export default function OpportunityDetail() {
 
         {/* Meetings Section */}
         <OpportunityMeetingsSection
+          opportunityId={opportunity.id}
+          contactId={opportunity.contact_id}
+          contactName={opportunity.contact?.full_name || ''}
+          isReadOnly={isReadOnly}
+        />
+
+        {/* Meeting Minutes Section */}
+        <OpportunityMeetingMinutesSection
           opportunityId={opportunity.id}
           contactId={opportunity.contact_id}
           contactName={opportunity.contact?.full_name || ''}
