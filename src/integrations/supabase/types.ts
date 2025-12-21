@@ -789,7 +789,10 @@ export type Database = {
           order_position: number
           partner_name: string | null
           pb_calculation_type: string
+          pb_constants: Json | null
+          pb_formula: string | null
           pb_value: number
+          pb_variables: Json | null
           requires_payment_type: boolean
           updated_at: string
         }
@@ -806,7 +809,10 @@ export type Database = {
           order_position?: number
           partner_name?: string | null
           pb_calculation_type?: string
+          pb_constants?: Json | null
+          pb_formula?: string | null
           pb_value?: number
+          pb_variables?: Json | null
           requires_payment_type?: boolean
           updated_at?: string
         }
@@ -823,7 +829,10 @@ export type Database = {
           order_position?: number
           partner_name?: string | null
           pb_calculation_type?: string
+          pb_constants?: Json | null
+          pb_formula?: string | null
           pb_value?: number
+          pb_variables?: Json | null
           requires_payment_type?: boolean
           updated_at?: string
         }

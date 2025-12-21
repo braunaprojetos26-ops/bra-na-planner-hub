@@ -1,3 +1,5 @@
+import type { ContractVariableKey, ProductConstantKey } from '@/lib/pbFormulaParser';
+
 export interface ProductCategory {
   id: string;
   name: string;
@@ -33,6 +35,10 @@ export interface Product {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // New formula-based fields
+  pb_formula: string | null;
+  pb_variables: ContractVariableKey[];
+  pb_constants: Partial<Record<ProductConstantKey, number>>;
   // Joined
   category?: ProductCategory;
 }

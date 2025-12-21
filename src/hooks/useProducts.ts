@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { ProductCategory, Product, ProductCustomField } from '@/types/contracts';
+import type { ContractVariableKey, ProductConstantKey } from '@/lib/pbFormulaParser';
 
 export function useProductCategories(includeInactive = false) {
   return useQuery({
@@ -46,6 +47,8 @@ export function useProducts(includeInactive = false) {
       return data.map((p) => ({
         ...p,
         custom_fields: (p.custom_fields || []) as unknown as ProductCustomField[],
+        pb_variables: (p.pb_variables || []) as ContractVariableKey[],
+        pb_constants: (p.pb_constants || {}) as Record<ProductConstantKey, number>,
       })) as Product[];
     },
   });
@@ -122,6 +125,9 @@ export function useCreateProduct() {
       custom_fields?: ProductCustomField[];
       has_validity?: boolean;
       requires_payment_type?: boolean;
+      pb_formula?: string;
+      pb_variables?: ContractVariableKey[];
+      pb_constants?: Record<ProductConstantKey, number>;
     }) => {
       const insertData = {
         name: data.name,
@@ -133,6 +139,9 @@ export function useCreateProduct() {
         custom_fields: (data.custom_fields || []) as unknown as Record<string, never>[],
         has_validity: data.has_validity,
         requires_payment_type: data.requires_payment_type,
+        pb_formula: data.pb_formula,
+        pb_variables: data.pb_variables,
+        pb_constants: data.pb_constants,
       };
 
       const { data: result, error } = await supabase
@@ -175,6 +184,9 @@ export function useUpdateProduct() {
       if (data.has_validity !== undefined) updates.has_validity = data.has_validity;
       if (data.requires_payment_type !== undefined) updates.requires_payment_type = data.requires_payment_type;
       if (data.is_active !== undefined) updates.is_active = data.is_active;
+      if (data.pb_formula !== undefined) updates.pb_formula = data.pb_formula;
+      if (data.pb_variables !== undefined) updates.pb_variables = data.pb_variables;
+      if (data.pb_constants !== undefined) updates.pb_constants = data.pb_constants;
 
       const { error } = await supabase
         .from('products')
@@ -197,8 +209,19 @@ export function useUpdateProduct() {
   });
 }
 
-// Calculate PBs based on product configuration and contract value
+// Calculate PBs based on product configuration and contract value (legacy support)
 export function calculatePBs(product: Product, contractValue: number): number {
+  // If product has a formula, use it with valor_total as the main variable
+  if (product.pb_formula) {
+    const { calculatePBsWithFormula } = require('@/lib/pbFormulaParser');
+    return calculatePBsWithFormula(
+      product.pb_formula,
+      { valor_total: contractValue },
+      product.pb_constants || {}
+    );
+  }
+  
+  // Legacy calculation
   if (product.pb_calculation_type === 'fixed') {
     return product.pb_value;
   }
