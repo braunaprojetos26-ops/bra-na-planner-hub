@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw, Eye, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw, Eye, ChevronUp, Briefcase } from 'lucide-react';
 import { useActingUser } from '@/contexts/ActingUserContext';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -208,6 +208,12 @@ function MeetingCard({
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
               <RefreshCw className="h-2.5 w-2.5" />
               #{meeting.reschedule_count}
+            </Badge>
+          )}
+          {meeting.opportunity && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-primary/5">
+              <Briefcase className="h-2.5 w-2.5" />
+              {meeting.opportunity.current_funnel?.name?.slice(0, 5).toUpperCase()}. - {meeting.opportunity.current_stage?.name}
             </Badge>
           )}
         </div>
