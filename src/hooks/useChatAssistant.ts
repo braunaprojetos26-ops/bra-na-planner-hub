@@ -4,9 +4,15 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'confirmation';
   content: string;
   timestamp: Date;
+  confirmationData?: {
+    contactId: string;
+    contactName: string;
+    clientCode?: string;
+    meetingContent: string;
+  };
 }
 
 export function useChatAssistant() {
@@ -37,7 +43,7 @@ export function useChatAssistant() {
         },
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({
-            role: m.role,
+            role: m.role === 'confirmation' ? 'assistant' : m.role,
             content: m.content,
           })),
           type,
@@ -137,6 +143,97 @@ export function useChatAssistant() {
     return assistantContent;
   }, [messages, toast]);
 
+  const addConfirmationMessage = useCallback((contactId: string, contactName: string, clientCode: string | undefined, meetingContent: string) => {
+    const confirmationMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'confirmation',
+      content: `📌 Identifiquei o cliente **${contactName}**${clientCode ? ` (${clientCode})` : ''}. Deseja salvar a ata nas anotações deste contato?`,
+      timestamp: new Date(),
+      confirmationData: {
+        contactId,
+        contactName,
+        clientCode,
+        meetingContent,
+      },
+    };
+    setMessages(prev => [...prev, confirmationMessage]);
+  }, []);
+
+  const removeConfirmationMessages = useCallback(() => {
+    setMessages(prev => prev.filter(m => m.role !== 'confirmation'));
+  }, []);
+
+  const saveToContactNotes = useCallback(async (contactId: string, meetingContent: string) => {
+    try {
+      // Get current contact notes
+      const { data: contact, error: fetchError } = await supabase
+        .from('contacts')
+        .select('notes, full_name')
+        .eq('id', contactId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Clean up the content (remove the client ID line)
+      const cleanContent = meetingContent.replace(/\n?\[CLIENTE_ID:.*\]/g, '').trim();
+      
+      // Format the meeting summary with timestamp
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('pt-BR');
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      
+      const formattedAta = `--- Ata de Reunião (${dateStr} às ${timeStr}) ---\n\n${cleanContent}\n\n---`;
+      
+      // Concatenate with existing notes
+      const newNotes = contact?.notes 
+        ? `${formattedAta}\n\n${contact.notes}`
+        : formattedAta;
+
+      // Update contact notes
+      const { error: updateError } = await supabase
+        .from('contacts')
+        .update({ notes: newNotes })
+        .eq('id', contactId);
+
+      if (updateError) throw updateError;
+
+      // Also save to history
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('contact_history').insert({
+          contact_id: contactId,
+          action: 'ai_meeting_summary',
+          notes: `📋 Ata de reunião salva nas anotações do contato`,
+          changed_by: user.id,
+        });
+      }
+
+      // Add success message to chat
+      const successMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `✅ **Ata salva com sucesso!**\n\nA ata foi adicionada às anotações de **${contact?.full_name || 'contato'}**.\n\n[Ver contato →](/contacts/${contactId})`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev.filter(m => m.role !== 'confirmation'), successMessage]);
+
+      toast({
+        title: 'Ata salva',
+        description: `A ata foi salva nas anotações de ${contact?.full_name}`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error saving to contact notes:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar a ata nas anotações do contato.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [toast]);
+
   const saveToHistory = useCallback(async (contactId: string, notes: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -183,6 +280,9 @@ export function useChatAssistant() {
     isLoading,
     sendMessage,
     saveToHistory,
+    saveToContactNotes,
+    addConfirmationMessage,
+    removeConfirmationMessages,
     clearMessages,
   };
 }

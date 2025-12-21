@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, FileText, HelpCircle, Trash2, Save } from 'lucide-react';
+import { Bot, X, Send, FileText, HelpCircle, Trash2, Check, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useChatAssistant, ChatMessage } from '@/hooks/useChatAssistant';
 import { useContacts } from '@/hooks/useContacts';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +32,20 @@ export function ChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [showContactSearch, setShowContactSearch] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<{ id: string; name: string } | null>(null);
-  const [lastMeetingContent, setLastMeetingContent] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
 
-  const { messages, isLoading, sendMessage, saveToHistory, clearMessages } = useChatAssistant();
+  const { 
+    messages, 
+    isLoading, 
+    sendMessage, 
+    saveToContactNotes,
+    addConfirmationMessage,
+    removeConfirmationMessages,
+    clearMessages 
+  } = useChatAssistant();
   const { data: contacts } = useContacts();
 
   useEffect(() => {
@@ -53,32 +62,54 @@ export function ChatAssistant() {
     const response = await sendMessage(content, type);
     
     if (type === 'meeting' && response) {
-      setLastMeetingContent(response);
       // Try to extract client from response
-      const clientMatch = response.match(/\[CLIENTE_ID: ([^\|]+)/);
+      const clientMatch = response.match(/\[CLIENTE_ID:\s*([^\|\]]+)(?:\|\s*([^\|\]]+))?(?:\|\s*([^\]]+))?\]/);
       if (clientMatch) {
-        const clientName = clientMatch[1].trim();
-        const foundContact = contacts?.find(c => 
-          c.full_name.toLowerCase().includes(clientName.toLowerCase())
-        );
+        const clientName = clientMatch[1]?.trim();
+        const clientCode = clientMatch[2]?.trim();
+        
+        // Search for contact by name or code
+        const foundContact = contacts?.find(c => {
+          const nameMatch = clientName && c.full_name.toLowerCase().includes(clientName.toLowerCase());
+          const codeMatch = clientCode && c.client_code?.toLowerCase() === clientCode.toLowerCase();
+          return nameMatch || codeMatch;
+        });
+        
         if (foundContact) {
-          setSelectedContact({ id: foundContact.id, name: foundContact.full_name });
+          // Add confirmation message
+          addConfirmationMessage(
+            foundContact.id,
+            foundContact.full_name,
+            foundContact.client_code || undefined,
+            response
+          );
         }
       }
     }
   };
 
-  const handleSaveToHistory = async () => {
-    if (!selectedContact || !lastMeetingContent) return;
+  const handleConfirmSave = async (message: ChatMessage) => {
+    if (!message.confirmationData) return;
     
-    // Clean up the content (remove the client ID line)
-    const cleanContent = lastMeetingContent.replace(/\n?\[CLIENTE_ID:.*\]/, '').trim();
-    const formatted = `📋 **Resumo de Reunião (IA)**\n\n${cleanContent}`;
+    const { contactId, meetingContent } = message.confirmationData;
+    await saveToContactNotes(contactId, meetingContent);
+  };
+
+  const handleRejectConfirmation = () => {
+    removeConfirmationMessages();
+    setShowContactSearch(true);
+  };
+
+  const handleManualContactSelect = async (contactId: string, contactName: string) => {
+    setShowContactSearch(false);
     
-    const success = await saveToHistory(selectedContact.id, formatted);
-    if (success) {
-      setLastMeetingContent(null);
-      setSelectedContact(null);
+    // Find the last meeting content from messages
+    const lastAssistantMessage = [...messages].reverse().find(m => 
+      m.role === 'assistant' && m.content.includes('Ata de Reunião')
+    );
+    
+    if (lastAssistantMessage) {
+      addConfirmationMessage(contactId, contactName, undefined, lastAssistantMessage.content);
     }
   };
 
@@ -89,18 +120,54 @@ export function ChatAssistant() {
     }
   };
 
+  const handleLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A' && target.getAttribute('href')?.startsWith('/')) {
+      e.preventDefault();
+      const href = target.getAttribute('href');
+      if (href) {
+        setIsOpen(false);
+        navigate(href);
+      }
+    }
+  };
+
   const formatMessage = (content: string) => {
     // Remove client ID line from display
-    const cleanContent = content.replace(/\n?\[CLIENTE_ID:.*\]/, '');
+    const cleanContent = content.replace(/\n?\[CLIENTE_ID:.*\]/g, '');
     
     // Simple markdown-like formatting
     return cleanContent
       .split('\n')
       .map((line, i) => {
-        if (line.startsWith('**') && line.endsWith('**')) {
-          return <strong key={i} className="block mt-2">{line.slice(2, -2)}</strong>;
+        // Handle links
+        const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
+        if (linkMatch) {
+          const [, text, href] = linkMatch;
+          const beforeLink = line.substring(0, line.indexOf('['));
+          const afterLink = line.substring(line.indexOf(')') + 1);
+          return (
+            <p key={i}>
+              {beforeLink}
+              <a href={href} className="text-primary underline hover:no-underline cursor-pointer">
+                {text}
+              </a>
+              {afterLink}
+            </p>
+          );
         }
-        if (line.startsWith('✅')) {
+        
+        // Bold text
+        if (line.includes('**')) {
+          const parts = line.split(/\*\*([^*]+)\*\*/g);
+          return (
+            <p key={i} className={line.startsWith('**') ? 'mt-2 font-semibold' : ''}>
+              {parts.map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part)}
+            </p>
+          );
+        }
+        
+        if (line.startsWith('✅') || line.startsWith('📌')) {
           return <p key={i} className="mt-2">{line}</p>;
         }
         if (line.startsWith('*Tarefas')) {
@@ -112,6 +179,11 @@ export function ChatAssistant() {
         return <p key={i}>{line}</p>;
       });
   };
+
+  const filteredContacts = contacts?.filter(c => 
+    c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.client_code?.toLowerCase().includes(searchQuery.toLowerCase())
+  ).slice(0, 10);
 
   return (
     <>
@@ -175,81 +247,111 @@ export function ChatAssistant() {
 
           {/* Messages */}
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Olá! Como posso ajudar?</p>
-                <p className="text-sm mt-2">
-                  Você pode me fazer perguntas sobre processos internos ou colar uma transcrição de reunião para eu gerar uma ata.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      'flex',
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
+            <div onClick={handleLinkClick}>
+              {messages.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">Olá! Como posso ajudar?</p>
+                  <p className="text-sm mt-2">
+                    Você pode me fazer perguntas sobre processos internos ou colar uma transcrição de reunião para eu gerar uma ata.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message) => (
                     <div
+                      key={message.id}
                       className={cn(
-                        'max-w-[85%] rounded-lg px-3 py-2 text-sm',
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
+                        'flex',
+                        message.role === 'user' ? 'justify-end' : 'justify-start'
                       )}
                     >
-                      {message.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          {formatMessage(message.content)}
-                        </div>
-                      ) : (
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted rounded-lg px-3 py-2">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" />
-                        <span className="w-2 h-2 bg-primary/50 rounded-full animate-bounce [animation-delay:0.2s]" />
-                        <span className="w-2 h-2 bg-primary/50 rounded-full animate-bounce [animation-delay:0.4s]" />
+                      <div
+                        className={cn(
+                          'max-w-[85%] rounded-lg px-3 py-2 text-sm',
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : message.role === 'confirmation'
+                            ? 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700'
+                            : 'bg-muted'
+                        )}
+                      >
+                        {message.role === 'confirmation' ? (
+                          <div>
+                            <div className="prose prose-sm dark:prose-invert max-w-none mb-3">
+                              {formatMessage(message.content)}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleConfirmSave(message)}
+                                className="h-7 text-xs"
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Sim, salvar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleRejectConfirmation}
+                                className="h-7 text-xs"
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Escolher outro
+                              </Button>
+                            </div>
+                          </div>
+                        ) : message.role === 'assistant' ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            {formatMessage(message.content)}
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  ))}
+                  {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-lg px-3 py-2">
+                        <div className="flex gap-1">
+                          <span className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" />
+                          <span className="w-2 h-2 bg-primary/50 rounded-full animate-bounce [animation-delay:0.2s]" />
+                          <span className="w-2 h-2 bg-primary/50 rounded-full animate-bounce [animation-delay:0.4s]" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </ScrollArea>
 
-          {/* Save to History Section */}
-          {lastMeetingContent && (
+          {/* Manual Contact Search */}
+          {showContactSearch && (
             <div className="px-4 py-2 border-t bg-muted/50">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">Salvar ata no histórico de:</span>
-                <Popover open={showContactSearch} onOpenChange={setShowContactSearch}>
+                <span className="text-sm text-muted-foreground">Selecionar contato manualmente:</span>
+                <Popover open={true} onOpenChange={setShowContactSearch}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8">
-                      {selectedContact ? selectedContact.name : 'Selecionar contato...'}
+                      Buscar contato...
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="p-0 w-[300px]">
                     <Command>
-                      <CommandInput placeholder="Buscar contato..." />
+                      <CommandInput 
+                        placeholder="Buscar contato..." 
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                      />
                       <CommandList>
                         <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
                         <CommandGroup>
-                          {contacts?.slice(0, 10).map((contact) => (
+                          {filteredContacts?.map((contact) => (
                             <CommandItem
                               key={contact.id}
-                              onSelect={() => {
-                                setSelectedContact({ id: contact.id, name: contact.full_name });
-                                setShowContactSearch(false);
-                              }}
+                              onSelect={() => handleManualContactSelect(contact.id, contact.full_name)}
                             >
                               {contact.full_name}
                               {contact.client_code && (
@@ -265,21 +367,9 @@ export function ChatAssistant() {
                   </PopoverContent>
                 </Popover>
                 <Button
-                  size="sm"
-                  onClick={handleSaveToHistory}
-                  disabled={!selectedContact}
-                  className="h-8"
-                >
-                  <Save className="h-4 w-4 mr-1" />
-                  Salvar
-                </Button>
-                <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setLastMeetingContent(null);
-                    setSelectedContact(null);
-                  }}
+                  onClick={() => setShowContactSearch(false)}
                   className="h-8"
                 >
                   <X className="h-4 w-4" />
