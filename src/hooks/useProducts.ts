@@ -4,6 +4,60 @@ import { useToast } from '@/hooks/use-toast';
 import type { ProductCategory, Product, ProductCustomField } from '@/types/contracts';
 import type { ContractVariableKey, ProductConstantKey } from '@/lib/pbFormulaParser';
 
+export function useDeleteProductCategory() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('product_categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-categories'] });
+      toast({ title: 'Categoria excluída!' });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Erro ao excluir categoria', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast({ title: 'Produto excluído!' });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Erro ao excluir produto', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+}
+
 export function useProductCategories(includeInactive = false) {
   return useQuery({
     queryKey: ['product-categories', includeInactive],

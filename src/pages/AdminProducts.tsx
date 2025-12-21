@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, Package, FolderOpen, Calculator, HelpCircle, Lightbulb } from 'lucide-react';
+import { Plus, Pencil, Package, FolderOpen, Calculator, HelpCircle, Lightbulb, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -48,8 +59,10 @@ import {
   useProducts,
   useCreateProductCategory,
   useUpdateProductCategory,
+  useDeleteProductCategory,
   useCreateProduct,
   useUpdateProduct,
+  useDeleteProduct,
 } from '@/hooks/useProducts';
 import {
   CONTRACT_VARIABLES,
@@ -68,8 +81,10 @@ export default function AdminProducts() {
 
   const createCategory = useCreateProductCategory();
   const updateCategory = useUpdateProductCategory();
+  const deleteCategory = useDeleteProductCategory();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
 
   // Category state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -368,7 +383,7 @@ export default function AdminProducts() {
                             onCheckedChange={() => handleToggleProductActive(product)}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -376,6 +391,30 @@ export default function AdminProducts() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir produto</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o produto "{product.name}"? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteProduct.mutate(product.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -424,7 +463,7 @@ export default function AdminProducts() {
                             onCheckedChange={() => handleToggleCategoryActive(category)}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -432,6 +471,30 @@ export default function AdminProducts() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir a categoria "{category.name}"? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteCategory.mutate(category.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     ))}
