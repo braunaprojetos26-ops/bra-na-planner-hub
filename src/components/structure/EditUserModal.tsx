@@ -24,6 +24,8 @@ import {
 } from '@/hooks/useHierarchy';
 import { positionOptions, UserPosition, getPositionLabel } from '@/lib/positionLabels';
 
+const NONE_VALUE = '__none__';
+
 interface EditUserModalProps {
   user: HierarchyUser | null;
   open: boolean;
@@ -31,8 +33,8 @@ interface EditUserModalProps {
 }
 
 export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) {
-  const [position, setPosition] = useState<string>('');
-  const [managerId, setManagerId] = useState<string>('');
+  const [position, setPosition] = useState<string>(NONE_VALUE);
+  const [managerId, setManagerId] = useState<string>(NONE_VALUE);
   
   const { data: hierarchy } = useHierarchy();
   const updatePosition = useUpdateUserPosition();
@@ -57,8 +59,8 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
 
   useEffect(() => {
     if (user) {
-      setPosition(user.position || '');
-      setManagerId(user.manager_user_id || '');
+      setPosition(user.position || NONE_VALUE);
+      setManagerId(user.manager_user_id || NONE_VALUE);
     }
   }, [user]);
 
@@ -66,8 +68,8 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
     if (!user) return;
 
     try {
-      const newPosition = position || null;
-      const newManagerId = managerId || null;
+      const newPosition = position === NONE_VALUE ? null : position;
+      const newManagerId = managerId === NONE_VALUE ? null : managerId;
 
       // Update position if changed
       if (newPosition !== user.position) {
@@ -118,7 +120,7 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
                   <SelectValue placeholder="Selecione o cargo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem cargo</SelectItem>
+                  <SelectItem value={NONE_VALUE}>Sem cargo</SelectItem>
                   {positionOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
@@ -136,7 +138,7 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
                   <SelectValue placeholder="Selecione o gestor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem gestor (raiz)</SelectItem>
+                  <SelectItem value={NONE_VALUE}>Sem gestor (raiz)</SelectItem>
                   {managerOptions.map((u) => (
                     <SelectItem key={u.user_id} value={u.user_id}>
                       {u.full_name} ({getPositionLabel(u.position)})
