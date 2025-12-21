@@ -12,6 +12,9 @@ interface FunnelStagesProgressProps {
   stages: Stage[];
   currentStageId: string;
   stageEnteredAt: string;
+  onStageClick?: (stageId: string) => void;
+  isClickable?: boolean;
+  isLoading?: boolean;
 }
 
 const stageColorMap: Record<string, { bg: string; bgActive: string; text: string }> = {
@@ -25,7 +28,14 @@ const stageColorMap: Record<string, { bg: string; bgActive: string; text: string
   gray: { bg: 'bg-gray-200', bgActive: 'bg-gray-500', text: 'text-white' },
 };
 
-export function FunnelStagesProgress({ stages, currentStageId, stageEnteredAt }: FunnelStagesProgressProps) {
+export function FunnelStagesProgress({ 
+  stages, 
+  currentStageId, 
+  stageEnteredAt,
+  onStageClick,
+  isClickable = false,
+  isLoading = false
+}: FunnelStagesProgressProps) {
   const sortedStages = [...stages].sort((a, b) => a.order_position - b.order_position);
   const currentIndex = sortedStages.findIndex(s => s.id === currentStageId);
 
@@ -38,21 +48,30 @@ export function FunnelStagesProgress({ stages, currentStageId, stageEnteredAt }:
     return `${hours}h`;
   };
 
+  const handleStageClick = (stageId: string) => {
+    if (!isClickable || isLoading || stageId === currentStageId) return;
+    onStageClick?.(stageId);
+  };
+
   return (
     <div className="flex gap-1 overflow-x-auto pb-2">
       {sortedStages.map((stage, index) => {
         const isCurrentStage = stage.id === currentStageId;
         const isPastStage = index < currentIndex;
         const colors = stageColorMap[stage.color] || stageColorMap.gray;
+        const canClick = isClickable && !isLoading && !isCurrentStage;
 
         return (
           <div
             key={stage.id}
+            onClick={() => handleStageClick(stage.id)}
             className={cn(
               "flex-1 min-w-[100px] px-3 py-2 rounded-md text-center transition-all",
               isCurrentStage && `${colors.bgActive} ${colors.text} shadow-md`,
               isPastStage && `${colors.bg} text-foreground/70`,
-              !isCurrentStage && !isPastStage && "bg-muted text-muted-foreground"
+              !isCurrentStage && !isPastStage && "bg-muted text-muted-foreground",
+              canClick && "cursor-pointer hover:scale-105 hover:shadow-md",
+              isLoading && "opacity-50 pointer-events-none"
             )}
           >
             <p className={cn(

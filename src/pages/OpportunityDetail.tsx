@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useOpportunity, useOpportunityHistory, useMarkOpportunityWon } from '@/hooks/useOpportunities';
+import { useOpportunity, useOpportunityHistory, useMarkOpportunityWon, useMoveOpportunityStage } from '@/hooks/useOpportunities';
 import { useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { FunnelStagesProgress } from '@/components/opportunities/FunnelStagesProgress';
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
@@ -96,7 +96,17 @@ export default function OpportunityDetail() {
   const { data: stages } = useFunnelStages(opportunity?.current_funnel_id);
   const { nextFunnel, firstStage: nextFirstStage } = useNextFunnelFirstStage(opportunity?.current_funnel_id || '');
   const markWon = useMarkOpportunityWon();
+  const moveStage = useMoveOpportunityStage();
 
+  const handleStageChange = async (newStageId: string) => {
+    if (!opportunity || isReadOnly) return;
+    
+    await moveStage.mutateAsync({
+      opportunityId: opportunity.id,
+      fromStageId: opportunity.current_stage_id,
+      toStageId: newStageId,
+    });
+  };
   const handleMarkWon = async () => {
     if (!opportunity || !nextFunnel || !nextFirstStage) return;
 
@@ -185,7 +195,23 @@ export default function OpportunityDetail() {
       </div>
 
       {/* Funnel Stages Progress */}
-      {stages && stages.length > 0 && (
+      {stages && stages.length > 0 && opportunity.status === 'active' && (
+        <Card>
+          <CardContent className="py-3">
+            <FunnelStagesProgress
+              stages={stages}
+              currentStageId={opportunity.current_stage_id}
+              stageEnteredAt={opportunity.stage_entered_at}
+              onStageClick={handleStageChange}
+              isClickable={!isReadOnly}
+              isLoading={moveStage.isPending}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Funnel Stages Progress (non-clickable for non-active) */}
+      {stages && stages.length > 0 && opportunity.status !== 'active' && (
         <Card>
           <CardContent className="py-3">
             <FunnelStagesProgress
