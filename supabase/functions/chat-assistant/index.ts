@@ -109,8 +109,17 @@ serve(async (req) => {
     if (type === "meeting") {
       systemPrompt += `\n\n📋 MODO GERAÇÃO DE ATA:\n${MEETING_MINUTES_TEMPLATE}
 
-IMPORTANTE: Ao final da sua resposta, em uma linha separada, tente identificar o cliente mencionado na transcrição e retorne APENAS esta linha no formato:
-[CLIENTE_ID: Nome do Cliente | Código: CXX (se mencionado) | Confiança: alta/média/baixa]
+⚠️ IDENTIFICAÇÃO DO CLIENTE - MUITO IMPORTANTE:
+Ao final da sua resposta, em uma linha separada, identifique o cliente mencionado na transcrição.
+
+Use EXATAMENTE este formato (uma única linha de texto, NÃO JSON):
+[CLIENTE_ID: Nome Completo do Cliente | Código: CXX | Confiança: alta/média/baixa]
+
+Exemplo correto:
+[CLIENTE_ID: Renata Matioli Covre | Código: C06 | Confiança: alta]
+
+❌ NÃO USE JSON como {"cliente_identificado": ...}
+✅ USE APENAS o formato [CLIENTE_ID: ...]
 
 Se não conseguir identificar o cliente, não inclua esta linha.`;
     }

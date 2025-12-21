@@ -62,34 +62,64 @@ export function ChatAssistant() {
     const response = await sendMessage(content, type);
     
     if (type === 'meeting' && response) {
-      // Try to extract client from response - format: [CLIENTE_ID: Nome | Código: CXX | Confiança: alta]
+      // Try to extract client from response
+      // Format 1: [CLIENTE_ID: Nome | Código: CXX | Confiança: alta]
       const clientMatch = response.match(/\[CLIENTE_ID:\s*([^\|\]]+?)(?:\s*\|\s*Código:\s*([^\|\]]+?))?(?:\s*\|\s*Confiança:\s*([^\]]+?))?\]/i);
       
-      console.log('Client extraction:', { 
-        fullMatch: clientMatch?.[0], 
-        name: clientMatch?.[1]?.trim(), 
-        code: clientMatch?.[2]?.trim(),
-        confidence: clientMatch?.[3]?.trim()
-      });
+      // Format 2: JSON {"cliente_identificado": "Nome", "codigo": "CXX"}
+      const jsonMatch = response.match(/\{\s*"cliente_identificado"\s*:\s*"([^"]+)"(?:\s*,\s*"codigo"\s*:\s*"([^"]+)")?\s*\}/i);
+      
+      // Extract from whichever format matched
+      let clientName: string | undefined;
+      let clientCode: string | undefined;
       
       if (clientMatch) {
-        const clientName = clientMatch[1]?.trim();
-        const clientCode = clientMatch[2]?.trim(); // Now correctly extracts just "C06"
-        
+        clientName = clientMatch[1]?.trim();
+        clientCode = clientMatch[2]?.trim();
+        console.log('Client extraction (format 1):', { fullMatch: clientMatch[0], name: clientName, code: clientCode });
+      } else if (jsonMatch) {
+        clientName = jsonMatch[1]?.trim();
+        clientCode = jsonMatch[2]?.trim();
+        console.log('Client extraction (format 2 - JSON):', { fullMatch: jsonMatch[0], name: clientName, code: clientCode });
+      }
+      
+      if (clientName || clientCode) {
         console.log('Searching for contact:', { clientName, clientCode, totalContacts: contacts?.length });
         
-        // Search for contact - prioritize code match, then name
-        const foundContact = contacts?.find(c => {
-          if (clientCode && c.client_code) {
-            // Exact code match (case insensitive)
-            return c.client_code.toLowerCase() === clientCode.toLowerCase();
-          }
-          if (clientName) {
-            // Partial name match
-            return c.full_name.toLowerCase().includes(clientName.toLowerCase());
-          }
-          return false;
-        });
+        // Search for contact - try multiple strategies
+        let foundContact = null;
+        
+        // Strategy 1: Exact code match
+        if (clientCode) {
+          foundContact = contacts?.find(c => 
+            c.client_code?.toLowerCase() === clientCode.toLowerCase()
+          );
+          if (foundContact) console.log('Found by exact code match');
+        }
+        
+        // Strategy 2: Exact name match
+        if (!foundContact && clientName) {
+          foundContact = contacts?.find(c => 
+            c.full_name.toLowerCase() === clientName.toLowerCase()
+          );
+          if (foundContact) console.log('Found by exact name match');
+        }
+        
+        // Strategy 3: Partial name match (contains)
+        if (!foundContact && clientName) {
+          foundContact = contacts?.find(c => 
+            c.full_name.toLowerCase().includes(clientName.toLowerCase())
+          );
+          if (foundContact) console.log('Found by partial name match (contains)');
+        }
+        
+        // Strategy 4: Reverse partial match (name contains search term)
+        if (!foundContact && clientName) {
+          foundContact = contacts?.find(c => 
+            clientName.toLowerCase().includes(c.full_name.split(' ')[0].toLowerCase())
+          );
+          if (foundContact) console.log('Found by reverse partial match');
+        }
         
         console.log('Found contact:', foundContact ? { id: foundContact.id, name: foundContact.full_name, code: foundContact.client_code } : 'none');
         
@@ -101,8 +131,9 @@ export function ChatAssistant() {
             foundContact.client_code || undefined,
             response
           );
-        } else if (clientName) {
+        } else {
           // Client identified but not found in database - show manual search
+          console.log('Client not found, showing manual search');
           setShowContactSearch(true);
         }
       }
@@ -154,8 +185,11 @@ export function ChatAssistant() {
   };
 
   const formatMessage = (content: string) => {
-    // Remove client ID line from display
-    const cleanContent = content.replace(/\n?\[CLIENTE_ID:.*\]/g, '');
+    // Remove client ID line and JSON blocks from display
+    const cleanContent = content
+      .replace(/\n?\[CLIENTE_ID:.*\]/g, '')
+      .replace(/```json[\s\S]*?```/g, '')
+      .replace(/\{\s*"cliente_identificado"\s*:[\s\S]*?\}/g, '');
     
     // Simple markdown-like formatting
     return cleanContent
