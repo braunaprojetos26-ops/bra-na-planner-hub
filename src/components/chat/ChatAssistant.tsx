@@ -62,18 +62,36 @@ export function ChatAssistant() {
     const response = await sendMessage(content, type);
     
     if (type === 'meeting' && response) {
-      // Try to extract client from response
-      const clientMatch = response.match(/\[CLIENTE_ID:\s*([^\|\]]+)(?:\|\s*([^\|\]]+))?(?:\|\s*([^\]]+))?\]/);
+      // Try to extract client from response - format: [CLIENTE_ID: Nome | Código: CXX | Confiança: alta]
+      const clientMatch = response.match(/\[CLIENTE_ID:\s*([^\|\]]+?)(?:\s*\|\s*Código:\s*([^\|\]]+?))?(?:\s*\|\s*Confiança:\s*([^\]]+?))?\]/i);
+      
+      console.log('Client extraction:', { 
+        fullMatch: clientMatch?.[0], 
+        name: clientMatch?.[1]?.trim(), 
+        code: clientMatch?.[2]?.trim(),
+        confidence: clientMatch?.[3]?.trim()
+      });
+      
       if (clientMatch) {
         const clientName = clientMatch[1]?.trim();
-        const clientCode = clientMatch[2]?.trim();
+        const clientCode = clientMatch[2]?.trim(); // Now correctly extracts just "C06"
         
-        // Search for contact by name or code
+        console.log('Searching for contact:', { clientName, clientCode, totalContacts: contacts?.length });
+        
+        // Search for contact - prioritize code match, then name
         const foundContact = contacts?.find(c => {
-          const nameMatch = clientName && c.full_name.toLowerCase().includes(clientName.toLowerCase());
-          const codeMatch = clientCode && c.client_code?.toLowerCase() === clientCode.toLowerCase();
-          return nameMatch || codeMatch;
+          if (clientCode && c.client_code) {
+            // Exact code match (case insensitive)
+            return c.client_code.toLowerCase() === clientCode.toLowerCase();
+          }
+          if (clientName) {
+            // Partial name match
+            return c.full_name.toLowerCase().includes(clientName.toLowerCase());
+          }
+          return false;
         });
+        
+        console.log('Found contact:', foundContact ? { id: foundContact.id, name: foundContact.full_name, code: foundContact.client_code } : 'none');
         
         if (foundContact) {
           // Add confirmation message
@@ -83,6 +101,9 @@ export function ChatAssistant() {
             foundContact.client_code || undefined,
             response
           );
+        } else if (clientName) {
+          // Client identified but not found in database - show manual search
+          setShowContactSearch(true);
         }
       }
     }
