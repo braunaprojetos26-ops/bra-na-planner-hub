@@ -13,6 +13,7 @@ import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
 import { MeetingsList } from '@/components/meetings/MeetingsList';
+import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
@@ -323,6 +324,9 @@ export default function ContactDetail() {
 
       {/* Meetings Section */}
       {contactId && contact && <MeetingsList contactId={contactId} contactName={contact.full_name} />}
+      
+      {/* Meeting Minutes Section */}
+      {contactId && contact && <MeetingMinutesList contactId={contactId} contactName={contact.full_name} />}
 
       {/* Contract Section - Placeholder */}
       <Card>
