@@ -619,6 +619,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          position: Database["public"]["Enums"]["user_position"] | null
           updated_at: string
           user_id: string
         }
@@ -628,6 +629,7 @@ export type Database = {
           full_name: string
           id?: string
           is_active?: boolean
+          position?: Database["public"]["Enums"]["user_position"] | null
           updated_at?: string
           user_id: string
         }
@@ -637,6 +639,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          position?: Database["public"]["Enums"]["user_position"] | null
           updated_at?: string
           user_id?: string
         }
@@ -719,6 +722,16 @@ export type Database = {
     Enums: {
       app_role: "planejador" | "lider" | "supervisor" | "gerente" | "superadmin"
       contact_status: "active" | "lost" | "won"
+      user_position:
+        | "planejador_financeiro"
+        | "planejador_prime"
+        | "planejador_exclusive"
+        | "lider_comercial"
+        | "especialista"
+        | "especialista_private"
+        | "coordenador_comercial"
+        | "coordenador_executivo"
+        | "gerente_comercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -848,6 +861,17 @@ export const Constants = {
     Enums: {
       app_role: ["planejador", "lider", "supervisor", "gerente", "superadmin"],
       contact_status: ["active", "lost", "won"],
+      user_position: [
+        "planejador_financeiro",
+        "planejador_prime",
+        "planejador_exclusive",
+        "lider_comercial",
+        "especialista",
+        "especialista_private",
+        "coordenador_comercial",
+        "coordenador_executivo",
+        "gerente_comercial",
+      ],
     },
   },
 } as const
