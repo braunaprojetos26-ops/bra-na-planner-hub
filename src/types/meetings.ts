@@ -41,6 +41,11 @@ export interface Meeting {
     full_name: string;
     email: string;
   };
+  opportunity?: {
+    id: string;
+    current_funnel?: { name: string };
+    current_stage?: { name: string };
+  } | null;
 }
 
 export interface MeetingFormData {

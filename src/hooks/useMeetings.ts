@@ -14,7 +14,12 @@ export function useMeetings(contactId?: string) {
         .select(`
           *,
           contact:contacts(id, full_name, email),
-          scheduled_by_profile:profiles!meetings_scheduled_by_fkey(full_name, email)
+          scheduled_by_profile:profiles!meetings_scheduled_by_fkey(full_name, email),
+          opportunity:opportunities(
+            id,
+            current_funnel:funnels!opportunities_current_funnel_id_fkey(name),
+            current_stage:funnel_stages!opportunities_current_stage_id_fkey(name)
+          )
         `)
         .order('scheduled_at', { ascending: true });
 
