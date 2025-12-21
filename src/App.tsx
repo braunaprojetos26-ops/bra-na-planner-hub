@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Contacts from "./pages/Contacts";
 import ContactDetail from "./pages/ContactDetail";
 import Pipeline from "./pages/Pipeline";
+import OpportunityDetail from "./pages/OpportunityDetail";
 import Structure from "./pages/Structure";
 import AdminPipelines from "./pages/AdminPipelines";
 import AdminAssistant from "./pages/AdminAssistant";
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/contacts" element={<ProtectedPage><Contacts /></ProtectedPage>} />
               <Route path="/contacts/:contactId" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
               <Route path="/pipeline" element={<ProtectedPage><Pipeline /></ProtectedPage>} />
+              <Route path="/pipeline/:opportunityId" element={<ProtectedPage><OpportunityDetail /></ProtectedPage>} />
               <Route path="/structure" element={<ProtectedPage><Structure /></ProtectedPage>} />
               <Route path="/admin/pipelines" element={<ProtectedPage><AdminPipelines /></ProtectedPage>} />
               <Route path="/admin/assistant" element={<ProtectedPage><AdminAssistant /></ProtectedPage>} />
