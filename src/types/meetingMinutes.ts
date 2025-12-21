@@ -17,6 +17,7 @@ export interface MeetingMinute {
     id: string;
     meeting_type: string;
     scheduled_at: string;
+    opportunity_id?: string | null;
   };
 }
 

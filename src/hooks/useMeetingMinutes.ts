@@ -9,7 +9,10 @@ export function useMeetingMinutes(contactId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meeting_minutes')
-        .select('*')
+        .select(`
+          *,
+          meeting:meetings(id, meeting_type, scheduled_at, opportunity_id)
+        `)
         .eq('contact_id', contactId)
         .order('meeting_date', { ascending: false });
 
