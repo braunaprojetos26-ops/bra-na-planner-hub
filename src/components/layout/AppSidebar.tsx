@@ -4,12 +4,13 @@ import {
   Users, 
   Network, 
   Kanban, 
-  Upload, 
   Settings,
   UserCog,
   GraduationCap,
   Bot,
-  Building2
+  Building2,
+  FileText,
+  Package
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,7 @@ const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Contatos', url: '/contacts', icon: Users },
   { title: 'Negociações', url: '/pipeline', icon: Kanban },
+  { title: 'Contratos', url: '/contracts', icon: FileText },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
 
@@ -41,6 +43,7 @@ const managementNavItems = [
 const adminNavItems = [
   { title: 'Usuários', url: '/admin/users', icon: UserCog },
   { title: 'Pipelines', url: '/admin/pipelines', icon: Settings },
+  { title: 'Produtos', url: '/admin/products', icon: Package },
   { title: 'Assistente IA', url: '/admin/assistant', icon: Bot },
 ];
 

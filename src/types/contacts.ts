@@ -7,6 +7,8 @@ export interface Funnel {
   name: string;
   order_position: number;
   is_active: boolean;
+  generates_contract: boolean;
+  contract_prompt_text: string | null;
   created_at: string;
   updated_at: string;
 }
