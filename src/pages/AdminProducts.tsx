@@ -88,7 +88,7 @@ export default function AdminProducts() {
     // New formula fields
     pb_formula: '',
     pb_variables: [] as ContractVariableKey[],
-    pb_constants: {} as Record<ProductConstantKey, number>,
+    pb_constants: {} as Partial<Record<ProductConstantKey, number>>,
   });
 
   // Formula test state
@@ -165,7 +165,7 @@ export default function AdminProducts() {
         requires_payment_type: product.requires_payment_type,
         pb_formula: product.pb_formula || '',
         pb_variables: product.pb_variables || [],
-        pb_constants: product.pb_constants || {},
+        pb_constants: (product.pb_constants || {}) as Partial<Record<ProductConstantKey, number>>,
       });
       // Initialize test values for existing variables
       const initialTestValues: Record<string, number> = {};
@@ -183,7 +183,7 @@ export default function AdminProducts() {
         requires_payment_type: true,
         pb_formula: '',
         pb_variables: [],
-        pb_constants: {},
+        pb_constants: {} as Partial<Record<ProductConstantKey, number>>,
       });
       setTestValues({});
     }
