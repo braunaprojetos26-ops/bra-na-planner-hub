@@ -40,6 +40,8 @@ export interface Opportunity {
   current_funnel?: {
     id: string;
     name: string;
+    generates_contract?: boolean;
+    contract_prompt_text?: string | null;
   };
   lost_reason?: {
     id: string;

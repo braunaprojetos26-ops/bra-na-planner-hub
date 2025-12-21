@@ -30,7 +30,7 @@ export function useOpportunities(funnelId?: string, status?: 'active' | 'lost' |
             owner:profiles!contacts_owner_id_fkey(full_name, email)
           ),
           current_stage:funnel_stages!opportunities_current_stage_id_fkey(*),
-          current_funnel:funnels!opportunities_current_funnel_id_fkey(*),
+          current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name, generates_contract, contract_prompt_text),
           lost_reason:lost_reasons(*)
         `)
         .order('stage_entered_at', { ascending: false });
@@ -76,7 +76,7 @@ export function useOpportunity(opportunityId: string) {
             owner:profiles!contacts_owner_id_fkey(full_name, email)
           ),
           current_stage:funnel_stages!opportunities_current_stage_id_fkey(*),
-          current_funnel:funnels!opportunities_current_funnel_id_fkey(*),
+          current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name, generates_contract, contract_prompt_text),
           lost_reason:lost_reasons(*)
         `)
         .eq('id', opportunityId)
@@ -98,7 +98,7 @@ export function useContactOpportunities(contactId: string) {
         .select(`
           *,
           current_stage:funnel_stages!opportunities_current_stage_id_fkey(*),
-          current_funnel:funnels!opportunities_current_funnel_id_fkey(*),
+          current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name, generates_contract, contract_prompt_text),
           lost_reason:lost_reasons(*)
         `)
         .eq('contact_id', contactId)
