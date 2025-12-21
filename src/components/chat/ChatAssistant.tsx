@@ -31,6 +31,7 @@ import {
 export function ChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
+  const [chatMode, setChatMode] = useState<'question' | 'meeting'>('question');
   const [showContactSearch, setShowContactSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -168,7 +169,8 @@ export function ChatAssistant() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend('question');
+      handleSend(chatMode);
+      setChatMode('question');
     }
   };
 
@@ -271,13 +273,15 @@ export function ChatAssistant() {
           {/* Quick Actions */}
           <div className="px-4 py-2 border-b flex gap-2">
             <Button
-              variant="outline"
+              variant={chatMode === 'meeting' ? 'default' : 'outline'}
               size="sm"
               onClick={() => {
                 if (input.trim()) {
                   handleSend('meeting');
+                  setChatMode('question');
                 } else {
-                  setInput('Cole aqui a transcrição da reunião...');
+                  setChatMode('meeting');
+                  setInput('');
                   inputRef.current?.focus();
                 }
               }}
@@ -287,9 +291,10 @@ export function ChatAssistant() {
               Gerar Ata
             </Button>
             <Button
-              variant="outline"
+              variant={chatMode === 'question' ? 'default' : 'outline'}
               size="sm"
               onClick={() => {
+                setChatMode('question');
                 setInput('');
                 inputRef.current?.focus();
               }}
@@ -298,6 +303,11 @@ export function ChatAssistant() {
               <HelpCircle className="h-4 w-4 mr-1" />
               Tirar Dúvida
             </Button>
+            {chatMode === 'meeting' && (
+              <Badge variant="secondary" className="text-xs">
+                Modo Ata ativo
+              </Badge>
+            )}
           </div>
 
           {/* Messages */}
@@ -446,7 +456,10 @@ export function ChatAssistant() {
                 disabled={isLoading}
               />
               <Button
-                onClick={() => handleSend('question')}
+                onClick={() => {
+                  handleSend(chatMode);
+                  setChatMode('question');
+                }}
                 disabled={!input.trim() || isLoading}
                 size="icon"
                 className="h-[60px]"
