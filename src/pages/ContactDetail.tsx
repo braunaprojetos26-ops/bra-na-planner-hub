@@ -16,6 +16,7 @@ import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
+import { useActingUser } from '@/contexts/ActingUserContext';
 
 const formatCurrency = (value: number | null | undefined) => {
   if (value === null || value === undefined) return '-';
@@ -119,6 +120,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 export default function ContactDetail() {
   const { contactId } = useParams<{ contactId: string }>();
   const navigate = useNavigate();
+  const { isImpersonating } = useActingUser();
+  const isReadOnly = isImpersonating;
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState(false);
@@ -205,14 +208,18 @@ export default function ContactDetail() {
               {contact.client_code}
             </Badge>
           )}
-          <Button size="sm" variant="outline" onClick={() => setShowScheduleMeetingModal(true)}>
-            <CalendarPlus className="w-3 h-3 mr-1.5" />
-            Agendar
-          </Button>
-          <Button size="sm" onClick={() => setShowEditModal(true)}>
-            <Pencil className="w-3 h-3 mr-1.5" />
-            Editar
-          </Button>
+          {!isReadOnly && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setShowScheduleMeetingModal(true)}>
+                <CalendarPlus className="w-3 h-3 mr-1.5" />
+                Agendar
+              </Button>
+              <Button size="sm" onClick={() => setShowEditModal(true)}>
+                <Pencil className="w-3 h-3 mr-1.5" />
+                Editar
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -294,9 +301,11 @@ export default function ContactDetail() {
               <Briefcase className="w-3 h-3 text-accent" />
               Oportunidades
             </CardTitle>
-            <Button size="sm" className="h-7 text-xs" onClick={() => setShowNewOpportunityModal(true)}>
-              Nova Oportunidade
-            </Button>
+            {!isReadOnly && (
+              <Button size="sm" className="h-7 text-xs" onClick={() => setShowNewOpportunityModal(true)}>
+                Nova Oportunidade
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="pb-3">
@@ -350,27 +359,29 @@ export default function ContactDetail() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 pb-3">
-          <div className="space-y-1.5">
-            <Textarea
-              placeholder="Adicionar nova anotação..."
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              rows={2}
-              className="text-xs"
-            />
-            <Button 
-              size="sm" 
-              className="h-7 text-xs"
-              onClick={handleSaveNote}
-              disabled={!newNote.trim() || updateContact.isPending}
-            >
-              {updateContact.isPending ? 'Salvando...' : 'Salvar Anotação'}
-            </Button>
-          </div>
+          {!isReadOnly && (
+            <div className="space-y-1.5">
+              <Textarea
+                placeholder="Adicionar nova anotação..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                rows={2}
+                className="text-xs"
+              />
+              <Button 
+                size="sm" 
+                className="h-7 text-xs"
+                onClick={handleSaveNote}
+                disabled={!newNote.trim() || updateContact.isPending}
+              >
+                {updateContact.isPending ? 'Salvando...' : 'Salvar Anotação'}
+              </Button>
+            </div>
+          )}
           
           {contact.notes && (
             <>
-              <Separator />
+              {!isReadOnly && <Separator />}
               <div className="bg-secondary/50 rounded-md p-2">
                 <pre className="text-xs whitespace-pre-wrap font-sans">{contact.notes}</pre>
               </div>
