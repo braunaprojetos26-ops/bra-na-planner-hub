@@ -1,15 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Opportunity, OpportunityHistory, OpportunityFormData } from '@/types/opportunities';
 
 export function useOpportunities(funnelId?: string, status?: 'active' | 'lost' | 'won') {
   const { user } = useAuth();
+  const { actingUser, isImpersonating } = useActingUser();
+
+  // Determine which user's opportunities to fetch
+  const targetUserId = isImpersonating && actingUser ? actingUser.id : null;
 
   return useQuery({
-    queryKey: ['opportunities', funnelId, status],
+    queryKey: ['opportunities', funnelId, status, targetUserId],
     queryFn: async () => {
+      // When impersonating, we need to filter opportunities by contact owner
+      // We do this by first fetching contacts owned by the target user
       let query = supabase
         .from('opportunities')
         .select(`
@@ -39,7 +46,14 @@ export function useOpportunities(funnelId?: string, status?: 'active' | 'lost' |
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Opportunity[];
+
+      // Filter by contact owner when impersonating
+      let opportunities = data as Opportunity[];
+      if (targetUserId) {
+        opportunities = opportunities.filter(o => o.contact?.owner_id === targetUserId);
+      }
+
+      return opportunities;
     },
     enabled: !!user,
   });

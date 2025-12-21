@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronDown, User, Settings } from 'lucide-react';
 import { HierarchyUser, useCanManageStructure } from '@/hooks/useHierarchy';
 import { getPositionShort, getPositionLabel } from '@/lib/positionLabels';
@@ -11,6 +12,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 
 interface HierarchyNodeProps {
   node: HierarchyUser;
@@ -22,6 +25,23 @@ export function HierarchyNode({ node, level, onEditUser }: HierarchyNodeProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2);
   const canManage = useCanManageStructure();
   const hasChildren = node.children.length > 0;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { setActingUser } = useActingUser();
+
+  // User can impersonate subordinates (anyone in their tree except themselves)
+  const isOwnProfile = user?.id === node.user_id;
+
+  const handleImpersonate = () => {
+    if (isOwnProfile) return;
+    
+    setActingUser({
+      id: node.user_id,
+      full_name: node.full_name,
+      email: node.email,
+    });
+    navigate('/');
+  };
 
   return (
     <div className="select-none">
@@ -53,8 +73,26 @@ export function HierarchyNode({ node, level, onEditUser }: HierarchyNodeProps) {
         {/* User icon */}
         <User className="w-4 h-4 text-muted-foreground shrink-0" />
 
-        {/* Name */}
-        <span className="font-medium text-sm flex-1">{node.full_name}</span>
+        {/* Name - clickable for impersonation if not own profile */}
+        {isOwnProfile ? (
+          <span className="font-medium text-sm flex-1">{node.full_name}</span>
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleImpersonate}
+                  className="font-medium text-sm flex-1 text-left text-primary hover:underline cursor-pointer"
+                >
+                  {node.full_name}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Visualizar como {node.full_name}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
         {/* Position badge */}
         <TooltipProvider>

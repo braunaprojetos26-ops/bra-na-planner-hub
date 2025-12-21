@@ -1,22 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Contact, ContactFormData, ContactHistory } from '@/types/contacts';
 
 export function useContacts() {
   const { user } = useAuth();
+  const { actingUser, isImpersonating } = useActingUser();
+
+  // Determine which user's contacts to fetch
+  const targetUserId = isImpersonating && actingUser ? actingUser.id : null;
 
   return useQuery({
-    queryKey: ['contacts'],
+    queryKey: ['contacts', targetUserId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('contacts')
         .select(`
           *,
           owner:profiles!contacts_owner_id_fkey(full_name, email)
         `)
         .order('created_at', { ascending: false });
+
+      // When impersonating, filter by the acting user's contacts
+      if (targetUserId) {
+        query = query.eq('owner_id', targetUserId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as Contact[];
