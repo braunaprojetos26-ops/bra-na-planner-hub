@@ -1,20 +1,19 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { differenceInHours } from 'date-fns';
-import { User, AlertTriangle, XCircle, Plus, Star } from 'lucide-react';
+import { User, AlertTriangle, Plus, Star, LayoutGrid, List } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFunnels, useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
-import { useOpportunities, useMoveOpportunityStage, useMarkOpportunityWon } from '@/hooks/useOpportunities';
+import { useFunnels, useFunnelStages } from '@/hooks/useFunnels';
+import { useOpportunities, useMoveOpportunityStage } from '@/hooks/useOpportunities';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
 import { useActingUser } from '@/contexts/ActingUserContext';
-import { OpportunityDetailModal } from '@/components/opportunities/OpportunityDetailModal';
-import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
-import { ReactivateOpportunityModal } from '@/components/opportunities/ReactivateOpportunityModal';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
+import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
 import type { Opportunity } from '@/types/opportunities';
 import type { FunnelStage } from '@/types/contacts';
 
@@ -41,14 +40,12 @@ const stageHeaderColors: Record<string, string> = {
 };
 
 export default function Pipeline() {
+  const navigate = useNavigate();
   const { isImpersonating } = useActingUser();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
-  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showLostModal, setShowLostModal] = useState(false);
-  const [showReactivateModal, setShowReactivateModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [draggedOpportunityId, setDraggedOpportunityId] = useState<string | null>(null);
 
@@ -58,7 +55,6 @@ export default function Pipeline() {
   const { data: planejadores } = usePlanejadores();
   const canViewPlanejadores = useCanViewPlanejadores();
   const moveStage = useMoveOpportunityStage();
-  const markWon = useMarkOpportunityWon();
 
   // Disable editing when impersonating
   const isReadOnly = isImpersonating;
@@ -69,9 +65,6 @@ export default function Pipeline() {
       setSelectedFunnelId(funnels[0].id);
     }
   }, [funnels, selectedFunnelId]);
-
-  // Get next funnel info for "won" action
-  const { nextFunnel, firstStage: nextFirstStage } = useNextFunnelFirstStage(selectedFunnelId);
 
   // Filter opportunities by status and owner
   const filteredOpportunities = useMemo(() => {
@@ -102,11 +95,6 @@ export default function Pipeline() {
   
   const lostOpportunities = useMemo(() => 
     filteredOpportunities.filter(o => o.status === 'lost'), 
-    [filteredOpportunities]
-  );
-  
-  const wonOpportunities = useMemo(() => 
-    filteredOpportunities.filter(o => o.status === 'won'), 
     [filteredOpportunities]
   );
 
@@ -150,19 +138,6 @@ export default function Pipeline() {
     });
 
     setDraggedOpportunityId(null);
-  };
-
-  const handleMarkWon = async (opportunity: Opportunity) => {
-    if (!nextFunnel || !nextFirstStage) {
-      return;
-    }
-
-    await markWon.mutateAsync({
-      opportunityId: opportunity.id,
-      fromStageId: opportunity.current_stage_id,
-      nextFunnelId: nextFunnel.id,
-      nextStageId: nextFirstStage.id,
-    });
   };
 
   const getSlaStatus = (opportunity: Opportunity, stage: FunnelStage) => {
@@ -237,6 +212,26 @@ export default function Pipeline() {
             <SelectItem value="lost">Perdido</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-1 ml-auto">
+          <Button
+            variant={viewMode === 'kanban' ? 'default' : 'outline'}
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => setViewMode('kanban')}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {!selectedFunnelId ? (
@@ -247,7 +242,11 @@ export default function Pipeline() {
         <div className="flex items-center justify-center h-[50vh]">
           <p className="text-muted-foreground">Carregando oportunidades...</p>
         </div>
+      ) : viewMode === 'list' ? (
+        /* List View */
+        <OpportunitiesListView opportunities={filteredOpportunities} />
       ) : (
+        /* Kanban View */
         <div className="flex gap-4 h-[calc(100%-5rem)] overflow-x-auto pb-4">
           {/* Stage Columns */}
           {stages?.map(stage => (
@@ -281,10 +280,7 @@ export default function Pipeline() {
                         }`}
                         draggable={!isReadOnly}
                         onDragStart={e => handleDragStart(e, opportunity.id)}
-                        onClick={() => {
-                          setSelectedOpportunity(opportunity);
-                          setShowDetailModal(true);
-                        }}
+                        onClick={() => navigate(`/pipeline/${opportunity.id}`)}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <p className="font-medium text-sm line-clamp-1">
@@ -347,10 +343,7 @@ export default function Pipeline() {
                     <Card
                       key={opportunity.id}
                       className="p-3 cursor-pointer hover:shadow-md transition-shadow opacity-80"
-                      onClick={() => {
-                        setSelectedOpportunity(opportunity);
-                        setShowDetailModal(true);
-                      }}
+                      onClick={() => navigate(`/pipeline/${opportunity.id}`)}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <p className="font-medium text-sm line-clamp-1">
@@ -388,32 +381,6 @@ export default function Pipeline() {
             </div>
           )}
         </div>
-      )}
-
-      {/* Modals */}
-      {selectedOpportunity && showDetailModal && (
-        <OpportunityDetailModal
-          open={showDetailModal}
-          onOpenChange={setShowDetailModal}
-          opportunity={selectedOpportunity}
-          onMarkWon={nextFunnel ? () => handleMarkWon(selectedOpportunity) : undefined}
-        />
-      )}
-
-      {selectedOpportunity && showLostModal && (
-        <MarkLostModal
-          open={showLostModal}
-          onOpenChange={setShowLostModal}
-          opportunity={selectedOpportunity}
-        />
-      )}
-
-      {selectedOpportunity && showReactivateModal && (
-        <ReactivateOpportunityModal
-          open={showReactivateModal}
-          onOpenChange={setShowReactivateModal}
-          opportunity={selectedOpportunity}
-        />
       )}
 
       <NewOpportunityModal
