@@ -3,15 +3,20 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { AppHeader } from './AppHeader';
 import { ChatAssistant } from '@/components/chat/ChatAssistant';
+import { ImpersonationBar } from './ImpersonationBar';
+import { useActingUser } from '@/contexts/ActingUserContext';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const { isImpersonating } = useActingUser();
+
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <ImpersonationBar />
+      <div className={`min-h-screen flex w-full ${isImpersonating ? 'pt-10' : ''}`}>
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <AppHeader />
