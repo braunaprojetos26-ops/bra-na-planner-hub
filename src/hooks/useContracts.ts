@@ -69,13 +69,15 @@ export function useCreateContract() {
       opportunityId,
       product,
       data,
+      calculatedPbs: providedPbs,
     }: {
       contactId: string;
       opportunityId?: string;
       product: Product;
       data: ContractFormData;
+      calculatedPbs?: number;
     }) => {
-      const calculatedPbs = calculatePBs(product, data.contract_value);
+      const calculatedPbs = providedPbs ?? calculatePBs(product, data.contract_value);
 
       const insertData = {
         contact_id: contactId,

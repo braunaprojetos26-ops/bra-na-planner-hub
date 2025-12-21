@@ -48,7 +48,7 @@ export function useProducts(includeInactive = false) {
         ...p,
         custom_fields: (p.custom_fields || []) as unknown as ProductCustomField[],
         pb_variables: (p.pb_variables || []) as ContractVariableKey[],
-        pb_constants: (p.pb_constants || {}) as Record<ProductConstantKey, number>,
+        pb_constants: (p.pb_constants || {}) as Partial<Record<ProductConstantKey, number>>,
       })) as Product[];
     },
   });
@@ -127,7 +127,7 @@ export function useCreateProduct() {
       requires_payment_type?: boolean;
       pb_formula?: string;
       pb_variables?: ContractVariableKey[];
-      pb_constants?: Record<ProductConstantKey, number>;
+      pb_constants?: Partial<Record<ProductConstantKey, number>>;
     }) => {
       const insertData = {
         name: data.name,
