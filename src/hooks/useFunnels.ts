@@ -125,6 +125,9 @@ export function useNextFunnelFirstStage(currentFunnelId: string) {
   const currentFunnel = funnels.find(f => f.id === currentFunnelId);
   if (!currentFunnel) return { nextFunnel: null, firstStage: null };
 
+  // If current funnel has auto_create_next = false, don't create next opportunity
+  if (!currentFunnel.auto_create_next) return { nextFunnel: null, firstStage: null };
+
   const nextFunnel = funnels.find(f => f.order_position === currentFunnel.order_position + 1);
   if (!nextFunnel) return { nextFunnel: null, firstStage: null };
 
