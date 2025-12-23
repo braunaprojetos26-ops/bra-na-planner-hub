@@ -16,6 +16,7 @@ export interface Opportunity {
   temperature: OpportunityTemperature | null;
   notes: string | null;
   proposal_value: number | null;
+  total_contract_value?: number | null;
   created_by: string;
   created_at: string;
   updated_at: string;

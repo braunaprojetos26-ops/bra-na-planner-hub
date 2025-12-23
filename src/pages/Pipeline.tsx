@@ -354,7 +354,19 @@ export default function Pipeline() {
                               </Tooltip>
                             </TooltipProvider>
                           </div>
-                          {opportunity.proposal_value ? (
+                          {(opportunity.status === 'won' && opportunity.total_contract_value) ? (
+                            <div className="flex items-center gap-1 text-green-600 font-medium">
+                              <Banknote className="w-3.5 h-3.5" />
+                              <span>
+                                {new Intl.NumberFormat('pt-BR', { 
+                                  style: 'currency', 
+                                  currency: 'BRL',
+                                  notation: 'compact',
+                                  maximumFractionDigits: 1
+                                }).format(opportunity.total_contract_value)}
+                              </span>
+                            </div>
+                          ) : opportunity.proposal_value ? (
                             <div className="flex items-center gap-1 text-accent font-medium">
                               <Banknote className="w-3.5 h-3.5" />
                               <span>
