@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,12 +7,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { StarRating } from '@/components/ui/star-rating';
 import { useFunnels, useFunnelStages } from '@/hooks/useFunnels';
 import { useContacts } from '@/hooks/useContacts';
 import { useCreateOpportunity } from '@/hooks/useOpportunities';
+import { requiresProposalValue } from '@/lib/proposalStageValidation';
 import type { OpportunityFormData, OpportunityTemperature } from '@/types/opportunities';
 
 const formSchema = z.object({
@@ -22,6 +24,7 @@ const formSchema = z.object({
   qualification: z.coerce.number().min(1).max(5).optional(),
   temperature: z.enum(['cold', 'warm', 'hot']).optional(),
   notes: z.string().optional(),
+  proposal_value: z.string().optional(),
 });
 
 interface NewOpportunityModalProps {
@@ -52,11 +55,19 @@ export function NewOpportunityModal({
       qualification: undefined,
       temperature: undefined,
       notes: '',
+      proposal_value: '',
     },
   });
 
+  const selectedStageId = form.watch('current_stage_id');
+
+  // Check if current selection requires proposal value
+  const showProposalField = selectedFunnelId && stages && selectedStageId
+    ? requiresProposalValue(selectedStageId, selectedFunnelId, stages)
+    : false;
+
   // Reset form when modal opens with new defaults
-  useState(() => {
+  useEffect(() => {
     if (open) {
       form.reset({
         contact_id: defaultContactId || '',
@@ -65,12 +76,26 @@ export function NewOpportunityModal({
         qualification: undefined,
         temperature: undefined,
         notes: '',
+        proposal_value: '',
       });
       setSelectedFunnelId(defaultFunnelId || '');
     }
-  });
+  }, [open, defaultContactId, defaultFunnelId, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Parse proposal value if provided
+    let proposalValue: number | undefined;
+    if (values.proposal_value) {
+      proposalValue = parseFloat(values.proposal_value.replace(/[^\d.,]/g, '').replace(',', '.'));
+      if (isNaN(proposalValue)) proposalValue = undefined;
+    }
+
+    // Validate proposal value is required for Proposta Feita+ stages
+    if (showProposalField && (!proposalValue || proposalValue <= 0)) {
+      form.setError('proposal_value', { message: 'Informe o valor da proposta' });
+      return;
+    }
+
     const data: OpportunityFormData = {
       contact_id: values.contact_id,
       current_funnel_id: values.current_funnel_id,
@@ -78,6 +103,7 @@ export function NewOpportunityModal({
       qualification: values.qualification,
       temperature: values.temperature as OpportunityTemperature,
       notes: values.notes || undefined,
+      proposal_value: proposalValue,
     };
 
     await createOpportunity.mutateAsync(data);
@@ -237,6 +263,32 @@ export function NewOpportunityModal({
                 </FormItem>
               )}
             />
+
+            {/* Proposal Value - only shown for Proposta Feita+ stages */}
+            {showProposalField && (
+              <FormField
+                control={form.control}
+                name="proposal_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor da Proposta (R$) *</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                          R$
+                        </span>
+                        <Input
+                          placeholder="0,00"
+                          className="pl-10"
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Notes */}
             <FormField

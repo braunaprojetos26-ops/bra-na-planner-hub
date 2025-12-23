@@ -607,6 +607,7 @@ export type Database = {
           lost_from_stage_id: string | null
           lost_reason_id: string | null
           notes: string | null
+          proposal_value: number | null
           qualification: number | null
           stage_entered_at: string
           status: Database["public"]["Enums"]["contact_status"]
@@ -625,6 +626,7 @@ export type Database = {
           lost_from_stage_id?: string | null
           lost_reason_id?: string | null
           notes?: string | null
+          proposal_value?: number | null
           qualification?: number | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["contact_status"]
@@ -643,6 +645,7 @@ export type Database = {
           lost_from_stage_id?: string | null
           lost_reason_id?: string | null
           notes?: string | null
+          proposal_value?: number | null
           qualification?: number | null
           stage_entered_at?: string
           status?: Database["public"]["Enums"]["contact_status"]
