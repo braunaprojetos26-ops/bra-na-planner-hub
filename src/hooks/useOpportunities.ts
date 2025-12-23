@@ -31,7 +31,8 @@ export function useOpportunities(funnelId?: string, status?: 'active' | 'lost' |
           ),
           current_stage:funnel_stages!opportunities_current_stage_id_fkey(*),
           current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name, generates_contract, contract_prompt_text),
-          lost_reason:lost_reasons(*)
+          lost_reason:lost_reasons(*),
+          contracts(contract_value)
         `)
         .order('stage_entered_at', { ascending: false });
 
@@ -47,8 +48,17 @@ export function useOpportunities(funnelId?: string, status?: 'active' | 'lost' |
 
       if (error) throw error;
 
-      // Filter by contact owner when impersonating
-      let opportunities = data as Opportunity[];
+      // Filter by contact owner when impersonating and calculate contract totals
+      let opportunities = (data || []).map(opp => {
+        // Calculate total contract value
+        const contracts = (opp as any).contracts || [];
+        const total_contract_value = contracts.reduce((sum: number, c: { contract_value: number }) => sum + (c.contract_value || 0), 0);
+        return {
+          ...opp,
+          total_contract_value: total_contract_value > 0 ? total_contract_value : null,
+        };
+      }) as Opportunity[];
+      
       if (targetUserId) {
         opportunities = opportunities.filter(o => o.contact?.owner_id === targetUserId);
       }
