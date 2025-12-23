@@ -55,6 +55,113 @@ export type Database = {
           },
         ]
       }
+      client_plan_meetings: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          meeting_id: string | null
+          meeting_number: number
+          plan_id: string
+          scheduled_date: string
+          status: string
+          theme: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          meeting_id?: string | null
+          meeting_number: number
+          plan_id: string
+          scheduled_date: string
+          status?: string
+          theme: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          meeting_id?: string | null
+          meeting_number?: number
+          plan_id?: string
+          scheduled_date?: string
+          status?: string
+          theme?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_plan_meetings_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plan_meetings_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "client_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_plans: {
+        Row: {
+          contact_id: string
+          contract_value: number
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          notes: string | null
+          owner_id: string
+          start_date: string
+          status: string
+          total_meetings: number
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          contract_value: number
+          created_at?: string
+          created_by: string
+          end_date: string
+          id?: string
+          notes?: string | null
+          owner_id: string
+          start_date: string
+          status?: string
+          total_meetings: number
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          contract_value?: number
+          created_at?: string
+          created_by?: string
+          end_date?: string
+          id?: string
+          notes?: string | null
+          owner_id?: string
+          start_date?: string
+          status?: string
+          total_meetings?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_plans_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_history: {
         Row: {
           action: string
