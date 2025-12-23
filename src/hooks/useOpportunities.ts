@@ -142,7 +142,13 @@ export function useCreateOpportunity() {
       const { data: opportunity, error } = await supabase
         .from('opportunities')
         .insert({
-          ...data,
+          contact_id: data.contact_id,
+          current_funnel_id: data.current_funnel_id,
+          current_stage_id: data.current_stage_id,
+          qualification: data.qualification,
+          temperature: data.temperature,
+          notes: data.notes,
+          proposal_value: data.proposal_value,
           created_by: user?.id,
         })
         .select()
@@ -186,19 +192,28 @@ export function useMoveOpportunityStage() {
       opportunityId, 
       fromStageId, 
       toStageId,
-      notes 
+      notes,
+      proposalValue 
     }: { 
       opportunityId: string; 
       fromStageId: string; 
       toStageId: string;
       notes?: string;
+      proposalValue?: number;
     }) => {
+      const updateData: Record<string, unknown> = {
+        current_stage_id: toStageId,
+        stage_entered_at: new Date().toISOString(),
+      };
+
+      // Include proposal_value if provided
+      if (proposalValue !== undefined) {
+        updateData.proposal_value = proposalValue;
+      }
+
       const { error } = await supabase
         .from('opportunities')
-        .update({
-          current_stage_id: toStageId,
-          stage_entered_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', opportunityId);
 
       if (error) throw error;
@@ -223,6 +238,41 @@ export function useMoveOpportunityStage() {
     onError: (error: Error) => {
       toast({ 
         title: 'Erro ao mover oportunidade', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+}
+
+export function useUpdateProposalValue() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      opportunityId, 
+      proposalValue 
+    }: { 
+      opportunityId: string; 
+      proposalValue: number | null;
+    }) => {
+      const { error } = await supabase
+        .from('opportunities')
+        .update({ proposal_value: proposalValue })
+        .eq('id', opportunityId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunity', variables.opportunityId] });
+      toast({ title: 'Valor da proposta atualizado!' });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Erro ao atualizar valor', 
         description: error.message,
         variant: 'destructive' 
       });

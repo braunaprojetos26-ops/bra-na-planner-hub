@@ -14,6 +14,8 @@ import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
+import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
+import { movingToProposalStage } from '@/lib/proposalStageValidation';
 import type { Opportunity } from '@/types/opportunities';
 import type { FunnelStage } from '@/types/contacts';
 
@@ -48,6 +50,15 @@ export default function Pipeline() {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [draggedOpportunityId, setDraggedOpportunityId] = useState<string | null>(null);
+  
+  // State for proposal value modal
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [pendingStageMove, setPendingStageMove] = useState<{
+    opportunityId: string;
+    fromStageId: string;
+    toStageId: string;
+    stageName: string;
+  } | null>(null);
 
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const { data: stages } = useFunnelStages(selectedFunnelId);
@@ -123,10 +134,29 @@ export default function Pipeline() {
 
   const handleDrop = async (e: React.DragEvent, toStageId: string) => {
     e.preventDefault();
-    if (!draggedOpportunityId) return;
+    if (!draggedOpportunityId || !stages) return;
 
     const opportunity = opportunities?.find(o => o.id === draggedOpportunityId);
     if (!opportunity || opportunity.current_stage_id === toStageId) {
+      setDraggedOpportunityId(null);
+      return;
+    }
+
+    const toStage = stages.find(s => s.id === toStageId);
+
+    // Check if moving to a stage that requires proposal value
+    const needsProposalValue = movingToProposalStage(toStageId, selectedFunnelId, stages);
+    const hasProposalValue = opportunity.proposal_value != null && opportunity.proposal_value > 0;
+
+    if (needsProposalValue && !hasProposalValue) {
+      // Show modal to capture proposal value
+      setPendingStageMove({
+        opportunityId: draggedOpportunityId,
+        fromStageId: opportunity.current_stage_id,
+        toStageId,
+        stageName: toStage?.name || 'Proposta Feita',
+      });
+      setShowProposalModal(true);
       setDraggedOpportunityId(null);
       return;
     }
@@ -138,6 +168,20 @@ export default function Pipeline() {
     });
 
     setDraggedOpportunityId(null);
+  };
+
+  const handleProposalValueConfirm = async (proposalValue: number) => {
+    if (!pendingStageMove) return;
+
+    await moveStage.mutateAsync({
+      opportunityId: pendingStageMove.opportunityId,
+      fromStageId: pendingStageMove.fromStageId,
+      toStageId: pendingStageMove.toStageId,
+      proposalValue,
+    });
+
+    setShowProposalModal(false);
+    setPendingStageMove(null);
   };
 
   const getSlaStatus = (opportunity: Opportunity, stage: FunnelStage) => {
@@ -387,6 +431,17 @@ export default function Pipeline() {
         open={showNewOpportunityModal}
         onOpenChange={setShowNewOpportunityModal}
         defaultFunnelId={selectedFunnelId}
+      />
+
+      <ProposalValueModal
+        open={showProposalModal}
+        onOpenChange={(open) => {
+          setShowProposalModal(open);
+          if (!open) setPendingStageMove(null);
+        }}
+        onConfirm={handleProposalValueConfirm}
+        isLoading={moveStage.isPending}
+        stageName={pendingStageMove?.stageName}
       />
     </div>
   );

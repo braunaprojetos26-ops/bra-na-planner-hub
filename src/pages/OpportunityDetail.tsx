@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Phone, Mail, User, History, MessageSquare, RotateCcw, XCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, User, History, MessageSquare, RotateCcw, XCircle, CheckCircle, DollarSign, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useOpportunity, useOpportunityHistory } from '@/hooks/useOpportunities';
+import { useOpportunity, useOpportunityHistory, useUpdateProposalValue } from '@/hooks/useOpportunities';
 import { useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { FunnelStagesProgress } from '@/components/opportunities/FunnelStagesProgress';
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
@@ -17,8 +17,10 @@ import { ReactivateOpportunityModal } from '@/components/opportunities/Reactivat
 import { WonWithContractModal } from '@/components/opportunities/WonWithContractModal';
 import { OpportunityMeetingsSection } from '@/components/opportunities/OpportunityMeetingsSection';
 import { OpportunityMeetingMinutesSection } from '@/components/opportunities/OpportunityMeetingMinutesSection';
+import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { useMoveOpportunityStage } from '@/hooks/useOpportunities';
+import { isInProposalStage, movingToProposalStage } from '@/lib/proposalStageValidation';
 
 const temperatureColors: Record<string, string> = {
   cold: 'bg-blue-100 text-blue-800',
@@ -93,22 +95,67 @@ export default function OpportunityDetail() {
   const [showReactivateModal, setShowReactivateModal] = useState(false);
   const [showWonModal, setShowWonModal] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showEditProposalModal, setShowEditProposalModal] = useState(false);
+  const [showProposalModalForStage, setShowProposalModalForStage] = useState(false);
+  const [pendingStageId, setPendingStageId] = useState<string | null>(null);
 
   const { data: opportunity, isLoading: opportunityLoading } = useOpportunity(opportunityId || '');
   const { data: history, isLoading: historyLoading } = useOpportunityHistory(opportunityId || '');
   const { data: stages } = useFunnelStages(opportunity?.current_funnel_id);
   const { nextFunnel, firstStage: nextFirstStage } = useNextFunnelFirstStage(opportunity?.current_funnel_id || '');
   const moveStage = useMoveOpportunityStage();
+  const updateProposalValue = useUpdateProposalValue();
 
   const handleStageChange = async (newStageId: string) => {
-    if (!opportunity || isReadOnly) return;
+    if (!opportunity || isReadOnly || !stages) return;
     
+    // Check if moving to a stage that requires proposal value
+    const needsProposalValue = movingToProposalStage(newStageId, opportunity.current_funnel_id, stages);
+    const hasProposalValue = opportunity.proposal_value != null && opportunity.proposal_value > 0;
+
+    if (needsProposalValue && !hasProposalValue) {
+      // Show modal to capture proposal value
+      setPendingStageId(newStageId);
+      setShowProposalModalForStage(true);
+      return;
+    }
+
     await moveStage.mutateAsync({
       opportunityId: opportunity.id,
       fromStageId: opportunity.current_stage_id,
       toStageId: newStageId,
     });
   };
+
+  const handleProposalValueConfirmForStage = async (proposalValue: number) => {
+    if (!opportunity || !pendingStageId) return;
+
+    await moveStage.mutateAsync({
+      opportunityId: opportunity.id,
+      fromStageId: opportunity.current_stage_id,
+      toStageId: pendingStageId,
+      proposalValue,
+    });
+
+    setShowProposalModalForStage(false);
+    setPendingStageId(null);
+  };
+
+  const handleUpdateProposalValue = async (proposalValue: number) => {
+    if (!opportunity) return;
+
+    await updateProposalValue.mutateAsync({
+      opportunityId: opportunity.id,
+      proposalValue,
+    });
+
+    setShowEditProposalModal(false);
+  };
+
+  // Check if user can clear proposal value (not in Proposta Feita+ stages)
+  const canClearProposalValue = opportunity && stages
+    ? !isInProposalStage(opportunity.current_stage_id, opportunity.current_funnel_id, stages)
+    : true;
 
   const handleMarkWon = () => {
     if (!opportunity) return;
@@ -251,6 +298,37 @@ export default function OpportunityDetail() {
               } 
             />
             <InfoItem label="Responsável" value={opportunity.contact?.owner?.full_name || 'Não atribuído'} />
+          </CardContent>
+        </Card>
+
+        {/* Proposal Value Card */}
+        <Card>
+          <CardHeader className="pb-1 pt-3">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <DollarSign className="w-3 h-3 text-accent" />
+                Valor da Proposta
+              </span>
+              {!isReadOnly && opportunity.status === 'active' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowEditProposalModal(true)}
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3">
+            {opportunity.proposal_value ? (
+              <p className="text-lg font-semibold text-accent">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(opportunity.proposal_value)}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Não informado</p>
+            )}
           </CardContent>
         </Card>
 
@@ -430,6 +508,28 @@ export default function OpportunityDetail() {
           onSuccess={handleWonSuccess}
         />
       )}
+
+      {/* Proposal Value Modal for stage change */}
+      <ProposalValueModal
+        open={showProposalModalForStage}
+        onOpenChange={(open) => {
+          setShowProposalModalForStage(open);
+          if (!open) setPendingStageId(null);
+        }}
+        onConfirm={handleProposalValueConfirmForStage}
+        isLoading={moveStage.isPending}
+        stageName={pendingStageId && stages ? stages.find(s => s.id === pendingStageId)?.name : undefined}
+      />
+
+      {/* Edit Proposal Value Modal */}
+      <ProposalValueModal
+        open={showEditProposalModal}
+        onOpenChange={setShowEditProposalModal}
+        onConfirm={handleUpdateProposalValue}
+        isLoading={updateProposalValue.isPending}
+        currentValue={opportunity.proposal_value}
+        stageName="Editar Valor"
+      />
     </div>
   );
 }

@@ -15,6 +15,7 @@ export interface Opportunity {
   qualification: number | null;
   temperature: OpportunityTemperature | null;
   notes: string | null;
+  proposal_value: number | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -79,4 +80,5 @@ export interface OpportunityFormData {
   qualification?: number;
   temperature?: OpportunityTemperature;
   notes?: string;
+  proposal_value?: number;
 }
