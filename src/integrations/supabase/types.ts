@@ -882,6 +882,62 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          daily_reminder_sent_at: string | null
+          description: string | null
+          id: string
+          opportunity_id: string
+          reminder_sent_at: string | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["task_status"]
+          task_type: Database["public"]["Enums"]["task_type"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          daily_reminder_sent_at?: string | null
+          description?: string | null
+          id?: string
+          opportunity_id: string
+          reminder_sent_at?: string | null
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["task_status"]
+          task_type: Database["public"]["Enums"]["task_type"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          daily_reminder_sent_at?: string | null
+          description?: string | null
+          id?: string
+          opportunity_id?: string
+          reminder_sent_at?: string | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          task_type?: Database["public"]["Enums"]["task_type"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_hierarchy: {
         Row: {
           created_at: string
@@ -959,6 +1015,16 @@ export type Database = {
     Enums: {
       app_role: "planejador" | "lider" | "supervisor" | "gerente" | "superadmin"
       contact_status: "active" | "lost" | "won"
+      task_status: "pending" | "completed" | "overdue"
+      task_type:
+        | "call"
+        | "email"
+        | "meeting"
+        | "follow_up"
+        | "proposal"
+        | "document"
+        | "whatsapp"
+        | "other"
       user_position:
         | "planejador_financeiro"
         | "planejador_prime"
@@ -1099,6 +1165,17 @@ export const Constants = {
     Enums: {
       app_role: ["planejador", "lider", "supervisor", "gerente", "superadmin"],
       contact_status: ["active", "lost", "won"],
+      task_status: ["pending", "completed", "overdue"],
+      task_type: [
+        "call",
+        "email",
+        "meeting",
+        "follow_up",
+        "proposal",
+        "document",
+        "whatsapp",
+        "other",
+      ],
       user_position: [
         "planejador_financeiro",
         "planejador_prime",
