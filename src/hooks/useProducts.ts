@@ -103,6 +103,7 @@ export function useProducts(includeInactive = false) {
         custom_fields: (p.custom_fields || []) as unknown as ProductCustomField[],
         pb_variables: (p.pb_variables || []) as ContractVariableKey[],
         pb_constants: (p.pb_constants || {}) as Partial<Record<ProductConstantKey, number>>,
+        is_partner_product: p.is_partner_product ?? false,
       })) as Product[];
     },
   });
