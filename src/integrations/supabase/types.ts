@@ -818,6 +818,7 @@ export type Database = {
           has_validity: boolean
           id: string
           is_active: boolean
+          is_partner_product: boolean
           name: string
           order_position: number
           partner_name: string | null
@@ -838,6 +839,7 @@ export type Database = {
           has_validity?: boolean
           id?: string
           is_active?: boolean
+          is_partner_product?: boolean
           name: string
           order_position?: number
           partner_name?: string | null
@@ -858,6 +860,7 @@ export type Database = {
           has_validity?: boolean
           id?: string
           is_active?: boolean
+          is_partner_product?: boolean
           name?: string
           order_position?: number
           partner_name?: string | null
