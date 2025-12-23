@@ -98,9 +98,9 @@ export default function Pipeline() {
     return filtered;
   }, [opportunities, selectedStatus, selectedOwnerId]);
 
-  // Separate active and lost opportunities from filtered list
-  const activeOpportunities = useMemo(() => 
-    filteredOpportunities.filter(o => o.status === 'active'), 
+  // Separate active, won and lost opportunities from filtered list
+  const activeAndWonOpportunities = useMemo(() => 
+    filteredOpportunities.filter(o => o.status === 'active' || o.status === 'won'), 
     [filteredOpportunities]
   );
   
@@ -109,14 +109,14 @@ export default function Pipeline() {
     [filteredOpportunities]
   );
 
-  // Group opportunities by stage
+  // Group opportunities by stage (include active and won)
   const opportunitiesByStage = useMemo(() => {
     const grouped: Record<string, Opportunity[]> = {};
     stages?.forEach(stage => {
-      grouped[stage.id] = activeOpportunities.filter(o => o.current_stage_id === stage.id);
+      grouped[stage.id] = activeAndWonOpportunities.filter(o => o.current_stage_id === stage.id);
     });
     return grouped;
-  }, [stages, activeOpportunities]);
+  }, [stages, activeAndWonOpportunities]);
 
   const handleDragStart = (e: React.DragEvent, opportunityId: string) => {
     if (isReadOnly) {
