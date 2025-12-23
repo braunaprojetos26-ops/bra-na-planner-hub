@@ -10,7 +10,8 @@ import {
   Bot,
   Building2,
   FileText,
-  Package
+  Package,
+  CheckSquare
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +33,7 @@ const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Contatos', url: '/contacts', icon: Users },
   { title: 'Negociações', url: '/pipeline', icon: Kanban },
+  { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { title: 'Contratos', url: '/contracts', icon: FileText },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
