@@ -11,7 +11,8 @@ import {
   Building2,
   FileText,
   Package,
-  CheckSquare
+  CheckSquare,
+  Briefcase
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Contatos', url: '/contacts', icon: Users },
   { title: 'Negociações', url: '/pipeline', icon: Kanban },
+  { title: 'Clientes', url: '/clients', icon: Briefcase },
   { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { title: 'Contratos', url: '/contracts', icon: FileText },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
