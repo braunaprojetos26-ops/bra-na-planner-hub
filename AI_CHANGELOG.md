@@ -9,3 +9,9 @@ Este arquivo registra as alterações feitas pela IA Antigravity para garantir a
 - **Mudanças**:
     - Criação deste arquivo `AI_CHANGELOG.md` para rastreamento de progresso IA-a-IA.
     - Criação do `AI_GUIDE.md` com o mapeamento arquitetural e regras de negócio para sincronização entre IAs.
+- **Execução Local**: Dependências instaladas e servidor iniciado em `http://localhost:8080/`.
+- **Validação de Proposta**: Implementada obrigatoriedade de valor da proposta ao mover negociações para a etapa "Proposta Feita".
+    - Adicionada coluna `proposal_value` na tabela `opportunities`.
+    - Criado componente `ProposalValueModal` para captura de dados.
+    - Interceptador de drop adicionado em `Pipeline.tsx`.
+    - Hooks e tipos atualizados para suportar o novo campo.

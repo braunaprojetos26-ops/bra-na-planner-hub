@@ -13,6 +13,7 @@ export interface Opportunity {
   lost_reason_id: string | null;
   converted_at: string | null;
   qualification: number | null;
+  proposal_value: number | null;
   temperature: OpportunityTemperature | null;
   notes: string | null;
   created_by: string;

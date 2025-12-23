@@ -143,6 +143,7 @@ export function useCreateOpportunity() {
         .from('opportunities')
         .insert({
           ...data,
+          proposal_value: (data as any).proposal_value || null,
           created_by: user?.id,
         })
         .select()
@@ -167,10 +168,10 @@ export function useCreateOpportunity() {
       toast({ title: 'Oportunidade criada com sucesso!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: 'Erro ao criar oportunidade', 
+      toast({
+        title: 'Erro ao criar oportunidade',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     },
   });
@@ -182,22 +183,25 @@ export function useMoveOpportunityStage() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ 
-      opportunityId, 
-      fromStageId, 
+    mutationFn: async ({
+      opportunityId,
+      fromStageId,
       toStageId,
-      notes 
-    }: { 
-      opportunityId: string; 
-      fromStageId: string; 
+      notes,
+      proposal_value
+    }: {
+      opportunityId: string;
+      fromStageId: string;
       toStageId: string;
       notes?: string;
+      proposal_value?: number;
     }) => {
       const { error } = await supabase
         .from('opportunities')
         .update({
           current_stage_id: toStageId,
           stage_entered_at: new Date().toISOString(),
+          proposal_value: proposal_value !== undefined ? proposal_value : undefined,
         })
         .eq('id', opportunityId);
 
@@ -221,10 +225,10 @@ export function useMoveOpportunityStage() {
       toast({ title: 'Oportunidade movida!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: 'Erro ao mover oportunidade', 
+      toast({
+        title: 'Erro ao mover oportunidade',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     },
   });
@@ -236,13 +240,13 @@ export function useMarkOpportunityLost() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ 
-      opportunityId, 
+    mutationFn: async ({
+      opportunityId,
       fromStageId,
       lostReasonId,
-      notes 
-    }: { 
-      opportunityId: string; 
+      notes
+    }: {
+      opportunityId: string;
       fromStageId: string;
       lostReasonId: string;
       notes?: string;
@@ -274,10 +278,10 @@ export function useMarkOpportunityLost() {
       toast({ title: 'Oportunidade marcada como perdida' });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: 'Erro ao marcar como perdida', 
+      toast({
+        title: 'Erro ao marcar como perdida',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     },
   });
@@ -289,13 +293,13 @@ export function useMarkOpportunityWon() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ 
-      opportunityId, 
+    mutationFn: async ({
+      opportunityId,
       fromStageId,
       nextFunnelId,
-      nextStageId 
-    }: { 
-      opportunityId: string; 
+      nextStageId
+    }: {
+      opportunityId: string;
       fromStageId: string;
       nextFunnelId?: string;
       nextStageId?: string;
@@ -369,10 +373,10 @@ export function useMarkOpportunityWon() {
       }
     },
     onError: (error: Error) => {
-      toast({ 
-        title: 'Erro ao marcar como ganha', 
+      toast({
+        title: 'Erro ao marcar como ganha',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     },
   });
@@ -384,12 +388,12 @@ export function useReactivateOpportunity() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ 
-      opportunityId, 
+    mutationFn: async ({
+      opportunityId,
       toStageId,
-      notes 
-    }: { 
-      opportunityId: string; 
+      notes
+    }: {
+      opportunityId: string;
       toStageId: string;
       notes?: string;
     }) => {
@@ -422,10 +426,10 @@ export function useReactivateOpportunity() {
       toast({ title: 'Oportunidade reativada!' });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: 'Erro ao reativar oportunidade', 
+      toast({
+        title: 'Erro ao reativar oportunidade',
         description: error.message,
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     },
   });

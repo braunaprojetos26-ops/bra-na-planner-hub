@@ -14,6 +14,7 @@ import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
+import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
 import type { Opportunity } from '@/types/opportunities';
 import type { FunnelStage } from '@/types/contacts';
 
@@ -48,6 +49,13 @@ export default function Pipeline() {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [draggedOpportunityId, setDraggedOpportunityId] = useState<string | null>(null);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [pendingTransition, setPendingTransition] = useState<{
+    opportunityId: string;
+    fromStageId: string;
+    toStageId: string;
+    contactName: string;
+  } | null>(null);
 
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const { data: stages } = useFunnelStages(selectedFunnelId);
@@ -69,12 +77,12 @@ export default function Pipeline() {
   // Filter opportunities by status and owner
   const filteredOpportunities = useMemo(() => {
     let filtered = opportunities || [];
-    
+
     // Filter by status
     if (selectedStatus !== 'all') {
       filtered = filtered.filter(o => o.status === selectedStatus);
     }
-    
+
     // Filter by owner
     if (selectedOwnerId !== 'all') {
       if (selectedOwnerId === 'unassigned') {
@@ -83,18 +91,18 @@ export default function Pipeline() {
         filtered = filtered.filter(o => o.contact?.owner_id === selectedOwnerId);
       }
     }
-    
+
     return filtered;
   }, [opportunities, selectedStatus, selectedOwnerId]);
 
   // Separate active and lost opportunities from filtered list
-  const activeOpportunities = useMemo(() => 
-    filteredOpportunities.filter(o => o.status === 'active'), 
+  const activeOpportunities = useMemo(() =>
+    filteredOpportunities.filter(o => o.status === 'active'),
     [filteredOpportunities]
   );
-  
-  const lostOpportunities = useMemo(() => 
-    filteredOpportunities.filter(o => o.status === 'lost'), 
+
+  const lostOpportunities = useMemo(() =>
+    filteredOpportunities.filter(o => o.status === 'lost'),
     [filteredOpportunities]
   );
 
@@ -131,6 +139,20 @@ export default function Pipeline() {
       return;
     }
 
+    // Intercept transition to "Proposta Feita"
+    const targetStage = stages?.find(s => s.id === toStageId);
+    if (targetStage?.name.toLowerCase() === 'proposta feita') {
+      setPendingTransition({
+        opportunityId: draggedOpportunityId,
+        fromStageId: opportunity.current_stage_id,
+        toStageId,
+        contactName: opportunity.contact?.full_name || 'Contato',
+      });
+      setShowProposalModal(true);
+      setDraggedOpportunityId(null);
+      return;
+    }
+
     await moveStage.mutateAsync({
       opportunityId: draggedOpportunityId,
       fromStageId: opportunity.current_stage_id,
@@ -138,6 +160,25 @@ export default function Pipeline() {
     });
 
     setDraggedOpportunityId(null);
+  };
+
+  const handleProposalConfirm = async (proposalValue: number) => {
+    if (!pendingTransition) return;
+
+    await moveStage.mutateAsync({
+      opportunityId: pendingTransition.opportunityId,
+      fromStageId: pendingTransition.fromStageId,
+      toStageId: pendingTransition.toStageId,
+      proposal_value: proposalValue,
+    });
+
+    setShowProposalModal(false);
+    setPendingTransition(null);
+  };
+
+  const handleProposalCancel = () => {
+    setShowProposalModal(false);
+    setPendingTransition(null);
   };
 
   const getSlaStatus = (opportunity: Opportunity, stage: FunnelStage) => {
@@ -274,10 +315,9 @@ export default function Pipeline() {
                     return (
                       <Card
                         key={opportunity.id}
-                        className={`p-3 cursor-pointer hover:shadow-md transition-shadow ${
-                          slaStatus === 'overdue' ? 'ring-2 ring-destructive' : 
+                        className={`p-3 cursor-pointer hover:shadow-md transition-shadow ${slaStatus === 'overdue' ? 'ring-2 ring-destructive' :
                           slaStatus === 'warning' ? 'ring-2 ring-warning' : ''
-                        }`}
+                          }`}
                         draggable={!isReadOnly}
                         onDragStart={e => handleDragStart(e, opportunity.id)}
                         onClick={() => navigate(`/pipeline/${opportunity.id}`)}
@@ -290,7 +330,7 @@ export default function Pipeline() {
                             <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                           )}
                         </div>
-                        
+
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           {opportunity.qualification ? (
                             <div className="flex items-center gap-1">
@@ -350,7 +390,7 @@ export default function Pipeline() {
                           {opportunity.contact?.full_name}
                         </p>
                       </div>
-                      
+
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <div className="flex items-center gap-2">
                           {opportunity.qualification && (
@@ -387,6 +427,14 @@ export default function Pipeline() {
         open={showNewOpportunityModal}
         onOpenChange={setShowNewOpportunityModal}
         defaultFunnelId={selectedFunnelId}
+      />
+
+      <ProposalValueModal
+        open={showProposalModal}
+        onOpenChange={setShowProposalModal}
+        onConfirm={handleProposalConfirm}
+        onCancel={handleProposalCancel}
+        contactName={pendingTransition?.contactName}
       />
     </div>
   );
