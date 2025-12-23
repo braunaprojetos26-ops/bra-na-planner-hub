@@ -10,8 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { useOpportunityHistory } from '@/hooks/useOpportunities';
 import { MarkLostModal } from './MarkLostModal';
 import { ReactivateOpportunityModal } from './ReactivateOpportunityModal';
+import { OpportunityTasksSection } from './OpportunityTasksSection';
 import type { Opportunity } from '@/types/opportunities';
-
 interface OpportunityDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -134,6 +134,11 @@ export function OpportunityDetailModal({ open, onOpenChange, opportunity, onMark
                   )}
                 </div>
               )}
+
+              <Separator />
+
+              {/* Tasks Section */}
+              <OpportunityTasksSection opportunityId={opportunity.id} />
 
               <Separator />
 
