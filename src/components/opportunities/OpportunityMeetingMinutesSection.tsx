@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, ChevronDown, ChevronUp, Trash2, Eye, Calendar, User, Link2 } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Trash2, Eye, Calendar, User, Link2, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMeetingMinutes, useDeleteMeetingMinute } from '@/hooks/useMeetingMinutes';
 import type { MeetingMinute } from '@/types/meetingMinutes';
+import { NewMeetingMinuteModal } from './NewMeetingMinuteModal';
 
 interface OpportunityMeetingMinutesSectionProps {
   contactId: string;
@@ -61,6 +62,7 @@ export function OpportunityMeetingMinutesSection({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMinute, setSelectedMinute] = useState<MeetingMinute | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [newMinuteModalOpen, setNewMinuteModalOpen] = useState(false);
 
   const handleView = (minute: MeetingMinute) => {
     setSelectedMinute(minute);
@@ -99,21 +101,34 @@ export function OpportunityMeetingMinutesSection({
     <>
       <Card>
         <CardHeader className="pb-1 pt-3">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <FileText className="w-3 h-3 text-accent" />
-            Atas de Reunião
-            {minutes && minutes.length > 0 && (
-              <Badge variant="secondary" className="ml-2 text-[10px]">
-                {minutes.length}
-              </Badge>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <FileText className="w-3 h-3 text-accent" />
+              Atas de Reunião
+              {minutes && minutes.length > 0 && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  {minutes.length}
+                </Badge>
+              )}
+              {linkedCount > 0 && (
+                <Badge variant="outline" className="text-[10px] bg-primary/10">
+                  <Link2 className="w-2.5 h-2.5 mr-0.5" />
+                  {linkedCount} desta negociação
+                </Badge>
+              )}
+            </CardTitle>
+            {!isReadOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setNewMinuteModalOpen(true)}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Nova Ata
+              </Button>
             )}
-            {linkedCount > 0 && (
-              <Badge variant="outline" className="text-[10px] bg-primary/10">
-                <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                {linkedCount} desta negociação
-              </Badge>
-            )}
-          </CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="pb-3">
           {!minutes?.length ? (
@@ -208,6 +223,14 @@ export function OpportunityMeetingMinutesSection({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* New Meeting Minute Modal */}
+      <NewMeetingMinuteModal
+        open={newMinuteModalOpen}
+        onOpenChange={setNewMinuteModalOpen}
+        contactId={contactId}
+        contactName={contactName}
+      />
     </>
   );
 }
