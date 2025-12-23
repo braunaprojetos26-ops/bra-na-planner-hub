@@ -1,9 +1,14 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Kanban, TrendingUp, Clock } from 'lucide-react';
+import { Users, Kanban, TrendingUp, Banknote } from 'lucide-react';
+import { useContacts } from '@/hooks/useContacts';
+import { useOpportunities } from '@/hooks/useOpportunities';
+import { useMemo } from 'react';
 
 export default function Index() {
   const { profile, role } = useAuth();
+  const { data: contacts, isLoading: contactsLoading } = useContacts();
+  const { data: opportunities, isLoading: opportunitiesLoading } = useOpportunities();
 
   const roleLabels: Record<string, string> = {
     planejador: 'Planejador',
@@ -11,6 +16,40 @@ export default function Index() {
     supervisor: 'Supervisor',
     gerente: 'Gerente',
     superadmin: 'Administrador',
+  };
+
+  // Calculate metrics
+  const metrics = useMemo(() => {
+    const totalContacts = contacts?.length || 0;
+    const activeOpportunities = opportunities?.filter(o => o.status === 'active') || [];
+    const wonOpportunities = opportunities?.filter(o => o.status === 'won') || [];
+    
+    // Total proposal value of active opportunities
+    const totalProposalValue = activeOpportunities.reduce((sum, opp) => {
+      return sum + (opp.proposal_value || 0);
+    }, 0);
+
+    // Conversion rate (won / total closed)
+    const closedOpportunities = opportunities?.filter(o => o.status === 'won' || o.status === 'lost') || [];
+    const conversionRate = closedOpportunities.length > 0 
+      ? (wonOpportunities.length / closedOpportunities.length) * 100 
+      : 0;
+
+    return {
+      totalContacts,
+      activeOpportunities: activeOpportunities.length,
+      totalProposalValue,
+      conversionRate,
+    };
+  }, [contacts, opportunities]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL',
+      notation: value >= 1000000 ? 'compact' : 'standard',
+      maximumFractionDigits: value >= 1000000 ? 1 : 2
+    }).format(value);
   };
 
   return (
@@ -31,59 +70,52 @@ export default function Index() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Em breve</p>
+            <div className="text-2xl font-bold">
+              {contactsLoading ? '...' : metrics.totalContacts}
+            </div>
+            <p className="text-xs text-muted-foreground">contatos cadastrados</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Oportunidades</CardTitle>
+            <CardTitle className="text-sm font-medium">Negociações Ativas</CardTitle>
             <Kanban className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Em breve</p>
+            <div className="text-2xl font-bold">
+              {opportunitiesLoading ? '...' : metrics.activeOpportunities}
+            </div>
+            <p className="text-xs text-muted-foreground">em andamento</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-accent/5 border-accent/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Propostas em Aberto</CardTitle>
+            <Banknote className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-accent">
+              {opportunitiesLoading ? '...' : formatCurrency(metrics.totalProposalValue)}
+            </div>
+            <p className="text-xs text-muted-foreground">valor total em negociação</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversão</CardTitle>
+            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Em breve</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Em breve</p>
+            <div className="text-2xl font-bold">
+              {opportunitiesLoading ? '...' : `${metrics.conversionRate.toFixed(0)}%`}
+            </div>
+            <p className="text-xs text-muted-foreground">das negociações fechadas</p>
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Fase 1 Concluída ✓</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground space-y-2">
-          <p>Sistema base implementado com sucesso:</p>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>Autenticação (login/signup)</li>
-            <li>5 níveis hierárquicos com RLS</li>
-            <li>Layout SaaS com sidebar escura</li>
-            <li>Primeiro usuário vira Superadmin</li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
 }
