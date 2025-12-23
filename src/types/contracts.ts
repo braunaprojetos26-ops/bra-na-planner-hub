@@ -31,6 +31,7 @@ export interface Product {
   has_validity: boolean;
   requires_payment_type: boolean;
   is_active: boolean;
+  is_partner_product: boolean;
   order_position: number;
   created_by: string | null;
   created_at: string;
