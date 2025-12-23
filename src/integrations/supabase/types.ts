@@ -405,6 +405,7 @@ export type Database = {
       }
       funnels: {
         Row: {
+          auto_create_next: boolean
           contract_prompt_text: string | null
           created_at: string
           generates_contract: boolean
@@ -415,6 +416,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_create_next?: boolean
           contract_prompt_text?: string | null
           created_at?: string
           generates_contract?: boolean
@@ -425,6 +427,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_create_next?: boolean
           contract_prompt_text?: string | null
           created_at?: string
           generates_contract?: boolean
