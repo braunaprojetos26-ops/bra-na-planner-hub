@@ -19,6 +19,7 @@ import AdminPipelines from "./pages/AdminPipelines";
 import AdminAssistant from "./pages/AdminAssistant";
 import AdminProducts from "./pages/AdminProducts";
 import Contracts from "./pages/Contracts";
+import Tasks from "./pages/Tasks";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/contacts/:contactId" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
               <Route path="/pipeline" element={<ProtectedPage><Pipeline /></ProtectedPage>} />
               <Route path="/pipeline/:opportunityId" element={<ProtectedPage><OpportunityDetail /></ProtectedPage>} />
+              <Route path="/tasks" element={<ProtectedPage><Tasks /></ProtectedPage>} />
               <Route path="/structure" element={<ProtectedPage><Structure /></ProtectedPage>} />
               <Route path="/admin/pipelines" element={<ProtectedPage><AdminPipelines /></ProtectedPage>} />
               <Route path="/admin/products" element={<ProtectedPage><AdminProducts /></ProtectedPage>} />

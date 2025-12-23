@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Task, TaskFormData, TaskStatus } from '@/types/tasks';
+import { Task, TaskFormData, TaskStatus, TaskType } from '@/types/tasks';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { toast } from 'sonner';
 
@@ -185,6 +185,72 @@ export function useUserTasks() {
       if (error) throw error;
 
       // Update overdue status
+      const now = new Date();
+      return (data || []).map(task => {
+        if (task.status === 'pending' && new Date(task.scheduled_at) < now) {
+          return { ...task, status: 'overdue' as TaskStatus };
+        }
+        return task;
+      }) as unknown as Task[];
+    },
+  });
+}
+
+export interface TaskFilters {
+  startDate?: Date;
+  endDate?: Date;
+  taskType?: TaskType | 'all';
+  status?: TaskStatus | 'all';
+}
+
+export function useAllUserTasks(filters?: TaskFilters) {
+  const { actingUser } = useActingUser();
+  const targetUserId = actingUser?.id;
+
+  return useQuery({
+    queryKey: ['all-user-tasks', targetUserId, filters],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const userId = targetUserId || user.id;
+
+      let query = supabase
+        .from('tasks')
+        .select(`
+          *,
+          opportunity:opportunities(
+            id,
+            contact:contacts(id, full_name),
+            current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
+          )
+        `)
+        .eq('created_by', userId)
+        .order('scheduled_at', { ascending: true });
+
+      // Apply date filters
+      if (filters?.startDate) {
+        query = query.gte('scheduled_at', filters.startDate.toISOString());
+      }
+      if (filters?.endDate) {
+        query = query.lte('scheduled_at', filters.endDate.toISOString());
+      }
+
+      // Apply task type filter
+      if (filters?.taskType && filters.taskType !== 'all') {
+        query = query.eq('task_type', filters.taskType);
+      }
+
+      // Apply status filter
+      if (filters?.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Update overdue status for pending tasks
       const now = new Date();
       return (data || []).map(task => {
         if (task.status === 'pending' && new Date(task.scheduled_at) < now) {
