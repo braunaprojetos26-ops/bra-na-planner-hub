@@ -1,12 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { differenceInHours } from 'date-fns';
-import { User, AlertTriangle, Plus, Star, LayoutGrid, List, Banknote } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Plus, LayoutGrid, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFunnels, useFunnelStages } from '@/hooks/useFunnels';
 import { useOpportunities, useMoveOpportunityStage } from '@/hooks/useOpportunities';
@@ -15,6 +13,7 @@ import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
 import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
+import { OpportunityKanbanCard } from '@/components/opportunities/OpportunityKanbanCard';
 import { movingToProposalStage } from '@/lib/proposalStageValidation';
 import type { Opportunity } from '@/types/opportunities';
 import type { FunnelStage } from '@/types/contacts';
@@ -316,71 +315,13 @@ export default function Pipeline() {
                   {opportunitiesByStage[stage.id]?.map(opportunity => {
                     const slaStatus = getSlaStatus(opportunity, stage);
                     return (
-                      <Card
+                      <OpportunityKanbanCard
                         key={opportunity.id}
-                        className={`p-3 cursor-pointer hover:shadow-md transition-shadow ${
-                          slaStatus === 'overdue' ? 'ring-2 ring-destructive' : 
-                          slaStatus === 'warning' ? 'ring-2 ring-warning' : ''
-                        }`}
-                        draggable={!isReadOnly}
-                        onDragStart={e => handleDragStart(e, opportunity.id)}
-                        onClick={() => navigate(`/pipeline/${opportunity.id}`)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="font-medium text-sm line-clamp-1">
-                            {opportunity.contact?.full_name}
-                          </p>
-                          {opportunity.contact?.owner_id === null && (
-                            <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            {opportunity.qualification ? (
-                              <div className="flex items-center gap-0.5">
-                                <span>{opportunity.qualification}</span>
-                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              </div>
-                            ) : null}
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <User className="w-3.5 h-3.5 cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{opportunity.contact?.owner?.full_name || 'Sem responsável'}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                          {(opportunity.status === 'won' && opportunity.total_contract_value) ? (
-                            <div className="flex items-center gap-1 text-green-600 font-medium">
-                              <Banknote className="w-3.5 h-3.5" />
-                              <span>
-                                {new Intl.NumberFormat('pt-BR', { 
-                                  style: 'currency', 
-                                  currency: 'BRL',
-                                  notation: 'compact',
-                                  maximumFractionDigits: 1
-                                }).format(opportunity.total_contract_value)}
-                              </span>
-                            </div>
-                          ) : opportunity.proposal_value ? (
-                            <div className="flex items-center gap-1 text-accent font-medium">
-                              <Banknote className="w-3.5 h-3.5" />
-                              <span>
-                                {new Intl.NumberFormat('pt-BR', { 
-                                  style: 'currency', 
-                                  currency: 'BRL',
-                                  notation: 'compact',
-                                  maximumFractionDigits: 1
-                                }).format(opportunity.proposal_value)}
-                              </span>
-                            </div>
-                          ) : null}
-                        </div>
-                      </Card>
+                        opportunity={opportunity}
+                        slaStatus={slaStatus}
+                        isReadOnly={isReadOnly}
+                        onDragStart={handleDragStart}
+                      />
                     );
                   })}
 
@@ -409,41 +350,13 @@ export default function Pipeline() {
               <ScrollArea className="flex-1 rounded-b-lg border-2 border-t-0 border-destructive/30 bg-destructive/5">
                 <div className="p-2 space-y-2 min-h-[200px]">
                   {lostOpportunities.map(opportunity => (
-                    <Card
+                    <OpportunityKanbanCard
                       key={opportunity.id}
-                      className="p-3 cursor-pointer hover:shadow-md transition-shadow opacity-80"
-                      onClick={() => navigate(`/pipeline/${opportunity.id}`)}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="font-medium text-sm line-clamp-1">
-                          {opportunity.contact?.full_name}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          {opportunity.qualification && (
-                            <div className="flex items-center gap-1">
-                              <span>{opportunity.qualification}</span>
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                            </div>
-                          )}
-                          {opportunity.lost_reason && (
-                            <span className="text-destructive">{opportunity.lost_reason.name}</span>
-                          )}
-                        </div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <User className="w-4 h-4 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{opportunity.contact?.owner?.full_name || 'Sem responsável'}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </Card>
+                      opportunity={opportunity}
+                      slaStatus={null}
+                      isReadOnly={true}
+                      onDragStart={() => {}}
+                    />
                   ))}
                 </div>
               </ScrollArea>
