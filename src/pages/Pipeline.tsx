@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { differenceInHours } from 'date-fns';
-import { User, AlertTriangle, Plus, Star, LayoutGrid, List } from 'lucide-react';
+import { User, AlertTriangle, Plus, Star, LayoutGrid, List, Banknote } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -336,24 +336,37 @@ export default function Pipeline() {
                         </div>
                         
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          {opportunity.qualification ? (
-                            <div className="flex items-center gap-1">
-                              <span>{opportunity.qualification}</span>
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          <div className="flex items-center gap-2">
+                            {opportunity.qualification ? (
+                              <div className="flex items-center gap-0.5">
+                                <span>{opportunity.qualification}</span>
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              </div>
+                            ) : null}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <User className="w-3.5 h-3.5 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{opportunity.contact?.owner?.full_name || 'Sem responsável'}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          {opportunity.proposal_value ? (
+                            <div className="flex items-center gap-1 text-accent font-medium">
+                              <Banknote className="w-3.5 h-3.5" />
+                              <span>
+                                {new Intl.NumberFormat('pt-BR', { 
+                                  style: 'currency', 
+                                  currency: 'BRL',
+                                  notation: 'compact',
+                                  maximumFractionDigits: 1
+                                }).format(opportunity.proposal_value)}
+                              </span>
                             </div>
-                          ) : (
-                            <div />
-                          )}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <User className="w-4 h-4 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{opportunity.contact?.owner?.full_name || 'Sem responsável'}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          ) : null}
                         </div>
                       </Card>
                     );
