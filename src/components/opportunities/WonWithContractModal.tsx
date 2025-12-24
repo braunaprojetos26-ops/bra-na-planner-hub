@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { PartyPopper, Plus, Trash2, Calculator, Package } from 'lucide-react';
+import { PartyPopper, Plus, Trash2, Calculator, Package, Users } from 'lucide-react';
+import { format, addMonths } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -26,6 +29,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useFunnelSuggestedProducts } from '@/hooks/useFunnelProducts';
 import { useCreateContract } from '@/hooks/useContracts';
 import { useMarkOpportunityWon } from '@/hooks/useOpportunities';
+import { useCreateClientPlan } from '@/hooks/useClients';
 import {
   CONTRACT_VARIABLES,
   calculatePBsWithFormula,
@@ -34,6 +38,7 @@ import {
 import type { Opportunity } from '@/types/opportunities';
 import type { Product, ContractFormData, PaymentType } from '@/types/contracts';
 import type { Funnel, FunnelStage } from '@/types/contacts';
+import type { ClientPlanFormData } from '@/types/clients';
 
 interface ContractEntry {
   id: string;
@@ -65,14 +70,20 @@ export function WonWithContractModal({
   nextStage,
   onSuccess,
 }: WonWithContractModalProps) {
-  const [step, setStep] = useState<'ask' | 'contracts'>('ask');
+  const [step, setStep] = useState<'ask' | 'contracts' | 'client_plan'>('ask');
   const [contracts, setContracts] = useState<ContractEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdContracts, setCreatedContracts] = useState<Array<{ id: string; product_name: string; is_planning: boolean; contact_id: string; contract_value: number }>>([]);
+  const [clientPlanConfig, setClientPlanConfig] = useState<{ total_meetings: '4' | '6' | '9' | '12'; start_date: Date }>({
+    total_meetings: '12',
+    start_date: new Date(),
+  });
 
   const { data: allProducts } = useProducts();
   const { data: suggestedProducts } = useFunnelSuggestedProducts(opportunity.current_funnel_id);
   const createContract = useCreateContract();
   const markWon = useMarkOpportunityWon();
+  const createClientPlan = useCreateClientPlan();
 
   const funnelGeneratesContract = opportunity.current_funnel?.generates_contract ?? false;
   const promptText = opportunity.current_funnel?.contract_prompt_text || 'Essa negociação gerou algum contrato?';
@@ -219,7 +230,9 @@ export function WonWithContractModal({
         nextStageId: nextStage?.id,
       });
 
-      // Then create all contracts
+      // Then create all contracts and track which are planning contracts
+      const createdContractsList: Array<{ id: string; product_name: string; is_planning: boolean; contact_id: string; contract_value: number }> = [];
+      
       for (const contract of validContracts) {
         if (!contract.product) continue;
 
@@ -241,20 +254,78 @@ export function WonWithContractModal({
           custom_data: contract.variable_values as Record<string, unknown>,
         };
 
-        await createContract.mutateAsync({
+        const result = await createContract.mutateAsync({
           contactId: opportunity.contact_id,
           opportunityId: opportunity.id,
           product: contract.product,
           data,
           calculatedPbs: contract.calculated_pbs,
         });
+
+        // Check if this is a planning product (by name containing "Planejamento")
+        const isPlanningProduct = contract.product.name.toLowerCase().includes('planejamento');
+        createdContractsList.push({
+          id: result.id,
+          product_name: contract.product.name,
+          is_planning: isPlanningProduct,
+          contact_id: opportunity.contact_id,
+          contract_value: contractValue,
+        });
       }
 
+      // Check if any contract is a planning product
+      const planningContracts = createdContractsList.filter(c => c.is_planning);
+      
+      if (planningContracts.length > 0) {
+        // Show client plan configuration step
+        setCreatedContracts(createdContractsList);
+        setStep('client_plan');
+        setIsSubmitting(false);
+      } else {
+        onOpenChange(false);
+        onSuccess?.();
+      }
+    } catch (error) {
+      setIsSubmitting(false);
+      throw error;
+    }
+  };
+
+  const handleCreateClientPlan = async () => {
+    const planningContract = createdContracts.find(c => c.is_planning);
+    if (!planningContract) return;
+
+    setIsSubmitting(true);
+    try {
+      const count = parseInt(clientPlanConfig.total_meetings);
+      const monthInterval = Math.floor(12 / count);
+      
+      const meetings = Array.from({ length: count }, (_, i) => ({
+        meeting_number: i + 1,
+        theme: `Reunião ${i + 1}`,
+        scheduled_date: format(addMonths(clientPlanConfig.start_date, i * monthInterval), 'yyyy-MM-dd'),
+      }));
+
+      const formData: ClientPlanFormData & { contract_id: string } = {
+        contact_id: planningContract.contact_id,
+        contract_value: planningContract.contract_value,
+        total_meetings: count as 4 | 6 | 9 | 12,
+        start_date: format(clientPlanConfig.start_date, 'yyyy-MM-dd'),
+        meetings,
+        contract_id: planningContract.id,
+      };
+
+      await createClientPlan.mutateAsync(formData);
       onOpenChange(false);
       onSuccess?.();
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSkipClientPlan = () => {
+    onOpenChange(false);
+    onSuccess?.();
   };
 
   const formatCurrency = (value: number) => {
@@ -529,4 +600,86 @@ export function WonWithContractModal({
       </DialogContent>
     </Dialog>
   );
+
+  // Step 3: Client plan configuration (only shown if a planning product was sold)
+  if (step === 'client_plan') {
+    const planningContract = createdContracts.find(c => c.is_planning);
+    
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Configurar Cliente de Planejamento
+            </DialogTitle>
+            <DialogDescription>
+              Foi identificado um contrato de Planejamento Financeiro. Deseja configurar o cronograma de reuniões agora?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Alert>
+              <AlertDescription>
+                <p className="font-medium">Contrato: {planningContract?.product_name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Valor: {formatCurrency(planningContract?.contract_value || 0)}
+                </p>
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Número de Reuniões</Label>
+                <RadioGroup
+                  value={clientPlanConfig.total_meetings}
+                  onValueChange={(v) => setClientPlanConfig(prev => ({ ...prev, total_meetings: v as '4' | '6' | '9' | '12' }))}
+                  className="flex gap-4"
+                >
+                  {['4', '6', '9', '12'].map((num) => (
+                    <div key={num} className="flex items-center space-x-2">
+                      <RadioGroupItem value={num} id={`plan-meetings-${num}`} />
+                      <Label htmlFor={`plan-meetings-${num}`}>{num}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Data de Início</Label>
+                <Input
+                  type="date"
+                  value={format(clientPlanConfig.start_date, 'yyyy-MM-dd')}
+                  onChange={(e) => setClientPlanConfig(prev => ({ ...prev, start_date: new Date(e.target.value) }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  As reuniões serão distribuídas ao longo de 12 meses
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSkipClientPlan}
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              Configurar depois
+            </Button>
+            <Button
+              onClick={handleCreateClientPlan}
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? 'Criando...' : 'Criar Cliente'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return null;
 }

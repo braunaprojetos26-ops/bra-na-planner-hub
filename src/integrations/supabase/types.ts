@@ -112,6 +112,7 @@ export type Database = {
       client_plans: {
         Row: {
           contact_id: string
+          contract_id: string | null
           contract_value: number
           created_at: string
           created_by: string
@@ -126,6 +127,7 @@ export type Database = {
         }
         Insert: {
           contact_id: string
+          contract_id?: string | null
           contract_value: number
           created_at?: string
           created_by: string
@@ -140,6 +142,7 @@ export type Database = {
         }
         Update: {
           contact_id?: string
+          contract_id?: string | null
           contract_value?: number
           created_at?: string
           created_by?: string
@@ -158,6 +161,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plans_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
         ]
@@ -1028,12 +1038,13 @@ export type Database = {
       tasks: {
         Row: {
           completed_at: string | null
+          contact_id: string | null
           created_at: string
           created_by: string
           daily_reminder_sent_at: string | null
           description: string | null
           id: string
-          opportunity_id: string
+          opportunity_id: string | null
           reminder_sent_at: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["task_status"]
@@ -1043,12 +1054,13 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          contact_id?: string | null
           created_at?: string
           created_by: string
           daily_reminder_sent_at?: string | null
           description?: string | null
           id?: string
-          opportunity_id: string
+          opportunity_id?: string | null
           reminder_sent_at?: string | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["task_status"]
@@ -1058,12 +1070,13 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          contact_id?: string | null
           created_at?: string
           created_by?: string
           daily_reminder_sent_at?: string | null
           description?: string | null
           id?: string
-          opportunity_id?: string
+          opportunity_id?: string | null
           reminder_sent_at?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["task_status"]
@@ -1072,6 +1085,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_opportunity_id_fkey"
             columns: ["opportunity_id"]

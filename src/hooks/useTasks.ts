@@ -4,6 +4,11 @@ import { Task, TaskFormData, TaskStatus, TaskType } from '@/types/tasks';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { toast } from 'sonner';
 
+export interface TaskFormDataExtended extends Omit<TaskFormData, 'opportunity_id'> {
+  opportunity_id?: string;
+  contact_id?: string;
+}
+
 export function useTasks(opportunityId?: string) {
   const { actingUser } = useActingUser();
   const queryClient = useQueryClient();
@@ -51,7 +56,7 @@ export function useTasks(opportunityId?: string) {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (formData: TaskFormData) => {
+    mutationFn: async (formData: TaskFormDataExtended) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
@@ -59,6 +64,8 @@ export function useTasks(opportunityId?: string) {
         .from('tasks')
         .insert({
           ...formData,
+          opportunity_id: formData.opportunity_id || null,
+          contact_id: formData.contact_id || null,
           created_by: user.id,
         })
         .select()
@@ -69,6 +76,7 @@ export function useTasks(opportunityId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
       toast.success('Tarefa criada com sucesso!');
     },
     onError: (error) => {
@@ -259,5 +267,75 @@ export function useAllUserTasks(filters?: TaskFilters) {
         return task;
       }) as unknown as Task[];
     },
+  });
+}
+
+// Hook para buscar tarefas de um contato (via opportunity_id ou contact_id direto)
+export function useContactTasks(contactId: string) {
+  return useQuery({
+    queryKey: ['contact-tasks', contactId],
+    queryFn: async () => {
+      // Buscar tarefas vinculadas diretamente ao contato
+      const { data: directTasks, error: directError } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          opportunity:opportunities(
+            id,
+            contact:contacts(id, full_name),
+            current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
+          )
+        `)
+        .eq('contact_id', contactId)
+        .order('scheduled_at', { ascending: true });
+
+      if (directError) throw directError;
+
+      // Buscar tarefas via oportunidades do contato
+      const { data: opportunities } = await supabase
+        .from('opportunities')
+        .select('id')
+        .eq('contact_id', contactId);
+
+      const opportunityIds = opportunities?.map(o => o.id) || [];
+
+      let opportunityTasks: Task[] = [];
+      if (opportunityIds.length > 0) {
+        const { data: oppTasks, error: oppError } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            opportunity:opportunities(
+              id,
+              contact:contacts(id, full_name),
+              current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
+            )
+          `)
+          .in('opportunity_id', opportunityIds)
+          .order('scheduled_at', { ascending: true });
+
+        if (oppError) throw oppError;
+        opportunityTasks = oppTasks as unknown as Task[];
+      }
+
+      // Combinar e remover duplicatas
+      const allTasks = [...(directTasks || []), ...opportunityTasks];
+      const uniqueTasks = allTasks.reduce((acc: Task[], task) => {
+        if (!acc.find(t => t.id === task.id)) {
+          acc.push(task as unknown as Task);
+        }
+        return acc;
+      }, []);
+
+      // Atualizar status de overdue
+      const now = new Date();
+      return uniqueTasks.map(task => {
+        if (task.status === 'pending' && new Date(task.scheduled_at) < now) {
+          return { ...task, status: 'overdue' as TaskStatus };
+        }
+        return task;
+      });
+    },
+    enabled: !!contactId,
   });
 }
