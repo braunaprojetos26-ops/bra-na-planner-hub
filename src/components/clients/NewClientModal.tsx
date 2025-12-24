@@ -36,17 +36,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Calendar as CalendarIcon, Info } from 'lucide-react';
+import { Check, ChevronsUpDown, Calendar as CalendarIcon, Info, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { useContacts } from '@/hooks/useContacts';
-import { useClients, useCreateClientPlan } from '@/hooks/useClients';
+import { useEligibleContactsForClient, useCreateClientPlan } from '@/hooks/useClients';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ClientPlanFormData } from '@/types/clients';
 
 const formSchema = z.object({
-  contact_id: z.string().min(1, 'Selecione um contato'),
-  contract_value: z.number().min(1, 'Valor obrigatório'),
+  contract_id: z.string().min(1, 'Selecione um contrato'),
   total_meetings: z.enum(['4', '6', '9', '12']),
   start_date: z.date({ required_error: 'Data de início obrigatória' }),
 });
@@ -57,22 +55,14 @@ interface NewClientModalProps {
 }
 
 export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
-  const [openContactSelect, setOpenContactSelect] = useState(false);
-  const { data: contacts } = useContacts();
-  const { data: existingClients } = useClients();
+  const [openContractSelect, setOpenContractSelect] = useState(false);
+  const { data: eligibleContracts, isLoading: isLoadingContracts } = useEligibleContactsForClient();
   const createClient = useCreateClientPlan();
-
-  // Filter out contacts that already have an active plan
-  const existingClientContactIds = new Set(
-    existingClients?.filter(c => c.status === 'active').map(c => c.contact_id) || []
-  );
-  const availableContacts = contacts?.filter(c => !existingClientContactIds.has(c.id)) || [];
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      contact_id: '',
-      contract_value: 0,
+      contract_id: '',
       total_meetings: '12',
       start_date: new Date(),
     },
@@ -82,8 +72,7 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
   useEffect(() => {
     if (open) {
       form.reset({
-        contact_id: '',
-        contract_value: 0,
+        contract_id: '',
         total_meetings: '12',
         start_date: new Date(),
       });
@@ -92,6 +81,9 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
 
   const totalMeetings = form.watch('total_meetings');
   const startDate = form.watch('start_date');
+  const selectedContractId = form.watch('contract_id');
+
+  const selectedContract = eligibleContracts?.find(c => c.id === selectedContractId);
 
   // Generate placeholder meetings automatically
   const generateMeetings = (count: number, startDate: Date) => {
@@ -105,15 +97,18 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!selectedContract) return;
+
     const count = parseInt(values.total_meetings);
     const meetings = generateMeetings(count, values.start_date);
 
-    const formData: ClientPlanFormData = {
-      contact_id: values.contact_id,
-      contract_value: values.contract_value,
+    const formData: ClientPlanFormData & { contract_id: string } = {
+      contact_id: selectedContract.contact_id,
+      contract_value: selectedContract.contract_value,
       total_meetings: count as 4 | 6 | 9 | 12,
       start_date: format(values.start_date, 'yyyy-MM-dd'),
       meetings,
+      contract_id: selectedContract.id,
     };
 
     await createClient.mutateAsync(formData);
@@ -121,13 +116,20 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
     onOpenChange(false);
   };
 
-  const selectedContact = availableContacts.find(c => c.id === form.watch('contact_id'));
-
   // Preview of auto-generated meetings
   const previewMeetings = generateMeetings(
     parseInt(totalMeetings),
     startDate || new Date()
   );
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  const hasNoEligibleContracts = !isLoadingContracts && (!eligibleContracts || eligibleContracts.length === 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,193 +141,208 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Contact Selection */}
-            <FormField
-              control={form.control}
-              name="contact_id"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Selecionar Contato *</FormLabel>
-                  <Popover open={openContactSelect} onOpenChange={setOpenContactSelect}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            'justify-between',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {selectedContact?.full_name || 'Buscar contato...'}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar contato..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhum contato encontrado.</CommandEmpty>
-                          <CommandGroup>
-                            {availableContacts.map((contact) => (
-                              <CommandItem
-                                key={contact.id}
-                                value={contact.full_name}
-                                onSelect={() => {
-                                  field.onChange(contact.id);
-                                  setOpenContactSelect(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    contact.id === field.value ? 'opacity-100' : 'opacity-0'
-                                  )}
-                                />
-                                <div>
-                                  <p>{contact.full_name}</p>
-                                  <p className="text-xs text-muted-foreground">{contact.phone}</p>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {hasNoEligibleContracts ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <p className="font-medium mb-2">Nenhum contrato elegível encontrado</p>
+              <p className="text-sm">
+                Para cadastrar um cliente, primeiro finalize uma venda de Planejamento Financeiro no Pipeline. 
+                O contrato precisa estar ativo e ainda não vinculado a um cliente.
+              </p>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Contract Selection */}
+              <FormField
+                control={form.control}
+                name="contract_id"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Selecionar Contrato de Planejamento *</FormLabel>
+                    <Popover open={openContractSelect} onOpenChange={setOpenContractSelect}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              'justify-between',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {selectedContract?.contact?.full_name || 'Buscar contrato...'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar por nome do contato..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum contrato encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {eligibleContracts?.map((contract) => (
+                                <CommandItem
+                                  key={contract.id}
+                                  value={contract.contact?.full_name || ''}
+                                  onSelect={() => {
+                                    field.onChange(contract.id);
+                                    setOpenContractSelect(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      contract.id === field.value ? 'opacity-100' : 'opacity-0'
+                                    )}
+                                  />
+                                  <div className="flex-1">
+                                    <p>{contract.contact?.full_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {contract.product?.name} • {formatCurrency(contract.contract_value)}
+                                    </p>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      Apenas contratos de Planejamento Financeiro ativos e sem plano vinculado
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Contract Value */}
-            <FormField
-              control={form.control}
-              name="contract_value"
-              render={({ field }) => (
+              {/* Contract Value (Read-only) */}
+              {selectedContract && (
                 <FormItem>
-                  <FormLabel>Valor do Contrato (R$) *</FormLabel>
+                  <FormLabel>Valor do Contrato</FormLabel>
                   <FormControl>
                     <Input
-                      type="number"
-                      placeholder="12000"
-                      {...field}
-                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                      value={formatCurrency(selectedContract.contract_value)}
+                      disabled
+                      className="bg-muted"
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Number of Meetings */}
-            <FormField
-              control={form.control}
-              name="total_meetings"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número de Reuniões *</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex gap-4"
-                    >
-                      {['4', '6', '9', '12'].map((num) => (
-                        <div key={num} className="flex items-center space-x-2">
-                          <RadioGroupItem value={num} id={`meetings-${num}`} />
-                          <Label htmlFor={`meetings-${num}`}>{num}</Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Start Date */}
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data de Início *</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value
-                            ? format(field.value, 'dd/MM/yyyy')
-                            : 'Selecione uma data'}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
                   <FormDescription>
-                    A primeira reunião será marcada para esta data
+                    Valor do contrato reportado na venda (não editável)
                   </FormDescription>
-                  <FormMessage />
                 </FormItem>
               )}
-            />
 
-            {/* Preview of auto-generated meetings */}
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <p className="font-medium mb-2">Reuniões serão criadas automaticamente:</p>
-                <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                  {previewMeetings.slice(0, 4).map((m) => (
-                    <div key={m.meeting_number} className="flex justify-between">
-                      <span>{m.theme}</span>
-                      <span className="text-muted-foreground">
-                        {format(new Date(m.scheduled_date), 'dd/MM/yyyy')}
-                      </span>
-                    </div>
-                  ))}
-                  {previewMeetings.length > 4 && (
-                    <p className="text-muted-foreground italic">
-                      +{previewMeetings.length - 4} reuniões...
-                    </p>
-                  )}
-                </div>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Você poderá editar os temas e datas depois.
-                </p>
-              </AlertDescription>
-            </Alert>
+              {/* Number of Meetings */}
+              <FormField
+                control={form.control}
+                name="total_meetings"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número de Reuniões *</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex gap-4"
+                      >
+                        {['4', '6', '9', '12'].map((num) => (
+                          <div key={num} className="flex items-center space-x-2">
+                            <RadioGroupItem value={num} id={`meetings-${num}`} />
+                            <Label htmlFor={`meetings-${num}`}>{num}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={createClient.isPending}>
-                {createClient.isPending ? 'Cadastrando...' : 'Cadastrar Cliente'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              {/* Start Date */}
+              <FormField
+                control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Data de Início *</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value
+                              ? format(field.value, 'dd/MM/yyyy')
+                              : 'Selecione uma data'}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      A primeira reunião será marcada para esta data
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Preview of auto-generated meetings */}
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium mb-2">Reuniões serão criadas automaticamente:</p>
+                  <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                    {previewMeetings.slice(0, 4).map((m) => (
+                      <div key={m.meeting_number} className="flex justify-between">
+                        <span>{m.theme}</span>
+                        <span className="text-muted-foreground">
+                          {format(new Date(m.scheduled_date), 'dd/MM/yyyy')}
+                        </span>
+                      </div>
+                    ))}
+                    {previewMeetings.length > 4 && (
+                      <p className="text-muted-foreground italic">
+                        +{previewMeetings.length - 4} reuniões...
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Você poderá editar os temas e datas depois.
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={createClient.isPending || !selectedContract}>
+                  {createClient.isPending ? 'Cadastrando...' : 'Cadastrar Cliente'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

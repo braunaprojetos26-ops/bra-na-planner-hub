@@ -41,6 +41,50 @@ export function useClients(status?: ClientPlan['status']) {
   });
 }
 
+// Hook para buscar contatos elegíveis para cliente (com contrato PF ativo, sem plano ativo)
+export function useEligibleContactsForClient() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['eligible-contacts-for-client'],
+    queryFn: async () => {
+      // Buscar contratos de Planejamento Financeiro (pelo nome do produto ou funil de origem)
+      const { data: contracts, error: contractsError } = await supabase
+        .from('contracts')
+        .select(`
+          id,
+          contact_id,
+          contract_value,
+          product:products!inner(id, name),
+          contact:contacts(id, full_name, phone, email)
+        `)
+        .eq('status', 'active')
+        .ilike('product.name', '%Planejamento%');
+
+      if (contractsError) throw contractsError;
+
+      // Buscar planos de cliente ativos
+      const { data: existingPlans, error: plansError } = await supabase
+        .from('client_plans')
+        .select('contact_id, contract_id')
+        .eq('status', 'active');
+
+      if (plansError) throw plansError;
+
+      const existingPlanContactIds = new Set(existingPlans?.map(p => p.contact_id) || []);
+      const usedContractIds = new Set(existingPlans?.map(p => p.contract_id).filter(Boolean) || []);
+
+      // Filtrar contratos que ainda não têm plano vinculado
+      const eligibleContracts = contracts?.filter(c => 
+        !existingPlanContactIds.has(c.contact_id) && !usedContractIds.has(c.id)
+      ) || [];
+
+      return eligibleContracts;
+    },
+    enabled: !!user,
+  });
+}
+
 export function useClientPlan(planId: string) {
   return useQuery({
     queryKey: ['client-plan', planId],
@@ -142,7 +186,7 @@ export function useCreateClientPlan() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: ClientPlanFormData) => {
+    mutationFn: async (data: ClientPlanFormData & { contract_id?: string }) => {
       const endDate = format(addMonths(new Date(data.start_date), 12), 'yyyy-MM-dd');
 
       // Create the plan
@@ -157,6 +201,7 @@ export function useCreateClientPlan() {
           end_date: endDate,
           notes: data.notes || null,
           created_by: user?.id,
+          contract_id: data.contract_id || null,
         })
         .select()
         .single();
@@ -197,6 +242,7 @@ export function useCreateClientPlan() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['client-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['eligible-contacts-for-client'] });
       toast({ title: 'Cliente cadastrado com sucesso!' });
     },
     onError: (error: Error) => {
