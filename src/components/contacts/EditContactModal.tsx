@@ -43,6 +43,14 @@ const formSchema = z.object({
   address: z.string().optional(),
   address_number: z.string().optional(),
   address_complement: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.source === 'Indicação' && !data.referred_by) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Selecione quem indicou este contato',
+      path: ['referred_by'],
+    });
+  }
 });
 
 interface EditContactModalProps {
@@ -282,30 +290,32 @@ export function EditContactModal({ open, onOpenChange, contact }: EditContactMod
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="referred_by"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Indicado por</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um contato" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {ownerContacts?.map(c => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.full_name} - {c.phone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {form.watch('source') === 'Indicação' && (
+                <FormField
+                  control={form.control}
+                  name="referred_by"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Indicado por *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione quem indicou" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ownerContacts?.map(c => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.full_name} - {c.phone}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <FormField
