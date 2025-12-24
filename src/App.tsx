@@ -25,6 +25,9 @@ import ClientDetail from "./pages/ClientDetail";
 import Analytics from "./pages/Analytics";
 import Wiki from "./pages/Wiki";
 import WikiArquivos from "./pages/WikiArquivos";
+import WikiProcessos from "./pages/WikiProcessos";
+import WikiProcessosGerais from "./pages/WikiProcessosGerais";
+import WikiProcessosLideranca from "./pages/WikiProcessosLideranca";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +63,9 @@ const App = () => (
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
               <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
               <Route path="/wiki/arquivos" element={<ProtectedPage><WikiArquivos /></ProtectedPage>} />
+              <Route path="/wiki/processos" element={<ProtectedPage><WikiProcessos /></ProtectedPage>} />
+              <Route path="/wiki/processos/gerais" element={<ProtectedPage><WikiProcessosGerais /></ProtectedPage>} />
+              <Route path="/wiki/processos/lideranca" element={<ProtectedPage><WikiProcessosLideranca /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>

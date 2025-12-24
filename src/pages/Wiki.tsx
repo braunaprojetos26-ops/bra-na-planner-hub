@@ -27,7 +27,7 @@ const timeCards: WikiCard[] = [
   { title: 'Missão, Visão, Valores', description: 'Cultura e propósito da empresa', icon: Flag },
   { title: 'Campanhas Ativas', description: 'Campanhas comerciais em vigor', icon: TrendingUp },
   { title: 'Palestras', description: 'Materiais de palestras e eventos', icon: Presentation },
-  { title: 'Processos - Braúna', description: 'Documentação de processos internos', icon: Cog },
+  { title: 'Processos - Braúna', description: 'Documentação de processos internos', icon: Cog, href: '/wiki/processos' },
 ];
 
 const politicasCards: WikiCard[] = [
