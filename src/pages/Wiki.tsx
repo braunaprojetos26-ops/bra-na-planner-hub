@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { 
   FolderOpen, 
   Megaphone, 
@@ -20,7 +21,7 @@ interface WikiCard {
 }
 
 const timeCards: WikiCard[] = [
-  { title: 'Arquivos', description: 'Central de arquivos da empresa', icon: FolderOpen },
+  { title: 'Arquivos', description: 'Central de arquivos da empresa', icon: FolderOpen, href: '/wiki/arquivos' },
   { title: 'Últimas notícias', description: 'Atualizações e comunicados', icon: Megaphone },
   { title: 'Links Rápidos', description: 'Links úteis e acessos rápidos', icon: Globe },
   { title: 'Missão, Visão, Valores', description: 'Cultura e propósito da empresa', icon: Flag },
@@ -34,11 +35,14 @@ const politicasCards: WikiCard[] = [
   { title: 'Política de benefícios', description: 'Guia de benefícios dos colaboradores', icon: Gift },
 ];
 
-function WikiCardItem({ card }: { card: WikiCard }) {
+function WikiCardItem({ card, onClick }: { card: WikiCard; onClick?: () => void }) {
   const Icon = card.icon;
   
   return (
-    <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 group">
+    <Card 
+      className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 group"
+      onClick={onClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
@@ -55,6 +59,14 @@ function WikiCardItem({ card }: { card: WikiCard }) {
 }
 
 export default function Wiki() {
+  const navigate = useNavigate();
+
+  const handleCardClick = (card: WikiCard) => {
+    if (card.href) {
+      navigate(card.href);
+    }
+  };
+
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
@@ -73,7 +85,11 @@ export default function Wiki() {
         <h2 className="text-lg font-semibold text-foreground border-b pb-2">Time</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {timeCards.map((card) => (
-            <WikiCardItem key={card.title} card={card} />
+            <WikiCardItem 
+              key={card.title} 
+              card={card} 
+              onClick={() => handleCardClick(card)}
+            />
           ))}
         </div>
       </section>
@@ -83,7 +99,11 @@ export default function Wiki() {
         <h2 className="text-lg font-semibold text-foreground border-b pb-2">Políticas</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {politicasCards.map((card) => (
-            <WikiCardItem key={card.title} card={card} />
+            <WikiCardItem 
+              key={card.title} 
+              card={card} 
+              onClick={() => handleCardClick(card)}
+            />
           ))}
         </div>
       </section>
