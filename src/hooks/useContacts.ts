@@ -51,6 +51,21 @@ export function useContact(contactId: string) {
         .maybeSingle();
 
       if (error) throw error;
+      
+      // If there's a referred_by, fetch the referrer contact separately
+      if (data?.referred_by) {
+        const { data: referrer } = await supabase
+          .from('contacts')
+          .select('id, full_name, phone')
+          .eq('id', data.referred_by)
+          .maybeSingle();
+        
+        return {
+          ...data,
+          referred_by_contact: referrer
+        } as Contact;
+      }
+
       return data as Contact | null;
     },
     enabled: !!contactId,
