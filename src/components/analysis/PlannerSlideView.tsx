@@ -134,18 +134,6 @@ export function PlannerSlideView({ profile, userName }: PlannerSlideViewProps) {
         }}
       />
 
-      {/* Decorative square - top left */}
-      <img 
-        src={decorativeSquare} 
-        alt="" 
-        className={cn(
-          "absolute",
-          isFullscreen 
-            ? "top-8 left-8 w-12 h-12" 
-            : "top-4 left-4 w-6 h-6 md:w-8 md:h-8"
-        )}
-      />
-
       {/* Braúna logo - bottom right */}
       <img 
         src={braunaLogo} 
@@ -163,21 +151,54 @@ export function PlannerSlideView({ profile, userName }: PlannerSlideViewProps) {
         'relative z-10 h-full flex flex-col',
         isFullscreen ? 'p-12 md:p-16 lg:p-20' : 'p-6 md:p-8'
       )}>
-        {/* Title - Quem Sou eu? */}
-        <h2 className={cn(
-          "text-white",
-          isFullscreen 
-            ? "text-4xl md:text-5xl lg:text-6xl mb-10 md:mb-14" 
-            : "text-xl md:text-2xl lg:text-3xl mb-6 md:mb-8"
+        {/* Title section with decorative shapes */}
+        <div className={cn(
+          "relative flex items-center",
+          isFullscreen ? "mb-10 md:mb-14" : "mb-6 md:mb-8"
         )}>
-          <span className="font-light">Quem </span>
-          <span className="italic font-medium" style={{ 
-            textDecoration: 'underline',
-            textDecorationColor: '#C9A55A',
-            textUnderlineOffset: '4px',
-          }}>Sou</span>
-          <span className="font-light"> eu?</span>
-        </h2>
+          {/* Decorative shapes container */}
+          <div className={cn(
+            "relative shrink-0",
+            isFullscreen ? "w-20 h-20 md:w-24 md:h-24" : "w-12 h-12 md:w-14 md:h-14"
+          )}>
+            {/* Blue square - larger, with rounded corners and cut corner */}
+            <div 
+              className="absolute inset-0 rounded-lg"
+              style={{
+                backgroundColor: 'rgba(0, 60, 120, 0.9)',
+                border: '2px solid rgba(255,255,255,0.2)',
+                clipPath: 'polygon(0 0, 100% 0, 100% 100%, 15% 100%, 0 85%)',
+              }}
+            />
+            {/* Gold square - smaller, overlapping top-left */}
+            <img 
+              src={decorativeSquare} 
+              alt="" 
+              className={cn(
+                "absolute",
+                isFullscreen 
+                  ? "-top-2 -left-2 w-10 h-10 md:w-12 md:h-12" 
+                  : "-top-1 -left-1 w-6 h-6 md:w-7 md:h-7"
+              )}
+            />
+          </div>
+          
+          {/* Title text - positioned to the right of the blue shape */}
+          <h2 className={cn(
+            "text-white ml-4",
+            isFullscreen 
+              ? "text-4xl md:text-5xl lg:text-6xl" 
+              : "text-xl md:text-2xl lg:text-3xl"
+          )}>
+            <span className="font-light">Quem </span>
+            <span className="italic font-medium" style={{ 
+              textDecoration: 'underline',
+              textDecorationColor: '#C9A55A',
+              textUnderlineOffset: '4px',
+            }}>Sou</span>
+            <span className="font-light"> eu?</span>
+          </h2>
+        </div>
 
         {/* Content grid */}
         <div className={cn(
