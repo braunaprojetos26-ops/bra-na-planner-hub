@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +20,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useLostReasons, useCreateLostReason, useUpdateLostReason } from '@/hooks/useFunnels';
+import { useAllLostReasons, useCreateLostReason, useUpdateLostReason } from '@/hooks/useFunnels';
+import { SortableFunnelList } from '@/components/admin/SortableFunnelList';
 import type { LostReason } from '@/types/contacts';
 
 export default function AdminPipelines() {
-  const { data: lostReasons, isLoading } = useLostReasons();
+  const { data: lostReasons, isLoading } = useAllLostReasons();
   const createReason = useCreateLostReason();
   const updateReason = useUpdateLostReason();
 
@@ -61,13 +62,16 @@ export default function AdminPipelines() {
         <p className="text-muted-foreground">Gerencie funis, etapas e configurações</p>
       </div>
 
+      {/* Funnels Section */}
+      <SortableFunnelList />
+
       {/* Lost Reasons */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Motivos de Perda</CardTitle>
             <CardDescription>
-              Configure os motivos que podem ser selecionados ao marcar um contato como perdido
+              Configure os motivos que podem ser selecionados ao marcar uma oportunidade como perdida
             </CardDescription>
           </div>
           <Button onClick={() => setShowNewModal(true)} className="gap-2">
@@ -113,22 +117,6 @@ export default function AdminPipelines() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Funnels Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Funis</CardTitle>
-          <CardDescription>
-            Os funis e suas etapas são gerenciados pelo sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">
-            Atualmente os funis são configurados diretamente no banco de dados. 
-            Em breve será possível gerenciá-los por aqui.
-          </p>
         </CardContent>
       </Card>
 
