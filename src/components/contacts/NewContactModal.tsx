@@ -81,6 +81,7 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [referrerSearch, setReferrerSearch] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -254,26 +255,50 @@ export function NewContactModal({ open, onOpenChange }: NewContactModalProps) {
                 <FormField
                   control={form.control}
                   name="referred_by"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Indicado por *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione quem indicou" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {ownerContacts?.map(contact => (
-                            <SelectItem key={contact.id} value={contact.id}>
-                              {contact.full_name} - {contact.phone}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const filteredContacts = ownerContacts?.filter(contact =>
+                      contact.full_name.toLowerCase().includes(referrerSearch.toLowerCase()) ||
+                      contact.phone.includes(referrerSearch)
+                    ) ?? [];
+                    const selectedContact = ownerContacts?.find(c => c.id === field.value);
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Indicado por *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione quem indicou">
+                                {selectedContact ? `${selectedContact.full_name}` : 'Selecione quem indicou'}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <div className="px-2 pb-2">
+                              <Input
+                                placeholder="Buscar contato..."
+                                value={referrerSearch}
+                                onChange={(e) => setReferrerSearch(e.target.value)}
+                                className="h-8"
+                              />
+                            </div>
+                            {filteredContacts.length === 0 ? (
+                              <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                                Nenhum contato encontrado
+                              </div>
+                            ) : (
+                              filteredContacts.map(contact => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.full_name} - {contact.phone}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               )}
             </div>
