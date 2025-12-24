@@ -621,6 +621,47 @@ export type Database = {
         }
         Relationships: []
       }
+      institutional_presentations: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_type: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_type?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institutional_presentations_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       lost_reasons: {
         Row: {
           created_at: string
@@ -959,6 +1000,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      planner_profiles: {
+        Row: {
+          career_achievements: string | null
+          certifications: string | null
+          created_at: string
+          education: string | null
+          id: string
+          life_achievements: string | null
+          photo_url: string | null
+          professional_title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_achievements?: string | null
+          certifications?: string | null
+          created_at?: string
+          education?: string | null
+          id?: string
+          life_achievements?: string | null
+          photo_url?: string | null
+          professional_title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_achievements?: string | null
+          certifications?: string | null
+          created_at?: string
+          education?: string | null
+          id?: string
+          life_achievements?: string | null
+          photo_url?: string | null
+          professional_title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planner_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       product_categories: {
         Row: {
