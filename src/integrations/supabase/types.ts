@@ -1006,6 +1006,7 @@ export type Database = {
           career_achievements: string | null
           certifications: string | null
           created_at: string
+          display_name: string | null
           education: string | null
           id: string
           life_achievements: string | null
@@ -1018,6 +1019,7 @@ export type Database = {
           career_achievements?: string | null
           certifications?: string | null
           created_at?: string
+          display_name?: string | null
           education?: string | null
           id?: string
           life_achievements?: string | null
@@ -1030,6 +1032,7 @@ export type Database = {
           career_achievements?: string | null
           certifications?: string | null
           created_at?: string
+          display_name?: string | null
           education?: string | null
           id?: string
           life_achievements?: string | null
