@@ -22,6 +22,7 @@ interface FormData {
   life_achievements: string;
   education: string;
   certifications: string;
+  instagram_handle: string;
 }
 
 export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: PlannerSlideEditorProps) {
@@ -39,6 +40,7 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
       life_achievements: profile?.life_achievements || '',
       education: profile?.education || '',
       certifications: profile?.certifications || '',
+      instagram_handle: '',
     },
   });
 
@@ -129,12 +131,9 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
             <Textarea
               id="career_achievements"
               placeholder="Um atingimento por linha"
-              rows={4}
+              rows={3}
               {...register('career_achievements')}
             />
-            <p className="text-xs text-muted-foreground">
-              Escreva cada conquista em uma linha separada
-            </p>
           </div>
 
           {/* Life achievements */}
@@ -143,12 +142,9 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
             <Textarea
               id="life_achievements"
               placeholder="Um atingimento por linha"
-              rows={4}
+              rows={3}
               {...register('life_achievements')}
             />
-            <p className="text-xs text-muted-foreground">
-              Escreva cada realização em uma linha separada
-            </p>
           </div>
 
           {/* Education */}
@@ -157,7 +153,7 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
             <Textarea
               id="education"
               placeholder="Uma formação por linha"
-              rows={3}
+              rows={2}
               {...register('education')}
             />
           </div>
@@ -168,9 +164,28 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
             <Textarea
               id="certifications"
               placeholder="Uma certificação por linha"
-              rows={3}
+              rows={2}
               {...register('certifications')}
             />
+          </div>
+
+          {/* Instagram */}
+          <div className="space-y-2">
+            <Label htmlFor="instagram_handle">Instagram (opcional)</Label>
+            <Input
+              id="instagram_handle"
+              placeholder="@seuperfil"
+              {...register('instagram_handle')}
+            />
+          </div>
+
+          {/* Limit warning */}
+          <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+            <p className="font-medium mb-1">Limite de exibição</p>
+            <p>
+              O slide exibirá no máximo <strong>8 itens</strong> no total, priorizando: 
+              Formação → Carreira → Certificações → Vida pessoal.
+            </p>
           </div>
 
           {/* Actions */}
