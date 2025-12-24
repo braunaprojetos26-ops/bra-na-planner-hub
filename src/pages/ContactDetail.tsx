@@ -1,20 +1,21 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Pencil, User, MapPin, Globe, FileText, History, MessageSquare, Briefcase, CalendarPlus, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { ArrowLeft, Pencil, User, MapPin, Globe, FileText, History, MessageSquare, Briefcase, CalendarPlus, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useContact, useContactHistory, useUpdateContact } from '@/hooks/useContacts';
 import { useContactOpportunities } from '@/hooks/useContactOpportunities';
+import { useHasAnalysisMeeting } from '@/hooks/useContactAnalysis';
 import { EditContactModal } from '@/components/contacts/EditContactModal';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
 import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
-import { ContactAnalysisSection } from '@/components/analysis/ContactAnalysisSection';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import { useActingUser } from '@/contexts/ActingUserContext';
@@ -140,6 +141,8 @@ export default function ContactDetail() {
     setShowScheduleMeetingModal(true);
   };
 
+  const { hasAnalysisMeeting, isLoading: analysisLoading } = useHasAnalysisMeeting(contactId);
+
   const { data: contact, isLoading: contactLoading } = useContact(contactId || '');
   const { data: history, isLoading: historyLoading } = useContactHistory(contactId || '');
   const { data: opportunities, isLoading: opportunitiesLoading } = useContactOpportunities(contactId || '');
@@ -219,6 +222,35 @@ export default function ContactDetail() {
             <Badge variant="outline" className="text-base font-bold px-3 py-1 border-2 border-accent text-accent">
               {contact.client_code}
             </Badge>
+          )}
+          {hasAnalysisMeeting ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/contacts/${contactId}/analise`)}
+            >
+              <BarChart3 className="w-3 h-3 mr-1.5" />
+              Análise
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    className="opacity-50"
+                  >
+                    <BarChart3 className="w-3 h-3 mr-1.5" />
+                    Análise
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Agende uma reunião de Análise primeiro</p>
+              </TooltipContent>
+            </Tooltip>
           )}
           {!isReadOnly && (
             <>
@@ -349,15 +381,6 @@ export default function ContactDetail() {
       {/* Meeting Minutes Section */}
       {contactId && contact && <MeetingMinutesList contactId={contactId} contactName={contact.full_name} />}
 
-      {/* Analysis Section */}
-      {contactId && contact && (
-        <ContactAnalysisSection
-          contactId={contactId}
-          contactName={contact.full_name}
-          onScheduleAnalysis={handleScheduleAnalysis}
-          isReadOnly={isReadOnly}
-        />
-      )}
 
       {/* Contract Section - Placeholder */}
       <Card>
@@ -482,7 +505,7 @@ export default function ContactDetail() {
                         </>
                       ) : (
                         <>
-                          <Eye className="w-3 h-3 mr-1" />
+                          <ChevronDown className="w-3 h-3 mr-1" />
                           Ver histórico completo ({history.length - 1} {history.length - 1 === 1 ? 'registro' : 'registros'})
                         </>
                       )}

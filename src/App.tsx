@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Contacts from "./pages/Contacts";
 import ContactDetail from "./pages/ContactDetail";
+import ContactAnalysis from "./pages/ContactAnalysis";
 import Pipeline from "./pages/Pipeline";
 import OpportunityDetail from "./pages/OpportunityDetail";
 import Structure from "./pages/Structure";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/" element={<ProtectedPage><Index /></ProtectedPage>} />
               <Route path="/contacts" element={<ProtectedPage><Contacts /></ProtectedPage>} />
               <Route path="/contacts/:contactId" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
+              <Route path="/contacts/:contactId/analise" element={<ProtectedPage><ContactAnalysis /></ProtectedPage>} />
               <Route path="/pipeline" element={<ProtectedPage><Pipeline /></ProtectedPage>} />
               <Route path="/pipeline/:opportunityId" element={<ProtectedPage><OpportunityDetail /></ProtectedPage>} />
               <Route path="/tasks" element={<ProtectedPage><Tasks /></ProtectedPage>} />
