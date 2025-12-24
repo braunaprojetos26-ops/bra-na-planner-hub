@@ -62,6 +62,7 @@ interface ScheduleMeetingModalProps {
   contactName: string;
   opportunityId?: string | null;
   reschedulingMeeting?: Meeting | null;
+  defaultMeetingType?: string;
 }
 
 export function ScheduleMeetingModal({
@@ -71,6 +72,7 @@ export function ScheduleMeetingModal({
   contactName,
   opportunityId: initialOpportunityId,
   reschedulingMeeting,
+  defaultMeetingType,
 }: ScheduleMeetingModalProps) {
   const { toast } = useToast();
   const createMeeting = useCreateMeeting();
@@ -88,7 +90,7 @@ export function ScheduleMeetingModal({
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      meeting_type: '',
+      meeting_type: defaultMeetingType || '',
       duration_minutes: 60,
       allows_companion: false,
       notes: '',
@@ -110,7 +112,14 @@ export function ScheduleMeetingModal({
       setParticipants(reschedulingMeeting.participants || []);
       setSelectedOpportunityId(reschedulingMeeting.opportunity_id || null);
     } else if (open) {
-      // When opening fresh, set initial opportunity if provided
+      // When opening fresh, set initial opportunity if provided and default meeting type
+      form.reset({
+        meeting_type: defaultMeetingType || '',
+        duration_minutes: 60,
+        allows_companion: false,
+        notes: '',
+        time: '',
+      });
       setSelectedOpportunityId(initialOpportunityId || null);
     } else {
       // When closing, reset everything
@@ -124,7 +133,7 @@ export function ScheduleMeetingModal({
       setParticipants([]);
       setSelectedOpportunityId(null);
     }
-  }, [reschedulingMeeting, open, form, initialOpportunityId]);
+  }, [reschedulingMeeting, open, form, initialOpportunityId, defaultMeetingType]);
 
   const handleAddParticipant = () => {
     const email = newParticipant.trim().toLowerCase();

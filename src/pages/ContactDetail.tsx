@@ -14,6 +14,7 @@ import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityMo
 import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
 import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
+import { ContactAnalysisSection } from '@/components/analysis/ContactAnalysisSection';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import { useActingUser } from '@/contexts/ActingUserContext';
@@ -125,8 +126,19 @@ export default function ContactDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState(false);
+  const [scheduleMeetingType, setScheduleMeetingType] = useState<string | undefined>(undefined);
   const [newNote, setNewNote] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  const handleScheduleAnalysis = () => {
+    setScheduleMeetingType('Análise');
+    setShowScheduleMeetingModal(true);
+  };
+
+  const handleScheduleRegularMeeting = () => {
+    setScheduleMeetingType(undefined);
+    setShowScheduleMeetingModal(true);
+  };
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId || '');
   const { data: history, isLoading: historyLoading } = useContactHistory(contactId || '');
@@ -210,7 +222,7 @@ export default function ContactDetail() {
           )}
           {!isReadOnly && (
             <>
-              <Button size="sm" variant="outline" onClick={() => setShowScheduleMeetingModal(true)}>
+              <Button size="sm" variant="outline" onClick={handleScheduleRegularMeeting}>
                 <CalendarPlus className="w-3 h-3 mr-1.5" />
                 Agendar
               </Button>
@@ -336,6 +348,16 @@ export default function ContactDetail() {
       
       {/* Meeting Minutes Section */}
       {contactId && contact && <MeetingMinutesList contactId={contactId} contactName={contact.full_name} />}
+
+      {/* Analysis Section */}
+      {contactId && contact && (
+        <ContactAnalysisSection
+          contactId={contactId}
+          contactName={contact.full_name}
+          onScheduleAnalysis={handleScheduleAnalysis}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       {/* Contract Section - Placeholder */}
       <Card>
@@ -493,9 +515,13 @@ export default function ContactDetail() {
       {showScheduleMeetingModal && contactId && (
         <ScheduleMeetingModal
           open={showScheduleMeetingModal}
-          onOpenChange={setShowScheduleMeetingModal}
+          onOpenChange={(open) => {
+            setShowScheduleMeetingModal(open);
+            if (!open) setScheduleMeetingType(undefined);
+          }}
           contactId={contactId}
           contactName={contact.full_name}
+          defaultMeetingType={scheduleMeetingType}
         />
       )}
     </div>
