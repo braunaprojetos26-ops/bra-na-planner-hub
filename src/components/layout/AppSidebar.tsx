@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -8,7 +8,6 @@ import {
   UserCog,
   GraduationCap,
   Bot,
-  Building2,
   FileText,
   Package,
   CheckSquare,
@@ -16,6 +15,7 @@ import {
   BarChart3,
   BookOpen
 } from 'lucide-react';
+import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActingUser } from '@/contexts/ActingUserContext';
@@ -71,15 +71,17 @@ export function AppSidebar() {
   return (
     <Sidebar className={`border-r border-sidebar-border ${isImpersonating ? 'pt-8' : ''}`}>
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
+        <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <img 
+            src={braunaLogo} 
+            alt="Braúna" 
+            className="h-10 w-auto"
+          />
           <div>
             <h1 className="font-bold text-sidebar-foreground">Braúna</h1>
             <p className="text-xs text-sidebar-foreground/60">Central do Planejador</p>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
