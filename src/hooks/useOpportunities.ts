@@ -490,3 +490,38 @@ export function useReactivateOpportunity() {
     },
   });
 }
+
+export function useUpdateOpportunityNotes() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      opportunityId, 
+      notes 
+    }: { 
+      opportunityId: string; 
+      notes: string | null;
+    }) => {
+      const { error } = await supabase
+        .from('opportunities')
+        .update({ notes })
+        .eq('id', opportunityId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunity', variables.opportunityId] });
+      toast({ title: 'Anotação salva!' });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Erro ao salvar anotação', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+}

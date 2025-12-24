@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Phone, Mail, User, History, MessageSquare, RotateCcw, XCircle, CheckCircle, DollarSign, Pencil } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, User, History, MessageSquare, RotateCcw, XCircle, CheckCircle, DollarSign, Pencil, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useOpportunity, useOpportunityHistory, useUpdateProposalValue } from '@/hooks/useOpportunities';
+import { useOpportunity, useOpportunityHistory, useUpdateProposalValue, useUpdateOpportunityNotes } from '@/hooks/useOpportunities';
 import { useFunnelStages, useNextFunnelFirstStage } from '@/hooks/useFunnels';
 import { FunnelStagesProgress } from '@/components/opportunities/FunnelStagesProgress';
 import { MarkLostModal } from '@/components/opportunities/MarkLostModal';
@@ -18,6 +18,7 @@ import { WonWithContractModal } from '@/components/opportunities/WonWithContract
 import { OpportunityMeetingsSection } from '@/components/opportunities/OpportunityMeetingsSection';
 import { OpportunityMeetingMinutesSection } from '@/components/opportunities/OpportunityMeetingMinutesSection';
 import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
+import { EditNotesModal } from '@/components/opportunities/EditNotesModal';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { useMoveOpportunityStage } from '@/hooks/useOpportunities';
 import { isInProposalStage, movingToProposalStage } from '@/lib/proposalStageValidation';
@@ -98,6 +99,7 @@ export default function OpportunityDetail() {
   const [showEditProposalModal, setShowEditProposalModal] = useState(false);
   const [showProposalModalForStage, setShowProposalModalForStage] = useState(false);
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
+  const [showNotesModal, setShowNotesModal] = useState(false);
 
   const { data: opportunity, isLoading: opportunityLoading } = useOpportunity(opportunityId || '');
   const { data: history, isLoading: historyLoading } = useOpportunityHistory(opportunityId || '');
@@ -105,6 +107,7 @@ export default function OpportunityDetail() {
   const { nextFunnel, firstStage: nextFirstStage } = useNextFunnelFirstStage(opportunity?.current_funnel_id || '');
   const moveStage = useMoveOpportunityStage();
   const updateProposalValue = useUpdateProposalValue();
+  const updateNotes = useUpdateOpportunityNotes();
 
   const handleStageChange = async (newStageId: string) => {
     if (!opportunity || isReadOnly || !stages) return;
@@ -335,9 +338,22 @@ export default function OpportunityDetail() {
         {/* Notes Card */}
         <Card>
           <CardHeader className="pb-1 pt-3">
-            <CardTitle className="text-sm flex items-center gap-1.5">
-              <MessageSquare className="w-3 h-3 text-accent" />
-              Anotações
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <MessageSquare className="w-3 h-3 text-accent" />
+                Anotações
+              </span>
+              {!isReadOnly && opportunity.status === 'active' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setShowNotesModal(true)}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  {opportunity.notes ? 'Editar' : 'Adicionar'}
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
@@ -529,6 +545,18 @@ export default function OpportunityDetail() {
         isLoading={updateProposalValue.isPending}
         currentValue={opportunity.proposal_value}
         stageName="Editar Valor"
+      />
+
+      {/* Edit Notes Modal */}
+      <EditNotesModal
+        open={showNotesModal}
+        onOpenChange={setShowNotesModal}
+        currentNotes={opportunity.notes}
+        onSave={(notes) => {
+          updateNotes.mutate({ opportunityId: opportunity.id, notes });
+          setShowNotesModal(false);
+        }}
+        isLoading={updateNotes.isPending}
       />
     </div>
   );
