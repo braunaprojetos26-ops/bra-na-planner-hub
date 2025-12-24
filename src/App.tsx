@@ -59,10 +59,8 @@ const App = () => (
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
               <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
-              <Route path="/wiki/arquivos" element={<ProtectedPage><WikiArquivos /></ProtectedPage>} />
-              <Route path="/wiki/processos" element={<ProtectedPage><WikiProcessos /></ProtectedPage>} />
-              <Route path="/wiki/processos/gerais" element={<ProtectedPage><WikiProcessosGerais /></ProtectedPage>} />
-              <Route path="/wiki/processos/lideranca" element={<ProtectedPage><WikiProcessosLideranca /></ProtectedPage>} />
+              <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
+              <Route path="/wiki/:categorySlug/:folderId" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>
