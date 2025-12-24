@@ -13,6 +13,7 @@ export interface PlannerProfile {
   education: string | null;
   certifications: string | null;
   display_name: string | null;
+  instagram_handle: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +42,7 @@ export function useMyPlannerProfile() {
   return usePlannerProfile(user?.id);
 }
 
-interface UpdatePlannerProfileData {
+export interface UpdatePlannerProfileData {
   photo_url?: string | null;
   professional_title?: string | null;
   career_achievements?: string | null;
@@ -49,6 +50,7 @@ interface UpdatePlannerProfileData {
   education?: string | null;
   certifications?: string | null;
   display_name?: string | null;
+  instagram_handle?: string | null;
 }
 
 export function useUpdatePlannerProfile() {

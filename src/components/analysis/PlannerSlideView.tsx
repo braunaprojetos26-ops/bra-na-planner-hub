@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { 
   GraduationCap, 
   Award, 
@@ -23,7 +23,6 @@ import braunaLogo from '@/assets/slide/brauna-logo-white.png';
 interface PlannerSlideViewProps {
   profile: PlannerProfile | null;
   userName: string;
-  isFullscreen?: boolean;
 }
 
 interface AchievementItem {
@@ -48,8 +47,23 @@ const getIconForType = (type: AchievementItem['type'], index: number) => {
   return icons[type];
 };
 
-export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSlideViewProps) {
+export function PlannerSlideView({ profile, userName }: PlannerSlideViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Detect fullscreen changes internally
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(
+        document.fullscreenElement === containerRef.current
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Parse achievements from all fields and combine into a single list
   const parseAchievements = (text: string | null | undefined): string[] => {
@@ -94,12 +108,17 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
 
   const hasContent = achievements.length > 0;
 
+  // Get instagram handle directly from profile
+  const instagramHandle = profile?.instagram_handle?.trim();
+
   return (
     <div 
       ref={containerRef}
       className={cn(
         'relative overflow-hidden rounded-xl font-saira',
-        isFullscreen ? 'w-full h-full' : 'aspect-[16/9]'
+        isFullscreen 
+          ? 'fixed inset-0 z-50 w-screen h-screen rounded-none' 
+          : 'aspect-[16/9]'
       )}
       style={{ 
         backgroundColor: 'rgb(0, 28, 68)',
@@ -119,25 +138,37 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
       <img 
         src={decorativeSquare} 
         alt="" 
-        className="absolute top-4 left-4 w-6 h-6 md:w-8 md:h-8"
+        className={cn(
+          "absolute",
+          isFullscreen 
+            ? "top-8 left-8 w-12 h-12" 
+            : "top-4 left-4 w-6 h-6 md:w-8 md:h-8"
+        )}
       />
 
       {/* Braúna logo - bottom right */}
       <img 
         src={braunaLogo} 
         alt="Braúna" 
-        className="absolute bottom-4 right-4 h-8 md:h-10 w-auto"
+        className={cn(
+          "absolute w-auto",
+          isFullscreen 
+            ? "bottom-8 right-8 h-16" 
+            : "bottom-4 right-4 h-8 md:h-10"
+        )}
       />
 
       {/* Main content */}
       <div className={cn(
-        'relative z-10 h-full flex flex-col p-6 md:p-8',
-        isFullscreen && 'p-12 md:p-16 lg:p-20'
+        'relative z-10 h-full flex flex-col',
+        isFullscreen ? 'p-12 md:p-16 lg:p-20' : 'p-6 md:p-8'
       )}>
         {/* Title - Quem Sou eu? */}
         <h2 className={cn(
-          "text-xl md:text-2xl lg:text-3xl text-white mb-6 md:mb-8",
-          isFullscreen && "text-3xl md:text-4xl lg:text-5xl mb-8 md:mb-12"
+          "text-white",
+          isFullscreen 
+            ? "text-4xl md:text-5xl lg:text-6xl mb-10 md:mb-14" 
+            : "text-xl md:text-2xl lg:text-3xl mb-6 md:mb-8"
         )}>
           <span className="font-light">Quem </span>
           <span className="italic font-medium" style={{ 
@@ -150,15 +181,17 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
 
         {/* Content grid */}
         <div className={cn(
-          "flex-1 flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start",
-          isFullscreen && "gap-10 md:gap-16 lg:gap-20"
+          "flex-1 flex flex-col md:flex-row items-center md:items-start",
+          isFullscreen ? "gap-12 md:gap-20 lg:gap-28" : "gap-6 md:gap-10"
         )}>
           {/* Left side - Photo and name */}
           <div className="flex flex-col items-center shrink-0">
             {/* Photo with frames */}
             <div className={cn(
-              "relative w-32 h-40 md:w-40 md:h-48 lg:w-48 lg:h-56 mb-4",
-              isFullscreen && "w-48 h-56 md:w-64 md:h-80 lg:w-80 lg:h-96 mb-6"
+              "relative mb-4",
+              isFullscreen 
+                ? "w-56 h-72 md:w-72 md:h-96 lg:w-80 lg:h-[26rem] mb-8" 
+                : "w-32 h-40 md:w-40 md:h-48 lg:w-48 lg:h-56"
             )}>
               {/* Gold frame (behind) */}
               <img 
@@ -191,7 +224,10 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
                       clipPath: 'polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%)',
                     }}
                   >
-                    <User className="w-12 h-12 text-white/50" />
+                    <User className={cn(
+                      "text-white/50",
+                      isFullscreen ? "w-20 h-20" : "w-12 h-12"
+                    )} />
                   </div>
                 )}
               </div>
@@ -201,8 +237,10 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
             <div className="text-center">
               <p 
                 className={cn(
-                  "text-xl md:text-2xl lg:text-3xl font-semibold",
-                  isFullscreen && "text-2xl md:text-3xl lg:text-4xl"
+                  "font-semibold",
+                  isFullscreen 
+                    ? "text-3xl md:text-4xl lg:text-5xl" 
+                    : "text-xl md:text-2xl lg:text-3xl"
                 )}
                 style={{ color: '#C9A55A' }}
               >
@@ -210,8 +248,10 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
               </p>
               {lastName && (
                 <p className={cn(
-                  "text-lg md:text-xl lg:text-2xl font-light text-white",
-                  isFullscreen && "text-xl md:text-2xl lg:text-3xl"
+                  "font-light text-white",
+                  isFullscreen 
+                    ? "text-2xl md:text-3xl lg:text-4xl" 
+                    : "text-lg md:text-xl lg:text-2xl"
                 )}>
                   {lastName}
                 </p>
@@ -223,26 +263,32 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
           <div className="flex-1 flex flex-col justify-center">
             {hasContent ? (
               <ul className={cn(
-                "space-y-2 md:space-y-3",
-                isFullscreen && "space-y-3 md:space-y-4 lg:space-y-5"
+                isFullscreen ? "space-y-4 md:space-y-6 lg:space-y-7" : "space-y-2 md:space-y-3"
               )}>
                 {achievements.map((achievement, index) => {
                   const Icon = getIconForType(achievement.type, index);
                   return (
                     <li 
                       key={index} 
-                      className="flex items-start gap-3 text-white"
+                      className={cn(
+                        "flex items-start text-white",
+                        isFullscreen ? "gap-4 md:gap-5" : "gap-3"
+                      )}
                     >
                       <Icon 
                         className={cn(
-                          "w-4 h-4 md:w-5 md:h-5 shrink-0 mt-0.5",
-                          isFullscreen && "w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7"
+                          "shrink-0 mt-0.5",
+                          isFullscreen 
+                            ? "w-6 h-6 md:w-8 md:h-8 lg:w-9 lg:h-9" 
+                            : "w-4 h-4 md:w-5 md:h-5"
                         )}
                         style={{ color: '#C9A55A' }}
                       />
                       <span className={cn(
-                        "text-sm md:text-base lg:text-lg font-light leading-tight",
-                        isFullscreen && "text-base md:text-lg lg:text-xl xl:text-2xl"
+                        "font-light leading-tight",
+                        isFullscreen 
+                          ? "text-xl md:text-2xl lg:text-3xl" 
+                          : "text-sm md:text-base lg:text-lg"
                       )}>
                         {achievement.text}
                       </span>
@@ -252,17 +298,35 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
               </ul>
             ) : (
               <div className="text-center py-8 text-white/50">
-                <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Clique em "Editar" para preencher seu perfil</p>
+                <User className={cn(
+                  "mx-auto mb-3 opacity-50",
+                  isFullscreen ? "w-20 h-20" : "w-12 h-12"
+                )} />
+                <p className={cn(
+                  isFullscreen ? "text-lg" : "text-sm"
+                )}>
+                  Clique em "Editar" para preencher seu perfil
+                </p>
               </div>
             )}
 
-            {/* Instagram handle if exists */}
-            {profile?.professional_title?.includes('@') && (
-              <div className="mt-4 flex items-center gap-2" style={{ color: '#C9A55A' }}>
-                <Instagram className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  {profile.professional_title.match(/@\w+/)?.[0]}
+            {/* Instagram handle */}
+            {instagramHandle && (
+              <div 
+                className={cn(
+                  "flex items-center",
+                  isFullscreen ? "mt-8 gap-3" : "mt-4 gap-2"
+                )} 
+                style={{ color: '#C9A55A' }}
+              >
+                <Instagram className={cn(
+                  isFullscreen ? "w-6 h-6 md:w-7 md:h-7" : "w-4 h-4"
+                )} />
+                <span className={cn(
+                  "font-medium",
+                  isFullscreen ? "text-lg md:text-xl" : "text-sm"
+                )}>
+                  {instagramHandle.startsWith('@') ? instagramHandle : `@${instagramHandle}`}
                 </span>
               </div>
             )}
