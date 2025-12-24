@@ -149,19 +149,14 @@ export function useUpdateContract() {
   });
 }
 
-// Metrics with partner product filter
-export function useContractMetrics(period?: { start: string; end: string }, isPartnerProduct?: boolean) {
+// Metrics for all contracts
+export function useContractMetrics(period?: { start: string; end: string }) {
   return useQuery({
-    queryKey: ['contract-metrics', period, isPartnerProduct],
+    queryKey: ['contract-metrics', period],
     queryFn: async () => {
       let query = supabase
         .from('contracts')
-        .select(`
-          calculated_pbs, 
-          contract_value, 
-          status,
-          product:products!inner(is_partner_product)
-        `)
+        .select(`calculated_pbs, contract_value, status`)
         .eq('status', 'active');
 
       if (period?.start) {
@@ -169,10 +164,6 @@ export function useContractMetrics(period?: { start: string; end: string }, isPa
       }
       if (period?.end) {
         query = query.lte('reported_at', period.end);
-      }
-      
-      if (isPartnerProduct !== undefined) {
-        query = query.eq('product.is_partner_product', isPartnerProduct);
       }
 
       const { data, error } = await query;
@@ -188,33 +179,3 @@ export function useContractMetrics(period?: { start: string; end: string }, isPa
   });
 }
 
-// Contracts filtered by partner product type
-export function useContractsByType(isPartnerProduct: boolean) {
-  return useQuery({
-    queryKey: ['contracts', 'by-type', isPartnerProduct],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('contracts')
-        .select(`
-          *,
-          product:products!inner(
-            *,
-            category:product_categories(*)
-          ),
-          contact:contacts(id, full_name, phone)
-        `)
-        .eq('product.is_partner_product', isPartnerProduct)
-        .order('reported_at', { ascending: false });
-
-      if (error) throw error;
-      return data.map((c) => ({
-        ...c,
-        custom_data: c.custom_data as Record<string, unknown>,
-        product: c.product ? {
-          ...c.product,
-          custom_fields: (c.product.custom_fields || []) as unknown as ProductCustomField[],
-        } : undefined,
-      })) as Contract[];
-    },
-  });
-}

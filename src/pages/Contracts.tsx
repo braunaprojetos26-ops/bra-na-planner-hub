@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, TrendingUp, DollarSign, Hash, Shield } from 'lucide-react';
+import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -13,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useContractsByType, useContractMetrics } from '@/hooks/useContracts';
+import { useContracts, useContractMetrics } from '@/hooks/useContracts';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', {
@@ -39,10 +37,9 @@ interface MetricsCardsProps {
   totalPbs: number;
   totalValue: number;
   count: number;
-  isPartner?: boolean;
 }
 
-function MetricsCards({ totalPbs, totalValue, count, isPartner }: MetricsCardsProps) {
+function MetricsCards({ totalPbs, totalValue, count }: MetricsCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card>
@@ -63,9 +60,7 @@ function MetricsCards({ totalPbs, totalValue, count, isPartner }: MetricsCardsPr
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-          <p className="text-xs text-muted-foreground">
-            {isPartner ? 'Em vendas de parceiros' : 'Em contratos ativos'}
-          </p>
+          <p className="text-xs text-muted-foreground">Em contratos ativos</p>
         </CardContent>
       </Card>
 
@@ -76,9 +71,7 @@ function MetricsCards({ totalPbs, totalValue, count, isPartner }: MetricsCardsPr
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{count}</div>
-          <p className="text-xs text-muted-foreground">
-            {isPartner ? 'Vendas registradas' : 'Contratos registrados'}
-          </p>
+          <p className="text-xs text-muted-foreground">Contratos registrados</p>
         </CardContent>
       </Card>
     </div>
@@ -96,14 +89,14 @@ interface ContractsTableProps {
     product?: { 
       name: string; 
       partner_name?: string | null;
+      is_partner_product?: boolean;
       category?: { name: string } | null;
     } | null;
   }>;
   isLoading: boolean;
-  showPartner?: boolean;
 }
 
-function ContractsTable({ contracts, isLoading, showPartner }: ContractsTableProps) {
+function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
   if (isLoading) {
     return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   }
@@ -112,14 +105,9 @@ function ContractsTable({ contracts, isLoading, showPartner }: ContractsTablePro
     return (
       <div className="text-center py-12">
         <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
-        <p className="text-muted-foreground mt-4">
-          {showPartner ? 'Nenhuma venda de parceiro registrada' : 'Nenhum contrato registrado ainda'}
-        </p>
+        <p className="text-muted-foreground mt-4">Nenhum contrato registrado ainda</p>
         <p className="text-sm text-muted-foreground/70 mt-1">
-          {showPartner 
-            ? 'Vendas de seguros serão exibidas aqui quando registradas'
-            : 'Contratos serão exibidos aqui quando marcados como ganhos'
-          }
+          Contratos serão exibidos aqui quando registrados
         </p>
       </div>
     );
@@ -131,7 +119,6 @@ function ContractsTable({ contracts, isLoading, showPartner }: ContractsTablePro
         <TableRow>
           <TableHead>Contato</TableHead>
           <TableHead>Produto</TableHead>
-          {showPartner && <TableHead>Parceiro</TableHead>}
           <TableHead className="text-right">Valor</TableHead>
           <TableHead className="text-right">PBs</TableHead>
           <TableHead>Data</TableHead>
@@ -146,7 +133,12 @@ function ContractsTable({ contracts, isLoading, showPartner }: ContractsTablePro
             </TableCell>
             <TableCell>
               <div>
-                <p>{contract.product?.name || '-'}</p>
+                <div className="flex items-center gap-2">
+                  <span>{contract.product?.name || '-'}</span>
+                  {contract.product?.is_partner_product && (
+                    <Badge variant="outline" className="text-xs">Parceiro</Badge>
+                  )}
+                </div>
                 {contract.product?.category?.name && (
                   <p className="text-xs text-muted-foreground">
                     {contract.product.category.name}
@@ -154,11 +146,6 @@ function ContractsTable({ contracts, isLoading, showPartner }: ContractsTablePro
                 )}
               </div>
             </TableCell>
-            {showPartner && (
-              <TableCell className="text-muted-foreground">
-                {contract.product?.partner_name || '-'}
-              </TableCell>
-            )}
             <TableCell className="text-right font-medium">
               {formatCurrency(contract.contract_value)}
             </TableCell>
@@ -177,83 +164,36 @@ function ContractsTable({ contracts, isLoading, showPartner }: ContractsTablePro
 }
 
 export default function Contracts() {
-  const [activeTab, setActiveTab] = useState('internal');
-  
-  // Internal contracts (is_partner_product = false)
-  const { data: internalContracts = [], isLoading: loadingInternal } = useContractsByType(false);
-  const { data: internalMetrics } = useContractMetrics(undefined, false);
-  
-  // Partner sales (is_partner_product = true)
-  const { data: partnerContracts = [], isLoading: loadingPartner } = useContractsByType(true);
-  const { data: partnerMetrics } = useContractMetrics(undefined, true);
+  const { data: contracts = [], isLoading } = useContracts();
+  const { data: metrics } = useContractMetrics();
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Contratos</h1>
-        <p className="text-muted-foreground">Visualize contratos e vendas de parceiros</p>
+        <p className="text-muted-foreground">Visualize todos os contratos registrados</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="internal" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Contratos
-          </TabsTrigger>
-          <TabsTrigger value="partner" className="gap-2">
-            <Shield className="h-4 w-4" />
-            Vendas de Parceiros
-          </TabsTrigger>
-        </TabsList>
+      <MetricsCards 
+        totalPbs={metrics?.totalPbs || 0}
+        totalValue={metrics?.totalValue || 0}
+        count={metrics?.count || 0}
+      />
 
-        <TabsContent value="internal" className="space-y-6 mt-6">
-          <MetricsCards 
-            totalPbs={internalMetrics?.totalPbs || 0}
-            totalValue={internalMetrics?.totalValue || 0}
-            count={internalMetrics?.count || 0}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Todos os Contratos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ContractsTable 
+            contracts={contracts} 
+            isLoading={isLoading}
           />
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Contratos Internos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable 
-                contracts={internalContracts} 
-                isLoading={loadingInternal}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="partner" className="space-y-6 mt-6">
-          <MetricsCards 
-            totalPbs={partnerMetrics?.totalPbs || 0}
-            totalValue={partnerMetrics?.totalValue || 0}
-            count={partnerMetrics?.count || 0}
-            isPartner
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Vendas de Parceiros
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable 
-                contracts={partnerContracts} 
-                isLoading={loadingPartner}
-                showPartner
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
