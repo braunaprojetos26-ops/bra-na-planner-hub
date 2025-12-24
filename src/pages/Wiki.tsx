@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FolderOpen, 
@@ -12,6 +13,8 @@ import {
   BookOpen
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { WikiViewControls } from '@/components/wiki/WikiViewControls';
+import { WikiListItem } from '@/components/wiki/WikiListItem';
 
 interface WikiCard {
   title: string;
@@ -60,6 +63,8 @@ function WikiCardItem({ card, onClick }: { card: WikiCard; onClick?: () => void 
 
 export default function Wiki() {
   const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortAlphabetically, setSortAlphabetically] = useState(false);
 
   const handleCardClick = (card: WikiCard) => {
     if (card.href) {
@@ -67,45 +72,91 @@ export default function Wiki() {
     }
   };
 
+  const sortedTimeCards = useMemo(() => {
+    if (!sortAlphabetically) return timeCards;
+    return [...timeCards].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+  }, [sortAlphabetically]);
+
+  const sortedPoliticasCards = useMemo(() => {
+    if (!sortAlphabetically) return politicasCards;
+    return [...politicasCards].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+  }, [sortAlphabetically]);
+
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 rounded-xl bg-primary/10">
-          <BookOpen className="h-8 w-8 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-primary/10">
+            <BookOpen className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Wiki</h1>
+            <p className="text-muted-foreground">Central de conhecimento e recursos da empresa</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Wiki</h1>
-          <p className="text-muted-foreground">Central de conhecimento e recursos da empresa</p>
-        </div>
+        <WikiViewControls
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          sortAlphabetically={sortAlphabetically}
+          onSortChange={setSortAlphabetically}
+        />
       </div>
 
       {/* Seção Time */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground border-b pb-2">Time</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {timeCards.map((card) => (
-            <WikiCardItem 
-              key={card.title} 
-              card={card} 
-              onClick={() => handleCardClick(card)}
-            />
-          ))}
-        </div>
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {sortedTimeCards.map((card) => (
+              <WikiCardItem 
+                key={card.title} 
+                card={card} 
+                onClick={() => handleCardClick(card)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="border rounded-lg bg-card">
+            {sortedTimeCards.map((card) => (
+              <WikiListItem
+                key={card.title}
+                title={card.title}
+                description={card.description}
+                icon={card.icon}
+                onClick={() => handleCardClick(card)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Seção Políticas */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground border-b pb-2">Políticas</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {politicasCards.map((card) => (
-            <WikiCardItem 
-              key={card.title} 
-              card={card} 
-              onClick={() => handleCardClick(card)}
-            />
-          ))}
-        </div>
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {sortedPoliticasCards.map((card) => (
+              <WikiCardItem 
+                key={card.title} 
+                card={card} 
+                onClick={() => handleCardClick(card)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="border rounded-lg bg-card">
+            {sortedPoliticasCards.map((card) => (
+              <WikiListItem
+                key={card.title}
+                title={card.title}
+                description={card.description}
+                icon={card.icon}
+                onClick={() => handleCardClick(card)}
+              />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
