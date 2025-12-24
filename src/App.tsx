@@ -22,6 +22,7 @@ import Contracts from "./pages/Contracts";
 import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
+import Analytics from "./pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/admin/products" element={<ProtectedPage><AdminProducts /></ProtectedPage>} />
               <Route path="/admin/assistant" element={<ProtectedPage><AdminAssistant /></ProtectedPage>} />
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
+              <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>
