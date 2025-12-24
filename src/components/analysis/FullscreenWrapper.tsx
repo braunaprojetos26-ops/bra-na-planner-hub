@@ -80,7 +80,7 @@ export function FullscreenWrapper({
 
       {!isFullscreen && (
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={enterFullscreen}
           className="gap-2"
@@ -127,7 +127,7 @@ export function FullscreenButton({
 
   return (
     <Button
-      variant="outline"
+      variant="secondary"
       size="sm"
       onClick={toggleFullscreen}
       className={cn('gap-2', className)}

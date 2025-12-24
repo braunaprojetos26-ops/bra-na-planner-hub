@@ -70,16 +70,28 @@ export function InstitutionalPresentationView() {
         'flex-1',
         isFullscreen ? 'h-full' : 'h-[600px]'
       )}>
-        <iframe
-          src={`${presentationUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+        <object
+          data={`${presentationUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+          type="application/pdf"
           className="w-full h-full rounded-lg border border-border"
-          title="Apresentação Institucional Braúna"
-        />
+        >
+          <div className="flex flex-col items-center justify-center h-full gap-4 bg-muted rounded-lg border border-border">
+            <AlertCircle className="w-12 h-12 text-muted-foreground" />
+            <p className="text-muted-foreground text-center">
+              Não foi possível exibir o PDF no navegador
+            </p>
+            <a href={presentationUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary" className="gap-2">
+                Abrir em nova aba
+              </Button>
+            </a>
+          </div>
+        </object>
       </div>
 
       {!isFullscreen && (
         <div className="mt-4 flex justify-end">
-          <Button variant="outline" size="sm" onClick={toggleFullscreen} className="gap-2">
+          <Button variant="secondary" size="sm" onClick={toggleFullscreen} className="gap-2">
             <Maximize2 className="w-4 h-4" />
             Tela Cheia
           </Button>
