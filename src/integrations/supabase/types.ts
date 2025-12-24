@@ -440,6 +440,42 @@ export type Database = {
           },
         ]
       }
+      funnel_product_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          funnel_id: string
+          id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          funnel_id: string
+          id?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          funnel_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnel_product_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funnel_product_categories_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnel_stages: {
         Row: {
           color: string
