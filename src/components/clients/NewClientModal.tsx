@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Form,
   FormControl,
@@ -133,20 +134,21 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
           <DialogDescription>
             Cadastre um novo cliente de planejamento financeiro. As reuniões serão criadas automaticamente e você poderá editar os temas e datas posteriormente.
           </DialogDescription>
         </DialogHeader>
 
-        {hasNoEligibleContracts ? (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <p className="font-medium mb-2">Nenhum contrato elegível encontrado</p>
-              <p className="text-sm">
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          {hasNoEligibleContracts ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-medium mb-2">Nenhum contrato elegível encontrado</p>
+                <p className="text-sm">
                 Para cadastrar um cliente, primeiro finalize uma venda de Planejamento Financeiro no Pipeline. 
                 O contrato precisa estar ativo e ainda não vinculado a um cliente.
               </p>
@@ -342,7 +344,8 @@ export function NewClientModal({ open, onOpenChange }: NewClientModalProps) {
               </div>
             </form>
           </Form>
-        )}
+          )}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
