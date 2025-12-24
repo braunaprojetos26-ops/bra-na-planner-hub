@@ -86,12 +86,13 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
 
   const achievements = getAllAchievements();
 
-  // Split name into first and last
-  const nameParts = userName.split(' ');
+  // Use display_name if available, otherwise use userName
+  const displayName = profile?.display_name || userName;
+  const nameParts = displayName.split(' ');
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  const hasContent = achievements.length > 0 || profile?.professional_title;
+  const hasContent = achievements.length > 0;
 
   return (
     <div 
@@ -118,7 +119,7 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
       <img 
         src={decorativeSquare} 
         alt="" 
-        className="absolute top-4 left-4 w-12 h-12 md:w-16 md:h-16"
+        className="absolute top-4 left-4 w-6 h-6 md:w-8 md:h-8"
       />
 
       {/* Braúna logo - bottom right */}
@@ -131,10 +132,13 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
       {/* Main content */}
       <div className={cn(
         'relative z-10 h-full flex flex-col p-6 md:p-8',
-        isFullscreen && 'p-12'
+        isFullscreen && 'p-12 md:p-16 lg:p-20'
       )}>
         {/* Title - Quem Sou eu? */}
-        <h2 className="text-xl md:text-2xl lg:text-3xl text-white mb-6 md:mb-8">
+        <h2 className={cn(
+          "text-xl md:text-2xl lg:text-3xl text-white mb-6 md:mb-8",
+          isFullscreen && "text-3xl md:text-4xl lg:text-5xl mb-8 md:mb-12"
+        )}>
           <span className="font-light">Quem </span>
           <span className="italic font-medium" style={{ 
             textDecoration: 'underline',
@@ -145,11 +149,17 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
         </h2>
 
         {/* Content grid */}
-        <div className="flex-1 flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start">
+        <div className={cn(
+          "flex-1 flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start",
+          isFullscreen && "gap-10 md:gap-16 lg:gap-20"
+        )}>
           {/* Left side - Photo and name */}
           <div className="flex flex-col items-center shrink-0">
             {/* Photo with frames */}
-            <div className="relative w-32 h-40 md:w-40 md:h-48 lg:w-48 lg:h-56 mb-4">
+            <div className={cn(
+              "relative w-32 h-40 md:w-40 md:h-48 lg:w-48 lg:h-56 mb-4",
+              isFullscreen && "w-48 h-56 md:w-64 md:h-80 lg:w-80 lg:h-96 mb-6"
+            )}>
               {/* Gold frame (behind) */}
               <img 
                 src={photoFrameGold} 
@@ -190,30 +200,32 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
             {/* Name */}
             <div className="text-center">
               <p 
-                className="text-xl md:text-2xl lg:text-3xl font-semibold"
+                className={cn(
+                  "text-xl md:text-2xl lg:text-3xl font-semibold",
+                  isFullscreen && "text-2xl md:text-3xl lg:text-4xl"
+                )}
                 style={{ color: '#C9A55A' }}
               >
                 {firstName}
               </p>
               {lastName && (
-                <p className="text-lg md:text-xl lg:text-2xl font-light text-white">
+                <p className={cn(
+                  "text-lg md:text-xl lg:text-2xl font-light text-white",
+                  isFullscreen && "text-xl md:text-2xl lg:text-3xl"
+                )}>
                   {lastName}
                 </p>
               )}
             </div>
-
-            {/* Professional title */}
-            {profile?.professional_title && (
-              <p className="text-xs md:text-sm text-white/70 mt-1 text-center max-w-[200px]">
-                {profile.professional_title}
-              </p>
-            )}
           </div>
 
           {/* Right side - Achievements */}
           <div className="flex-1 flex flex-col justify-center">
             {hasContent ? (
-              <ul className="space-y-2 md:space-y-3">
+              <ul className={cn(
+                "space-y-2 md:space-y-3",
+                isFullscreen && "space-y-3 md:space-y-4 lg:space-y-5"
+              )}>
                 {achievements.map((achievement, index) => {
                   const Icon = getIconForType(achievement.type, index);
                   return (
@@ -222,10 +234,16 @@ export function PlannerSlideView({ profile, userName, isFullscreen }: PlannerSli
                       className="flex items-start gap-3 text-white"
                     >
                       <Icon 
-                        className="w-4 h-4 md:w-5 md:h-5 shrink-0 mt-0.5" 
+                        className={cn(
+                          "w-4 h-4 md:w-5 md:h-5 shrink-0 mt-0.5",
+                          isFullscreen && "w-5 h-5 md:w-6 md:h-6 lg:w-7 lg:h-7"
+                        )}
                         style={{ color: '#C9A55A' }}
                       />
-                      <span className="text-sm md:text-base lg:text-lg font-light leading-tight">
+                      <span className={cn(
+                        "text-sm md:text-base lg:text-lg font-light leading-tight",
+                        isFullscreen && "text-base md:text-lg lg:text-xl xl:text-2xl"
+                      )}>
                         {achievement.text}
                       </span>
                     </li>

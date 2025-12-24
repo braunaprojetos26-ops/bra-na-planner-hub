@@ -12,6 +12,7 @@ export interface PlannerProfile {
   life_achievements: string | null;
   education: string | null;
   certifications: string | null;
+  display_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +48,7 @@ interface UpdatePlannerProfileData {
   life_achievements?: string | null;
   education?: string | null;
   certifications?: string | null;
+  display_name?: string | null;
 }
 
 export function useUpdatePlannerProfile() {

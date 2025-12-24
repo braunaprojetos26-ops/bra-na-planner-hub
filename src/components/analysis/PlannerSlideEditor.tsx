@@ -17,6 +17,7 @@ interface PlannerSlideEditorProps {
 }
 
 interface FormData {
+  display_name: string;
   professional_title: string;
   career_achievements: string;
   life_achievements: string;
@@ -35,6 +36,7 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
 
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormData>({
     defaultValues: {
+      display_name: profile?.display_name || '',
       professional_title: profile?.professional_title || '',
       career_achievements: profile?.career_achievements || '',
       life_achievements: profile?.life_achievements || '',
@@ -115,14 +117,17 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
             </div>
           </div>
 
-          {/* Professional title */}
+          {/* Display name */}
           <div className="space-y-2">
-            <Label htmlFor="professional_title">Título Profissional</Label>
+            <Label htmlFor="display_name">Nome no Slide</Label>
             <Input
-              id="professional_title"
-              placeholder="Ex: Planejador Financeiro CFP®"
-              {...register('professional_title')}
+              id="display_name"
+              placeholder={userName}
+              {...register('display_name')}
             />
+            <p className="text-xs text-muted-foreground">
+              Deixe em branco para usar seu nome de cadastro ({userName})
+            </p>
           </div>
 
           {/* Career achievements */}
