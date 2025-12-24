@@ -23,6 +23,7 @@ import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Analytics from "./pages/Analytics";
+import Wiki from "./pages/Wiki";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/admin/assistant" element={<ProtectedPage><AdminAssistant /></ProtectedPage>} />
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
+              <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>
