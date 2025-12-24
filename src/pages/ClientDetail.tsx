@@ -130,7 +130,7 @@ export default function ClientDetail() {
         </CardHeader>
         <CardContent>
           {plan.plan_meetings && plan.plan_meetings.length > 0 ? (
-            <ClientMeetingsTimeline meetings={plan.plan_meetings} />
+            <ClientMeetingsTimeline meetings={plan.plan_meetings} contactId={plan.contact_id} />
           ) : (
             <p className="text-muted-foreground text-center py-4">Nenhuma reunião cadastrada</p>
           )}

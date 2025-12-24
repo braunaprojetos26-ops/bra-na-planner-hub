@@ -219,3 +219,29 @@ export function useRescheduleMeeting() {
     },
   });
 }
+
+export function useContactMeetingsForLinking(contactId?: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['meetings', 'for-linking', contactId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('meetings')
+        .select(`
+          id,
+          meeting_type,
+          scheduled_at,
+          status,
+          notes
+        `)
+        .eq('contact_id', contactId!)
+        .in('status', ['completed', 'scheduled'])
+        .order('scheduled_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!contactId,
+  });
+}
