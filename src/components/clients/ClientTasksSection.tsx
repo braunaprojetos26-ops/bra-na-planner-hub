@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewTaskModal } from '@/components/tasks/NewTaskModal';
 import { useContactOpportunities } from '@/hooks/useOpportunities';
-import { useTasks } from '@/hooks/useTasks';
+import { useContactTasks, useTasks } from '@/hooks/useTasks';
 
 interface ClientTasksSectionProps {
   contactId: string;
@@ -20,9 +20,11 @@ export function ClientTasksSection({ contactId }: ClientTasksSectionProps) {
   const { data: opportunities } = useContactOpportunities(contactId);
   const activeOpportunity = opportunities?.find(o => o.status === 'active');
   
-  const { tasks, completeTask } = useTasks(activeOpportunity?.id || '');
+  // Use useContactTasks to get only tasks for this specific contact
+  const { data: contactTasks } = useContactTasks(contactId);
+  const { completeTask } = useTasks();
 
-  const pendingTasks = tasks?.filter(t => t.status === 'pending') || [];
+  const pendingTasks = contactTasks?.filter(t => t.status === 'pending') || [];
 
   const handleNewTask = () => {
     if (activeOpportunity) {
