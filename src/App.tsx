@@ -24,10 +24,7 @@ import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Analytics from "./pages/Analytics";
 import Wiki from "./pages/Wiki";
-import WikiArquivos from "./pages/WikiArquivos";
-import WikiProcessos from "./pages/WikiProcessos";
-import WikiProcessosGerais from "./pages/WikiProcessosGerais";
-import WikiProcessosLideranca from "./pages/WikiProcessosLideranca";
+import WikiCategory from "./pages/WikiCategory";
 
 const queryClient = new QueryClient();
 

@@ -1211,6 +1211,120 @@ export type Database = {
         }
         Relationships: []
       }
+      wiki_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          order_position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order_position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wiki_items: {
+        Row: {
+          category_id: string
+          created_at: string
+          description: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
+          href: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          item_type: string
+          keywords: string[]
+          order_position: number
+          parent_id: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          href?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          item_type: string
+          keywords?: string[]
+          order_position?: number
+          parent_id?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          href?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          item_type?: string
+          keywords?: string[]
+          order_position?: number
+          parent_id?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wiki_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "wiki_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wiki_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "wiki_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
