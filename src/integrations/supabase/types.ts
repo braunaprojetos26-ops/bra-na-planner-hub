@@ -234,6 +234,35 @@ export type Database = {
           },
         ]
       }
+      contact_prospection_list: {
+        Row: {
+          added_at: string
+          contact_id: string
+          id: string
+          owner_id: string
+        }
+        Insert: {
+          added_at?: string
+          contact_id: string
+          id?: string
+          owner_id: string
+        }
+        Update: {
+          added_at?: string
+          contact_id?: string
+          id?: string
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_prospection_list_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           address: string | null
