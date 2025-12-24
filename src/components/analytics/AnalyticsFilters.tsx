@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useProducts } from '@/hooks/useProducts';
+import { useFunnelCategories } from '@/hooks/useFunnelCategories';
 import { cn } from '@/lib/utils';
 
 interface AnalyticsFiltersProps {
@@ -51,6 +52,12 @@ export function AnalyticsFilters({
 }: AnalyticsFiltersProps) {
   const { data: funnels = [] } = useFunnels();
   const { data: products = [] } = useProducts();
+  const { data: funnelCategoryIds = [] } = useFunnelCategories(funnelId);
+
+  // Filter products based on funnel categories
+  const filteredProducts = funnelCategoryIds.length > 0
+    ? products.filter(p => p.category_id && funnelCategoryIds.includes(p.category_id))
+    : products;
 
   // Set initial funnel to the first one (prospection) when funnels load
   useEffect(() => {
@@ -58,6 +65,16 @@ export function AnalyticsFilters({
       onFunnelChange(funnels[0].id);
     }
   }, [funnels, funnelId, onFunnelChange]);
+
+  // Reset product when funnel changes if product no longer in filtered list
+  useEffect(() => {
+    if (productId && filteredProducts.length > 0) {
+      const productInList = filteredProducts.some(p => p.id === productId);
+      if (!productInList) {
+        onProductChange(undefined);
+      }
+    }
+  }, [funnelId, filteredProducts, productId, onProductChange]);
 
   const handlePresetClick = (preset: typeof periodPresets[0]) => {
     const { start, end } = preset.getValue();
@@ -160,17 +177,18 @@ export function AnalyticsFilters({
         </SelectContent>
       </Select>
 
-      {/* Product filter - shows all products */}
+      {/* Product filter - shows products related to funnel categories */}
       <Select 
         value={productId || "all"} 
         onValueChange={(v) => onProductChange(v === "all" ? undefined : v)}
+        disabled={filteredProducts.length === 0}
       >
         <SelectTrigger className="w-[200px] h-8">
-          <SelectValue placeholder="Todos os produtos" />
+          <SelectValue placeholder={filteredProducts.length === 0 ? "Sem produtos" : "Todos os produtos"} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos os produtos</SelectItem>
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <SelectItem key={product.id} value={product.id}>
               {product.name}
             </SelectItem>
