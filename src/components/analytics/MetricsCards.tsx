@@ -21,8 +21,16 @@ function formatPercentage(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-function formatDays(value: number): string {
-  return `${Math.round(value)} dias`;
+function formatClosingTime(hours: number): string {
+  if (hours < 1) {
+    return 'Menos de 1 hora';
+  } else if (hours < 24) {
+    const roundedHours = Math.round(hours);
+    return `${roundedHours} ${roundedHours === 1 ? 'hora' : 'horas'}`;
+  } else {
+    const days = Math.round(hours / 24);
+    return `${days} ${days === 1 ? 'dia' : 'dias'}`;
+  }
 }
 
 interface MetricCardProps {
@@ -128,7 +136,7 @@ export function MetricsCards({ data, isLoading }: MetricsCardsProps) {
     },
     {
       title: 'Tempo Médio de Fechamento',
-      value: formatDays(data.averageClosingDays),
+      value: formatClosingTime(data.averageClosingHours),
       subtitle: 'da criação à conversão',
       icon: <Clock className="h-5 w-5 text-muted-foreground" />,
       color: 'default' as const,

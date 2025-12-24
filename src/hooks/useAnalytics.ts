@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, differenceInDays, parseISO, format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfWeek, startOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, differenceInDays, differenceInHours, parseISO, format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfWeek, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export interface AnalyticsFilters {
@@ -54,7 +54,7 @@ export interface AnalyticsData {
   totalValueConverted: number;
   totalValueLost: number;
   averageTicket: number;
-  averageClosingDays: number;
+  averageClosingHours: number;
   timeSeriesData: TimeSeriesPoint[];
   funnelStagesData: StageData[];
   lostReasonsData: LostReasonData[];
@@ -198,12 +198,12 @@ export function useAnalytics(filters: AnalyticsFilters) {
     
     const averageTicket = totalWon > 0 ? totalValueConverted / totalWon : 0;
 
-    // Average closing days
-    const closingDays = wonOpportunities
+    // Average closing time (in hours for precision)
+    const closingHours = wonOpportunities
       .filter(o => o.converted_at && o.created_at)
-      .map(o => differenceInDays(parseISO(o.converted_at!), parseISO(o.created_at)));
-    const averageClosingDays = closingDays.length > 0 
-      ? closingDays.reduce((sum, d) => sum + d, 0) / closingDays.length 
+      .map(o => differenceInHours(parseISO(o.converted_at!), parseISO(o.created_at)));
+    const averageClosingHours = closingHours.length > 0 
+      ? closingHours.reduce((sum, h) => sum + h, 0) / closingHours.length 
       : 0;
 
     // Time series data
@@ -308,7 +308,7 @@ export function useAnalytics(filters: AnalyticsFilters) {
       totalValueConverted,
       totalValueLost,
       averageTicket,
-      averageClosingDays,
+      averageClosingHours,
       timeSeriesData,
       funnelStagesData,
       lostReasonsData,
