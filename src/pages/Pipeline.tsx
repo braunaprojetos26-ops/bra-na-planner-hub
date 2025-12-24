@@ -303,8 +303,9 @@ export default function Pipeline() {
               <div className={`rounded-t-lg px-3 py-2 ${stageHeaderColors[stage.color] || stageHeaderColors.gray}`}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-white text-sm">{stage.name}</span>
-                  <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                    {opportunitiesByStage[stage.id]?.length || 0}
+                  <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs">
+                    {(opportunitiesByStage[stage.id]?.reduce((sum, o) => sum + (o.proposal_value || 0), 0) || 0)
+                      .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </Badge>
                 </div>
               </div>
@@ -341,8 +342,9 @@ export default function Pipeline() {
               <div className="rounded-t-lg px-3 py-2 bg-destructive">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-white text-sm">Perdidas</span>
-                  <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                    {lostOpportunities.length}
+                  <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs">
+                    {lostOpportunities.reduce((sum, o) => sum + (o.proposal_value || 0), 0)
+                      .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </Badge>
                 </div>
               </div>
