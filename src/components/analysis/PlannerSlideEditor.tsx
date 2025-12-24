@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { Camera, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlannerProfile, useUpdatePlannerProfile, useUploadPlannerPhoto } from '@/hooks/usePlannerProfile';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface PlannerSlideEditorProps {
   open: boolean;
@@ -26,25 +28,110 @@ interface FormData {
   instagram_handle: string;
 }
 
+const DRAFT_KEY_PREFIX = 'planner_profile_draft_';
+
 export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: PlannerSlideEditorProps) {
+  const { user } = useAuth();
   const [photoPreview, setPhotoPreview] = useState<string | null>(profile?.photo_url || null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateProfile = useUpdatePlannerProfile();
   const uploadPhoto = useUploadPlannerPhoto();
 
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormData>({
-    defaultValues: {
-      display_name: profile?.display_name || '',
-      professional_title: profile?.professional_title || '',
-      career_achievements: profile?.career_achievements || '',
-      life_achievements: profile?.life_achievements || '',
-      education: profile?.education || '',
-      certifications: profile?.certifications || '',
-      instagram_handle: '',
-    },
+  const draftKey = user?.id ? `${DRAFT_KEY_PREFIX}${user.id}` : null;
+
+  const getDefaultValues = useCallback((): FormData => ({
+    display_name: profile?.display_name || '',
+    professional_title: profile?.professional_title || '',
+    career_achievements: profile?.career_achievements || '',
+    life_achievements: profile?.life_achievements || '',
+    education: profile?.education || '',
+    certifications: profile?.certifications || '',
+    instagram_handle: profile?.instagram_handle || '',
+  }), [profile]);
+
+  const { register, handleSubmit, watch, reset, formState: { isSubmitting } } = useForm<FormData>({
+    defaultValues: getDefaultValues(),
   });
+
+  // Watch form values for auto-save
+  const formValues = watch();
+
+  // Check for draft on mount
+  useEffect(() => {
+    if (!open || !draftKey) return;
+    
+    try {
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.savedAt) {
+          setHasDraft(true);
+        }
+      }
+    } catch (e) {
+      console.error('Error checking draft:', e);
+    }
+  }, [open, draftKey]);
+
+  // Update form when profile changes
+  useEffect(() => {
+    if (profile) {
+      reset(getDefaultValues());
+      setPhotoPreview(profile.photo_url || null);
+    }
+  }, [profile, reset, getDefaultValues]);
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    if (!open || !draftKey) return;
+    
+    const timeoutId = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({
+          ...formValues,
+          savedAt: Date.now(),
+        }));
+      } catch (e) {
+        console.error('Error saving draft:', e);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [formValues, open, draftKey]);
+
+  const restoreDraft = () => {
+    if (!draftKey) return;
+    
+    try {
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        reset({
+          display_name: parsed.display_name || '',
+          professional_title: parsed.professional_title || '',
+          career_achievements: parsed.career_achievements || '',
+          life_achievements: parsed.life_achievements || '',
+          education: parsed.education || '',
+          certifications: parsed.certifications || '',
+          instagram_handle: parsed.instagram_handle || '',
+        });
+        setHasDraft(false);
+        toast.success('Rascunho restaurado');
+      }
+    } catch (e) {
+      console.error('Error restoring draft:', e);
+    }
+  };
+
+  const discardDraft = () => {
+    if (draftKey) {
+      localStorage.removeItem(draftKey);
+    }
+    setHasDraft(false);
+  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,6 +158,11 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
         photo_url: photoUrl,
       });
 
+      // Clear draft on successful save
+      if (draftKey) {
+        localStorage.removeItem(draftKey);
+      }
+
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -83,6 +175,32 @@ export function PlannerSlideEditor({ open, onOpenChange, profile, userName }: Pl
         <DialogHeader>
           <DialogTitle>Editar Slide "Quem Sou Eu"</DialogTitle>
         </DialogHeader>
+
+        {/* Draft restore notification */}
+        {hasDraft && (
+          <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Você tem um rascunho não salvo
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={discardDraft}
+              >
+                Descartar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={restoreDraft}
+              >
+                Restaurar
+              </Button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Photo upload */}

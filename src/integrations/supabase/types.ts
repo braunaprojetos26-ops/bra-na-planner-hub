@@ -1009,6 +1009,7 @@ export type Database = {
           display_name: string | null
           education: string | null
           id: string
+          instagram_handle: string | null
           life_achievements: string | null
           photo_url: string | null
           professional_title: string | null
@@ -1022,6 +1023,7 @@ export type Database = {
           display_name?: string | null
           education?: string | null
           id?: string
+          instagram_handle?: string | null
           life_achievements?: string | null
           photo_url?: string | null
           professional_title?: string | null
@@ -1035,6 +1037,7 @@ export type Database = {
           display_name?: string | null
           education?: string | null
           id?: string
+          instagram_handle?: string | null
           life_achievements?: string | null
           photo_url?: string | null
           professional_title?: string | null
