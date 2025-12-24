@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { format, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Filter } from 'lucide-react';
@@ -16,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFunnels } from '@/hooks/useFunnels';
-import { useProducts } from '@/hooks/useProducts';
+import { useFunnelSuggestedProducts } from '@/hooks/useFunnelProducts';
 import { cn } from '@/lib/utils';
 
 interface AnalyticsFiltersProps {
@@ -49,7 +50,24 @@ export function AnalyticsFilters({
   onProductChange,
 }: AnalyticsFiltersProps) {
   const { data: funnels = [] } = useFunnels();
-  const { data: products = [] } = useProducts();
+  const { data: funnelProducts = [] } = useFunnelSuggestedProducts(funnelId);
+
+  // Set initial funnel to the first one (prospection) when funnels load
+  useEffect(() => {
+    if (funnels.length > 0 && !funnelId) {
+      onFunnelChange(funnels[0].id);
+    }
+  }, [funnels, funnelId, onFunnelChange]);
+
+  // Reset product when funnel changes
+  useEffect(() => {
+    if (productId) {
+      const productBelongsToFunnel = funnelProducts.some(fp => fp.product_id === productId);
+      if (!productBelongsToFunnel) {
+        onProductChange(undefined);
+      }
+    }
+  }, [funnelId, funnelProducts, productId, onProductChange]);
 
   const handlePresetClick = (preset: typeof periodPresets[0]) => {
     const { start, end } = preset.getValue();
@@ -138,13 +156,12 @@ export function AnalyticsFilters({
 
       <div className="h-6 w-px bg-border" />
 
-      {/* Funnel filter */}
-      <Select value={funnelId || "all"} onValueChange={(v) => onFunnelChange(v === "all" ? undefined : v)}>
-        <SelectTrigger className="w-[180px] h-8">
-          <SelectValue placeholder="Todos os funis" />
+      {/* Funnel filter - no "all" option */}
+      <Select value={funnelId || ""} onValueChange={(v) => onFunnelChange(v || undefined)}>
+        <SelectTrigger className="w-[200px] h-8">
+          <SelectValue placeholder="Selecione um funil" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Todos os funis</SelectItem>
           {funnels.map((funnel) => (
             <SelectItem key={funnel.id} value={funnel.id}>
               {funnel.name}
@@ -153,16 +170,20 @@ export function AnalyticsFilters({
         </SelectContent>
       </Select>
 
-      {/* Product filter */}
-      <Select value={productId || "all"} onValueChange={(v) => onProductChange(v === "all" ? undefined : v)}>
-        <SelectTrigger className="w-[180px] h-8">
-          <SelectValue placeholder="Todos os produtos" />
+      {/* Product filter - only shows products related to selected funnel */}
+      <Select 
+        value={productId || "all"} 
+        onValueChange={(v) => onProductChange(v === "all" ? undefined : v)}
+        disabled={!funnelId || funnelProducts.length === 0}
+      >
+        <SelectTrigger className="w-[200px] h-8">
+          <SelectValue placeholder={funnelProducts.length === 0 ? "Sem produtos" : "Todos os produtos"} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos os produtos</SelectItem>
-          {products.map((product) => (
-            <SelectItem key={product.id} value={product.id}>
-              {product.name}
+          {funnelProducts.map((fp) => (
+            <SelectItem key={fp.product_id} value={fp.product_id}>
+              {fp.product?.name || 'Produto desconhecido'}
             </SelectItem>
           ))}
         </SelectContent>

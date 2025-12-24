@@ -9,11 +9,9 @@ import { PerformanceOverTimeChart } from '@/components/analytics/PerformanceOver
 import { ProcessTimeSeriesChart } from '@/components/analytics/ProcessTimeSeriesChart';
 import { FunnelStagesChart } from '@/components/analytics/FunnelStagesChart';
 import { LostReasonsChart } from '@/components/analytics/LostReasonsChart';
-import { FunnelComparisonChart } from '@/components/analytics/FunnelComparisonChart';
 import { StageConversionFunnel } from '@/components/analytics/StageConversionFunnel';
 import { TimeByStageChart } from '@/components/analytics/TimeByStageChart';
 import { LossesPerStageChart } from '@/components/analytics/LossesPerStageChart';
-import { MetricsCards } from '@/components/analytics/MetricsCards';
 
 export default function Analytics() {
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
@@ -28,10 +26,9 @@ export default function Analytics() {
     productId,
   });
 
-  // Determine view type based on selected funnel
+  // Determine view type based on selected funnel (always requires a funnel now)
   const isSalesFunnel = data.selectedFunnel?.generatesContract ?? false;
   const isProcessFunnel = data.selectedFunnel && !data.selectedFunnel.generatesContract;
-  const isOverview = !data.selectedFunnel;
 
   // Get header info based on view type
   const getHeaderInfo = () => {
@@ -157,33 +154,11 @@ export default function Analytics() {
         </>
       )}
 
-      {/* Overview (No Funnel Selected) */}
-      {isOverview && (
-        <>
-          <MetricsCards data={data} isLoading={isLoading} />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PerformanceOverTimeChart 
-              data={data.timeSeriesData} 
-              isLoading={isLoading} 
-            />
-            <FunnelStagesChart 
-              data={data.funnelStagesData} 
-              isLoading={isLoading} 
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LostReasonsChart 
-              data={data.lostReasonsData} 
-              isLoading={isLoading} 
-            />
-            <FunnelComparisonChart 
-              data={data.funnelComparisonData} 
-              isLoading={isLoading} 
-            />
-          </div>
-        </>
+      {/* Show loading placeholder while funnel is being selected */}
+      {!data.selectedFunnel && !isLoading && (
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          Selecione um funil para visualizar as análises
+        </div>
       )}
     </div>
   );
