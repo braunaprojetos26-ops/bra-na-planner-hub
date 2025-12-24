@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFunnels } from '@/hooks/useFunnels';
-import { useFunnelSuggestedProducts } from '@/hooks/useFunnelProducts';
+import { useProducts } from '@/hooks/useProducts';
 import { cn } from '@/lib/utils';
 
 interface AnalyticsFiltersProps {
@@ -50,7 +50,7 @@ export function AnalyticsFilters({
   onProductChange,
 }: AnalyticsFiltersProps) {
   const { data: funnels = [] } = useFunnels();
-  const { data: funnelProducts = [] } = useFunnelSuggestedProducts(funnelId);
+  const { data: products = [] } = useProducts();
 
   // Set initial funnel to the first one (prospection) when funnels load
   useEffect(() => {
@@ -58,16 +58,6 @@ export function AnalyticsFilters({
       onFunnelChange(funnels[0].id);
     }
   }, [funnels, funnelId, onFunnelChange]);
-
-  // Reset product when funnel changes
-  useEffect(() => {
-    if (productId) {
-      const productBelongsToFunnel = funnelProducts.some(fp => fp.product_id === productId);
-      if (!productBelongsToFunnel) {
-        onProductChange(undefined);
-      }
-    }
-  }, [funnelId, funnelProducts, productId, onProductChange]);
 
   const handlePresetClick = (preset: typeof periodPresets[0]) => {
     const { start, end } = preset.getValue();
@@ -170,20 +160,19 @@ export function AnalyticsFilters({
         </SelectContent>
       </Select>
 
-      {/* Product filter - only shows products related to selected funnel */}
+      {/* Product filter - shows all products */}
       <Select 
         value={productId || "all"} 
         onValueChange={(v) => onProductChange(v === "all" ? undefined : v)}
-        disabled={!funnelId || funnelProducts.length === 0}
       >
         <SelectTrigger className="w-[200px] h-8">
-          <SelectValue placeholder={funnelProducts.length === 0 ? "Sem produtos" : "Todos os produtos"} />
+          <SelectValue placeholder="Todos os produtos" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos os produtos</SelectItem>
-          {funnelProducts.map((fp) => (
-            <SelectItem key={fp.product_id} value={fp.product_id}>
-              {fp.product?.name || 'Produto desconhecido'}
+          {products.map((product) => (
+            <SelectItem key={product.id} value={product.id}>
+              {product.name}
             </SelectItem>
           ))}
         </SelectContent>
