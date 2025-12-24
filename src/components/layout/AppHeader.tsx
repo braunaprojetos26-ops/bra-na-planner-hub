@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-
+import { NotificationCenter } from './NotificationCenter';
 const roleLabels: Record<string, string> = {
   planejador: 'Planejador',
   lider: 'Líder Comercial',
@@ -42,6 +42,7 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-3">
+        <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-3 h-auto py-1.5">
