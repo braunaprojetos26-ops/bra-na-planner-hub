@@ -274,10 +274,16 @@ export function useAnalytics(filters: AnalyticsFilters) {
     // Loss rate
     const lossRate = closedCount > 0 ? (totalLost / closedCount) * 100 : 0;
 
-    // Value calculations
-    const relevantContracts = productId 
-      ? contracts.filter(c => c.product_id === productId)
-      : contracts;
+    // Value calculations - filter contracts by opportunities in the selected funnel
+    const opportunityIdsInFunnel = new Set(filteredOpportunities.map(o => o.id));
+    let relevantContracts = contracts.filter(c => 
+      c.opportunity_id && opportunityIdsInFunnel.has(c.opportunity_id)
+    );
+    
+    // Additionally filter by product if specified
+    if (productId) {
+      relevantContracts = relevantContracts.filter(c => c.product_id === productId);
+    }
     
     const totalValueConverted = relevantContracts.reduce((sum, c) => sum + Number(c.contract_value || 0), 0);
     const totalValueLost = lostOpportunities.reduce((sum, o) => sum + Number(o.proposal_value || 0), 0);
