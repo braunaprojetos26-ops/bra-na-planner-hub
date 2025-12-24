@@ -11,7 +11,7 @@ export function usePlanMeetings(planId: string) {
         .from('client_plan_meetings')
         .select(`
           *,
-          meeting:meetings(id, scheduled_at, status)
+          meeting:meetings(id, scheduled_at, status, meeting_type)
         `)
         .eq('plan_id', planId)
         .order('meeting_number', { ascending: true });
@@ -85,6 +85,99 @@ export function useMarkMeetingCompleted() {
     onError: (error: Error) => {
       toast({
         title: 'Erro ao marcar reunião como concluída',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useLinkMeetingToPlan() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({
+      planMeetingId,
+      meetingId,
+      updateTheme,
+      updateDate,
+      markCompleted,
+    }: {
+      planMeetingId: string;
+      meetingId: string;
+      updateTheme?: string;
+      updateDate?: string;
+      markCompleted?: boolean;
+    }) => {
+      const updateData: Record<string, unknown> = {
+        meeting_id: meetingId,
+      };
+
+      if (updateTheme) {
+        updateData.theme = updateTheme;
+      }
+
+      if (updateDate) {
+        updateData.scheduled_date = updateDate;
+      }
+
+      if (markCompleted) {
+        updateData.status = 'completed' as ClientPlanMeetingStatus;
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('client_plan_meetings')
+        .update(updateData)
+        .eq('id', planMeetingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['client-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client-metrics'] });
+      toast({ title: 'Reunião vinculada com sucesso!' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao vincular reunião',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useUnlinkMeetingFromPlan() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (planMeetingId: string) => {
+      const { error } = await supabase
+        .from('client_plan_meetings')
+        .update({
+          meeting_id: null,
+          status: 'pending' as ClientPlanMeetingStatus,
+          completed_at: null,
+        })
+        .eq('id', planMeetingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['client-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client-metrics'] });
+      toast({ title: 'Reunião desvinculada!' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao desvincular reunião',
         description: error.message,
         variant: 'destructive',
       });
