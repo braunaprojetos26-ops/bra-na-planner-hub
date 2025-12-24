@@ -12,7 +12,8 @@ import {
   FileText,
   Package,
   CheckSquare,
-  Briefcase
+  Briefcase,
+  BarChart3
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +38,7 @@ const mainNavItems = [
   { title: 'Clientes', url: '/clients', icon: Briefcase },
   { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { title: 'Contratos', url: '/contracts', icon: FileText },
+  { title: 'Análises', url: '/analytics', icon: BarChart3 },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
 
