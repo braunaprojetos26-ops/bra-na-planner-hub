@@ -15,14 +15,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
 import {
   HierarchyUser,
   useUpdateUserPosition,
   useUpdateUserManager,
+  useUpdateUserRole,
   useHierarchy,
 } from '@/hooks/useHierarchy';
 import { positionOptions, UserPosition, getPositionLabel } from '@/lib/positionLabels';
+import { roleOptions, AppRole, getRoleLabel } from '@/lib/roleLabels';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NONE_VALUE = '__none__';
 
@@ -35,10 +40,16 @@ interface EditUserModalProps {
 export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) {
   const [position, setPosition] = useState<string>(NONE_VALUE);
   const [managerId, setManagerId] = useState<string>(NONE_VALUE);
+  const [role, setRole] = useState<AppRole>('planejador');
   
   const { data: hierarchy } = useHierarchy();
   const updatePosition = useUpdateUserPosition();
   const updateManager = useUpdateUserManager();
+  const updateRole = useUpdateUserRole();
+  const { user: currentUser } = useAuth();
+
+  // Check if editing own user
+  const isEditingSelf = user?.user_id === currentUser?.id;
 
   // Flatten hierarchy to get all users for manager selection
   const flattenHierarchy = (nodes: HierarchyUser[]): HierarchyUser[] => {
@@ -61,6 +72,7 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
     if (user) {
       setPosition(user.position || NONE_VALUE);
       setManagerId(user.manager_user_id || NONE_VALUE);
+      setRole(user.role || 'planejador');
     }
   }, [user]);
 
@@ -70,6 +82,20 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
     try {
       const newPosition = position === NONE_VALUE ? null : position;
       const newManagerId = managerId === NONE_VALUE ? null : managerId;
+
+      // Prevent self-demotion from superadmin
+      if (isEditingSelf && user.role === 'superadmin' && role !== 'superadmin') {
+        toast.error('Você não pode remover seu próprio papel de Super Admin');
+        return;
+      }
+
+      // Update role if changed
+      if (role !== user.role) {
+        await updateRole.mutateAsync({
+          userId: user.user_id,
+          role: role,
+        });
+      }
 
       // Update position if changed
       if (newPosition !== user.position) {
@@ -95,7 +121,10 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
     }
   };
 
-  const isLoading = updatePosition.isPending || updateManager.isPending;
+  const isLoading = updatePosition.isPending || updateManager.isPending || updateRole.isPending;
+
+  // Show warning when promoting to superadmin
+  const showSuperadminWarning = role === 'superadmin' && user?.role !== 'superadmin';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,6 +140,46 @@ export function EditUserModal({ user, open, onOpenChange }: EditUserModalProps) 
               <Label className="text-muted-foreground">Nome</Label>
               <p className="text-sm font-medium">{user.full_name}</p>
             </div>
+
+            {/* Role select */}
+            <div className="space-y-2">
+              <Label htmlFor="role">Papel no Sistema</Label>
+              <Select 
+                value={role} 
+                onValueChange={(value) => setRole(value as AppRole)}
+                disabled={isEditingSelf && user.role === 'superadmin'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o papel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex flex-col">
+                        <span>{opt.label}</span>
+                        <span className="text-xs text-muted-foreground">{opt.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isEditingSelf && user.role === 'superadmin' && (
+                <p className="text-xs text-muted-foreground">
+                  Você não pode alterar seu próprio papel de Super Admin
+                </p>
+              )}
+            </div>
+
+            {/* Superadmin warning */}
+            {showSuperadminWarning && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Atenção: Você está promovendo este usuário para Super Admin. 
+                  Ele terá acesso total ao sistema, incluindo gerenciar outros usuários.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Position select */}
             <div className="space-y-2">
