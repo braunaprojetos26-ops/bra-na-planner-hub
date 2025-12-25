@@ -172,6 +172,64 @@ export type Database = {
           },
         ]
       }
+      contact_data_collections: {
+        Row: {
+          collected_at: string | null
+          collected_by: string
+          contact_id: string
+          created_at: string
+          data_collection: Json
+          id: string
+          schema_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          collected_at?: string | null
+          collected_by: string
+          contact_id: string
+          created_at?: string
+          data_collection?: Json
+          id?: string
+          schema_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          collected_at?: string | null
+          collected_by?: string
+          contact_id?: string
+          created_at?: string
+          data_collection?: Json
+          id?: string
+          schema_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_data_collections_collected_by_fkey"
+            columns: ["collected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contact_data_collections_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_data_collections_schema_id_fkey"
+            columns: ["schema_id"]
+            isOneToOne: false
+            referencedRelation: "data_collection_schemas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_history: {
         Row: {
           action: string
@@ -465,6 +523,159 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_collection_fields: {
+        Row: {
+          conditional_on: Json | null
+          created_at: string
+          data_path: string
+          default_value: Json | null
+          description: string | null
+          field_type: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          key: string
+          label: string
+          options: Json | null
+          order_position: number
+          placeholder: string | null
+          section_id: string
+          updated_at: string
+          validation: Json | null
+        }
+        Insert: {
+          conditional_on?: Json | null
+          created_at?: string
+          data_path: string
+          default_value?: Json | null
+          description?: string | null
+          field_type: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          key: string
+          label: string
+          options?: Json | null
+          order_position?: number
+          placeholder?: string | null
+          section_id: string
+          updated_at?: string
+          validation?: Json | null
+        }
+        Update: {
+          conditional_on?: Json | null
+          created_at?: string
+          data_path?: string
+          default_value?: Json | null
+          description?: string | null
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          key?: string
+          label?: string
+          options?: Json | null
+          order_position?: number
+          placeholder?: string | null
+          section_id?: string
+          updated_at?: string
+          validation?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_collection_fields_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "data_collection_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_collection_schemas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_collection_schemas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      data_collection_sections: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          key: string
+          order_position: number
+          schema_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          order_position?: number
+          schema_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          order_position?: number
+          schema_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_collection_sections_schema_id_fkey"
+            columns: ["schema_id"]
+            isOneToOne: false
+            referencedRelation: "data_collection_schemas"
             referencedColumns: ["id"]
           },
         ]
@@ -1191,6 +1402,33 @@ export type Database = {
           position?: Database["public"]["Enums"]["user_position"] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
         }
         Relationships: []
       }
