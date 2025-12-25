@@ -15,9 +15,7 @@ import { cn } from '@/lib/utils';
 
 // Import slide assets
 import backgroundTexture from '@/assets/slide/background-texture.jpg';
-import photoFrameBlue from '@/assets/slide/photo-frame-blue.png';
-import photoFrameGold from '@/assets/slide/photo-frame-gold.png';
-import decorativeSquare from '@/assets/slide/decorative-square.png';
+import photoDecoration from '@/assets/slide/photo-decoration.png';
 import titleShape from '@/assets/slide/title-shape.png';
 import braunaLogo from '@/assets/slide/brauna-logo-white.png';
 
@@ -199,51 +197,53 @@ export function PlannerSlideView({ profile, userName }: PlannerSlideViewProps) {
         )}>
           {/* Left side - Photo and name */}
           <div className="flex flex-col items-center shrink-0">
-            {/* Photo with frames */}
+            {/* Photo with decorative shapes */}
             <div className={cn(
               "relative mb-4",
               isFullscreen 
                 ? "w-56 h-72 md:w-72 md:h-96 lg:w-80 lg:h-[26rem] mb-8" 
                 : "w-32 h-40 md:w-40 md:h-48 lg:w-48 lg:h-56"
             )}>
-              {/* Gold frame (behind) */}
+              {/* Decorative shape - top left */}
               <img 
-                src={photoFrameGold} 
+                src={photoDecoration} 
                 alt="" 
-                className="absolute inset-0 w-full h-full object-contain"
-                style={{ transform: 'translate(4px, 4px)' }}
-              />
-              {/* Blue frame with photo */}
-              <div className="absolute inset-0 w-full h-full">
-                <img 
-                  src={photoFrameBlue} 
-                  alt="" 
-                  className="absolute inset-0 w-full h-full object-contain"
-                />
-                {/* Photo inside frame */}
-                {profile?.photo_url ? (
-                  <img 
-                    src={profile.photo_url} 
-                    alt={userName}
-                    className="absolute inset-[8%] w-[84%] h-[84%] object-cover"
-                    style={{ 
-                      clipPath: 'polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%)',
-                    }}
-                  />
-                ) : (
-                  <div 
-                    className="absolute inset-[8%] w-[84%] h-[84%] bg-white/10 flex items-center justify-center"
-                    style={{ 
-                      clipPath: 'polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%)',
-                    }}
-                  >
-                    <User className={cn(
-                      "text-white/50",
-                      isFullscreen ? "w-20 h-20" : "w-12 h-12"
-                    )} />
-                  </div>
+                className={cn(
+                  "absolute z-0",
+                  isFullscreen 
+                    ? "-top-6 -left-6 w-24 h-24 md:w-32 md:h-32" 
+                    : "-top-3 -left-3 w-12 h-12 md:w-16 md:h-16"
                 )}
-              </div>
+              />
+              
+              {/* Decorative shape - bottom right (rotated 180deg) */}
+              <img 
+                src={photoDecoration} 
+                alt="" 
+                className={cn(
+                  "absolute z-0",
+                  isFullscreen 
+                    ? "-bottom-6 -right-6 w-24 h-24 md:w-32 md:h-32" 
+                    : "-bottom-3 -right-3 w-12 h-12 md:w-16 md:h-16"
+                )}
+                style={{ transform: 'rotate(180deg)' }}
+              />
+              
+              {/* Photo with rounded corners */}
+              {profile?.photo_url ? (
+                <img 
+                  src={profile.photo_url} 
+                  alt={userName}
+                  className="relative z-10 w-full h-full object-cover rounded-2xl"
+                />
+              ) : (
+                <div className="relative z-10 w-full h-full bg-white/10 flex items-center justify-center rounded-2xl">
+                  <User className={cn(
+                    "text-white/50",
+                    isFullscreen ? "w-20 h-20" : "w-12 h-12"
+                  )} />
+                </div>
+              )}
             </div>
 
             {/* Name */}
