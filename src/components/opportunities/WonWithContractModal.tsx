@@ -26,7 +26,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useProducts, useProductCategories } from '@/hooks/useProducts';
-import { useFunnelSuggestedProducts } from '@/hooks/useFunnelProducts';
 import { useCreateContract } from '@/hooks/useContracts';
 import { useMarkOpportunityWon } from '@/hooks/useOpportunities';
 import { useCreateClientPlan } from '@/hooks/useClients';
@@ -82,21 +81,51 @@ export function WonWithContractModal({
 
   const { data: allProducts } = useProducts({ sortBy: 'alphabetical' });
   const { data: allCategories } = useProductCategories();
-  const { data: suggestedProducts } = useFunnelSuggestedProducts(opportunity.current_funnel_id);
   const createContract = useCreateContract();
   const markWon = useMarkOpportunityWon();
   const createClientPlan = useCreateClientPlan();
 
-  // Categories that have active products
+  // Mapping of funnel names to suggested category names
+  const FUNNEL_CATEGORY_SUGGESTIONS: Record<string, string[]> = {
+    'VENDA - PLANEJAMENTO': ['Planejamento Financeiro'],
+    'IMPLEMENTAÇÃO - SEGUROS': ['Seguro de Vida'],
+    'IMPLEMENTAÇÃO - CRÉDITO': ['Financiamento Imobiliário', 'Consórcio'],
+    'IMPLEMENTAÇÃO - PRUNUS': ['Investimentos'],
+  };
+
+  // Get suggested category IDs based on current funnel
+  const suggestedCategoryIds = useMemo(() => {
+    const funnelName = opportunity.current_funnel?.name || '';
+    const suggestedCategoryNames = FUNNEL_CATEGORY_SUGGESTIONS[funnelName] || [];
+    
+    if (!allCategories) return new Set<string>();
+    
+    return new Set(
+      allCategories
+        .filter(c => suggestedCategoryNames.includes(c.name))
+        .map(c => c.id)
+    );
+  }, [opportunity.current_funnel?.name, allCategories]);
+
+  // Categories that have active products, with suggested ones first
   const availableCategories = useMemo(() => {
     if (!allProducts || !allCategories) return [];
     const categoryIdsWithProducts = new Set(
       allProducts.map((p) => p.category_id).filter(Boolean)
     );
-    return allCategories
-      .filter((c) => categoryIdsWithProducts.has(c.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [allProducts, allCategories]);
+    
+    const filtered = allCategories.filter((c) => categoryIdsWithProducts.has(c.id));
+    
+    // Sort: suggested first, then alphabetically
+    return filtered.sort((a, b) => {
+      const aIsSuggested = suggestedCategoryIds.has(a.id);
+      const bIsSuggested = suggestedCategoryIds.has(b.id);
+      
+      if (aIsSuggested && !bIsSuggested) return -1;
+      if (!aIsSuggested && bIsSuggested) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [allProducts, allCategories, suggestedCategoryIds]);
 
   // Get products filtered by category
   const getProductsByCategory = (categoryId: string) => {
@@ -122,11 +151,6 @@ export function WonWithContractModal({
 
   const funnelGeneratesContract = opportunity.current_funnel?.generates_contract ?? false;
   const promptText = opportunity.current_funnel?.contract_prompt_text || 'Essa negociação gerou algum contrato?';
-
-  const suggestedProductIds = useMemo(
-    () => new Set(suggestedProducts?.map((sp) => sp.product_id) || []),
-    [suggestedProducts]
-  );
 
   const totalPbs = useMemo(
     () => contracts.reduce((sum, c) => sum + c.calculated_pbs, 0),
@@ -487,7 +511,14 @@ export function WonWithContractModal({
                       <SelectContent>
                         {availableCategories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
-                            {category.name}
+                            <div className="flex items-center gap-2">
+                              {category.name}
+                              {suggestedCategoryIds.has(category.id) && (
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                  Sugerido
+                                </Badge>
+                              )}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -508,14 +539,7 @@ export function WonWithContractModal({
                       <SelectContent>
                         {getProductsByCategory(contract.category_id).map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            <div className="flex items-center gap-2">
-                              {formatProductName(product)}
-                              {suggestedProductIds.has(product.id) && (
-                                <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                  Sugerido
-                                </Badge>
-                              )}
-                            </div>
+                            {formatProductName(product)}
                           </SelectItem>
                         ))}
                       </SelectContent>
