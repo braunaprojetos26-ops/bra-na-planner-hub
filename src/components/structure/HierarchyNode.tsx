@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronDown, User, Settings } from 'lucide-react';
+import { ChevronRight, ChevronDown, User, Settings, Shield } from 'lucide-react';
 import { HierarchyUser, useCanManageStructure } from '@/hooks/useHierarchy';
 import { getPositionShort, getPositionLabel } from '@/lib/positionLabels';
+import { getRoleLabel, getRoleBadgeVariant } from '@/lib/roleLabels';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -42,6 +43,9 @@ export function HierarchyNode({ node, level, onEditUser }: HierarchyNodeProps) {
     });
     navigate('/');
   };
+
+  // Check if user has elevated role
+  const hasElevatedRole = node.role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(node.role);
 
   return (
     <div className="select-none">
@@ -94,12 +98,32 @@ export function HierarchyNode({ node, level, onEditUser }: HierarchyNodeProps) {
           </TooltipProvider>
         )}
 
+        {/* Role badge (for elevated roles) */}
+        {hasElevatedRole && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant={getRoleBadgeVariant(node.role)}
+                  className="text-xs cursor-help gap-1"
+                >
+                  <Shield className="w-3 h-3" />
+                  {getRoleLabel(node.role)}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Papel no sistema: {getRoleLabel(node.role)}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
         {/* Position badge */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Badge
-                variant="secondary"
+                variant="outline"
                 className={cn(
                   "text-xs cursor-help",
                   !node.position && "bg-muted text-muted-foreground"
@@ -109,7 +133,7 @@ export function HierarchyNode({ node, level, onEditUser }: HierarchyNodeProps) {
               </Badge>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{getPositionLabel(node.position)}</p>
+              <p>Cargo: {getPositionLabel(node.position)}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserPosition } from '@/lib/positionLabels';
+import { AppRole } from '@/lib/roleLabels';
 
 export interface HierarchyUser {
   user_id: string;
   full_name: string;
   email: string;
   position: UserPosition | null;
+  role: AppRole | null;
   manager_user_id: string | null;
   is_active: boolean;
   children: HierarchyUser[];
@@ -37,9 +39,21 @@ export function useHierarchy() {
 
       if (hierarchyError) throw hierarchyError;
 
+      // Buscar roles
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
       // Criar mapa de manager_user_id por user_id
       const hierarchyMap = new Map(
         hierarchies?.map(h => [h.user_id, h.manager_user_id]) || []
+      );
+
+      // Criar mapa de role por user_id
+      const rolesMap = new Map(
+        roles?.map(r => [r.user_id, r.role as AppRole]) || []
       );
 
       // Combinar dados
@@ -48,6 +62,7 @@ export function useHierarchy() {
         full_name: p.full_name,
         email: p.email,
         position: p.position as UserPosition | null,
+        role: rolesMap.get(p.user_id) || null,
         manager_user_id: hierarchyMap.get(p.user_id) || null,
         is_active: p.is_active,
         children: [],
@@ -106,6 +121,24 @@ export function useUpdateUserManager() {
       const { error } = await supabase
         .from('user_hierarchy')
         .update({ manager_user_id: managerId })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hierarchy'] });
+    },
+  });
+}
+
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role })
         .eq('user_id', userId);
 
       if (error) throw error;
