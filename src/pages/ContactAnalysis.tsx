@@ -10,6 +10,7 @@ import { AnalysisStepIndicator } from '@/components/analysis/AnalysisStepIndicat
 import { PlannerSlideView } from '@/components/analysis/PlannerSlideView';
 import { PlannerSlideEditor } from '@/components/analysis/PlannerSlideEditor';
 import { InstitutionalPresentationView } from '@/components/analysis/InstitutionalPresentationView';
+import { DataCollectionForm } from '@/components/analysis/data-collection/DataCollectionForm';
 
 const STEPS = [
   { label: 'Quem Sou Eu', shortLabel: 'Quem Sou' },
@@ -79,16 +80,10 @@ export default function ContactAnalysis() {
 
       case 1:
         return (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <span className="text-2xl">📋</span>
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Coleta de Dados</h3>
-            <p className="text-muted-foreground text-sm max-w-md">
-              Esta etapa será implementada em breve. Aqui você poderá coletar informações
-              detalhadas do cliente para a análise financeira.
-            </p>
-          </div>
+          <DataCollectionForm 
+            contactId={contactId!} 
+            onComplete={handleNext} 
+          />
         );
 
       case 2:
