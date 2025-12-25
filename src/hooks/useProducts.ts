@@ -79,9 +79,21 @@ export function useProductCategories(includeInactive = false) {
   });
 }
 
-export function useProducts(includeInactive = false) {
+export interface UseProductsOptions {
+  includeInactive?: boolean;
+  sortBy?: 'order_position' | 'alphabetical';
+}
+
+export function useProducts(options: UseProductsOptions | boolean = {}) {
+  // Support legacy boolean parameter for backward compatibility
+  const opts = typeof options === 'boolean' 
+    ? { includeInactive: options, sortBy: 'order_position' as const }
+    : { includeInactive: false, sortBy: 'order_position' as const, ...options };
+  
+  const { includeInactive, sortBy } = opts;
+
   return useQuery({
-    queryKey: ['products', includeInactive],
+    queryKey: ['products', includeInactive, sortBy],
     queryFn: async () => {
       let query = supabase
         .from('products')
@@ -89,7 +101,7 @@ export function useProducts(includeInactive = false) {
           *,
           category:product_categories(*)
         `)
-        .order('order_position');
+        .order(sortBy === 'alphabetical' ? 'name' : 'order_position');
 
       if (!includeInactive) {
         query = query.eq('is_active', true);

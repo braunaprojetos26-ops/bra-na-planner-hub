@@ -51,7 +51,7 @@ export function AnalyticsFilters({
   onProductChange,
 }: AnalyticsFiltersProps) {
   const { data: funnels = [] } = useFunnels();
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useProducts({ sortBy: 'alphabetical' });
   const { data: funnelCategoryIds = [] } = useFunnelCategories(funnelId);
 
   // Filter products based on funnel categories

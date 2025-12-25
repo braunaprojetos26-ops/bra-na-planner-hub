@@ -79,7 +79,7 @@ export function WonWithContractModal({
     start_date: new Date(),
   });
 
-  const { data: allProducts } = useProducts();
+  const { data: allProducts } = useProducts({ sortBy: 'alphabetical' });
   const { data: suggestedProducts } = useFunnelSuggestedProducts(opportunity.current_funnel_id);
   const createContract = useCreateContract();
   const markWon = useMarkOpportunityWon();
@@ -88,7 +88,7 @@ export function WonWithContractModal({
   const funnelGeneratesContract = opportunity.current_funnel?.generates_contract ?? false;
   const promptText = opportunity.current_funnel?.contract_prompt_text || 'Essa negociação gerou algum contrato?';
 
-  // Sort products: suggested first, then others
+  // Sort products: suggested first (alphabetically), then others (alphabetically)
   const sortedProducts = useMemo(() => {
     if (!allProducts) return [];
     
@@ -96,6 +96,7 @@ export function WonWithContractModal({
     const suggested = allProducts.filter((p) => suggestedIds.has(p.id));
     const others = allProducts.filter((p) => !suggestedIds.has(p.id));
     
+    // Both groups are already sorted alphabetically from the query
     return [...suggested, ...others];
   }, [allProducts, suggestedProducts]);
 
