@@ -170,17 +170,6 @@ export function PlannerSlideView({ profile, userName }: PlannerSlideViewProps) {
               alt="" 
               className="absolute inset-0 w-full h-full object-contain"
             />
-            {/* Gold square - overlapping top-left */}
-            <img 
-              src={decorativeSquare} 
-              alt="" 
-              className={cn(
-                "absolute",
-                isFullscreen 
-                  ? "-bottom-2 -left-2 w-10 h-10 md:w-12 md:h-12" 
-                  : "-bottom-1 -left-1 w-5 h-5 md:w-7 md:h-7"
-              )}
-            />
           </div>
           
           {/* Title text - positioned to start from middle of the shape */}
