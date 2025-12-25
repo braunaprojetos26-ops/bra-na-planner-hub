@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, Package, FolderOpen, Calculator, HelpCircle, Lightbulb, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Package, FolderOpen, Calculator, HelpCircle, Lightbulb, Trash2, ArrowDownAZ, ListOrdered } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,7 +77,11 @@ import type { ProductCategory, Product } from '@/types/contracts';
 
 export default function AdminProducts() {
   const { data: categories, isLoading: loadingCategories } = useProductCategories(true);
-  const { data: products, isLoading: loadingProducts } = useProducts(true);
+  const [productSortOrder, setProductSortOrder] = useState<'order_position' | 'alphabetical'>('order_position');
+  const { data: products, isLoading: loadingProducts } = useProducts({ 
+    includeInactive: true, 
+    sortBy: productSortOrder 
+  });
 
   const createCategory = useCreateProductCategory();
   const updateCategory = useUpdateProductCategory();
@@ -325,10 +329,31 @@ export default function AdminProducts() {
                   Configure os produtos que podem ser vendidos em contratos
                 </CardDescription>
               </div>
-              <Button onClick={() => handleOpenProductModal()} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Novo Produto
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={productSortOrder} onValueChange={(v: 'order_position' | 'alphabetical') => setProductSortOrder(v)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="order_position">
+                      <div className="flex items-center gap-2">
+                        <ListOrdered className="w-4 h-4" />
+                        Ordem manual
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="alphabetical">
+                      <div className="flex items-center gap-2">
+                        <ArrowDownAZ className="w-4 h-4" />
+                        Ordem alfabética
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={() => handleOpenProductModal()} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Novo Produto
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {loadingProducts ? (
