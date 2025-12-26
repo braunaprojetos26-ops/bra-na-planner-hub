@@ -246,8 +246,8 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
         </div>
       </div>
 
-      {/* Fixed Observations Panel */}
-      <div className="w-80 shrink-0 hidden lg:block">
+      {/* Observations Panel - scrolls with content */}
+      <div className="w-80 shrink-0 hidden lg:block self-start sticky top-4">
         <ObservationsPanel
           plannerSummary={plannerSummary}
           additionalContext={additionalContext}
