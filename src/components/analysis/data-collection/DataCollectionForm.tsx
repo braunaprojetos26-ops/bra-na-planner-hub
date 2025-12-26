@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, CheckCircle } from 'lucide-react';
+import { Loader2, Save, CheckCircle, LayoutList, Grid2X2 } from 'lucide-react';
 import { useDataCollectionSchema } from '@/hooks/useDataCollectionSchema';
 import { 
   useContactDataCollection, 
@@ -16,12 +16,16 @@ import {
 } from '@/hooks/useContactDataCollection';
 import { DataCollectionSection, DataCollectionField } from '@/types/dataCollection';
 import { DynamicSection } from './DynamicSection';
+import { ObservationsPanel } from './ObservationsPanel';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface DataCollectionFormProps {
   contactId: string;
   onComplete?: () => void;
 }
+
+type ViewMode = 'tabs' | 'all';
 
 export function DataCollectionForm({ contactId, onComplete }: DataCollectionFormProps) {
   const { data: schema, isLoading: schemaLoading } = useDataCollectionSchema();
@@ -34,6 +38,7 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('tabs');
 
   // Initialize or create collection
   useEffect(() => {
@@ -42,17 +47,34 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
     }
   }, [collectionLoading, collection, contactId]);
 
-  // Load data from collection
+  // Load data from collection and apply defaults for list fields
   useEffect(() => {
-    if (collection?.data_collection) {
-      setFormData(collection.data_collection);
+    if (collection?.data_collection && schema?.sections) {
+      let data = collection.data_collection as Record<string, unknown>;
+      
+      // Apply default values for list fields that are empty
+      schema.sections.forEach(section => {
+        section.fields?.forEach(field => {
+          if (field.field_type === 'list' && field.default_value) {
+            const currentValue = getValueByPath(data, field.data_path);
+            if (!currentValue || (Array.isArray(currentValue) && currentValue.length === 0)) {
+              data = setValueByPath(data, field.data_path, field.default_value);
+            }
+          }
+        });
+      });
+      
+      setFormData(data);
     }
-  }, [collection]);
+  }, [collection, schema]);
 
-  // Set first section as active
+  // Set first section as active (excluding notes)
   useEffect(() => {
     if (schema?.sections && schema.sections.length > 0 && !activeSection) {
-      setActiveSection(schema.sections[0].key);
+      const nonNotesSections = schema.sections.filter(s => s.key !== 'notes');
+      if (nonNotesSections.length > 0) {
+        setActiveSection(nonNotesSections[0].key);
+      }
     }
   }, [schema, activeSection]);
 
@@ -93,6 +115,13 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
     onComplete?.();
   };
 
+  // Get observations data
+  const plannerSummary = (getValueByPath(formData, 'notes.planner_summary') as string) || '';
+  const additionalContext = (getValueByPath(formData, 'notes.additional_context') as string) || '';
+
+  // Filter out notes section for main content
+  const contentSections = schema?.sections?.filter(s => s.key !== 'notes') || [];
+
   // Calculate progress
   const allFields = schema?.sections?.flatMap(s => s.fields || []) || [];
   const validation = validateDataCollection(formData, allFields);
@@ -117,67 +146,114 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
   }
 
   return (
-    <div className="space-y-4">
-      {/* Status and Progress */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Badge variant={collection?.status === 'completed' ? 'default' : 'secondary'}>
-            {collection?.status === 'completed' ? 'Concluída' : 'Rascunho'}
-          </Badge>
-          {hasChanges && (
-            <span className="text-xs text-muted-foreground">Alterações não salvas</span>
-          )}
+    <div className="flex gap-6">
+      {/* Main content */}
+      <div className="flex-1 space-y-4">
+        {/* Status, Progress and View Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Badge variant={collection?.status === 'completed' ? 'default' : 'secondary'}>
+                {collection?.status === 'completed' ? 'Concluída' : 'Rascunho'}
+              </Badge>
+              {hasChanges && (
+                <span className="text-xs text-muted-foreground">Alterações não salvas</span>
+              )}
+            </div>
+            
+            {/* View Mode Toggle */}
+            <ToggleGroup 
+              type="single" 
+              value={viewMode} 
+              onValueChange={(v) => v && setViewMode(v as ViewMode)}
+              size="sm"
+            >
+              <ToggleGroupItem value="tabs" aria-label="Por seções">
+                <Grid2X2 className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="all" aria-label="Tudo corrido">
+                <LayoutList className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{validation.completedRequiredFields}/{validation.totalRequiredFields} obrigatórios</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{validation.completedRequiredFields}/{validation.totalRequiredFields} obrigatórios</span>
-        </div>
-      </div>
 
-      <Progress value={progress} className="h-2" />
+        <Progress value={progress} className="h-2" />
 
-      {/* Section Navigation */}
-      <div className="flex flex-wrap gap-2">
-        {schema.sections?.map(section => (
-          <Button
-            key={section.key}
-            variant={activeSection === section.key ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveSection(section.key)}
+        {/* Section Navigation - Only show in tabs mode */}
+        {viewMode === 'tabs' && (
+          <div className="flex flex-wrap gap-2">
+            {contentSections.map(section => (
+              <Button
+                key={section.key}
+                variant={activeSection === section.key ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveSection(section.key)}
+              >
+                {section.title}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Section Content */}
+        {viewMode === 'tabs' ? (
+          // Tabs mode - show only active section
+          contentSections.map(section => (
+            activeSection === section.key && (
+              <DynamicSection
+                key={section.id}
+                section={section}
+                data={formData}
+                onChange={handleFieldChange}
+              />
+            )
+          ))
+        ) : (
+          // All mode - show all sections in sequence
+          <div className="space-y-6">
+            {contentSections.map(section => (
+              <DynamicSection
+                key={section.id}
+                section={section}
+                data={formData}
+                onChange={handleFieldChange}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button 
+            variant="outline" 
+            onClick={handleSaveDraft}
+            disabled={saveDraft.isPending}
           >
-            {section.title}
+            {saveDraft.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar Rascunho
           </Button>
-        ))}
+          <Button 
+            onClick={handleComplete}
+            disabled={!validation.isValid || completeCollection.isPending}
+          >
+            {completeCollection.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+            Marcar como Concluída
+          </Button>
+        </div>
       </div>
 
-      {/* Active Section Content */}
-      {schema.sections?.map(section => (
-        activeSection === section.key && (
-          <DynamicSection
-            key={section.id}
-            section={section}
-            data={formData}
-            onChange={handleFieldChange}
-          />
-        )
-      ))}
-
-      {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button 
-          variant="outline" 
-          onClick={handleSaveDraft}
-          disabled={saveDraft.isPending}
-        >
-          {saveDraft.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar Rascunho
-        </Button>
-        <Button 
-          onClick={handleComplete}
-          disabled={!validation.isValid || completeCollection.isPending}
-        >
-          {completeCollection.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-          Marcar como Concluída
-        </Button>
+      {/* Fixed Observations Panel */}
+      <div className="w-80 shrink-0 hidden lg:block">
+        <ObservationsPanel
+          plannerSummary={plannerSummary}
+          additionalContext={additionalContext}
+          onPlannerSummaryChange={(value) => handleFieldChange('notes.planner_summary', value)}
+          onAdditionalContextChange={(value) => handleFieldChange('notes.additional_context', value)}
+        />
       </div>
     </div>
   );
