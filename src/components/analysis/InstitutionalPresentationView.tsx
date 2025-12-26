@@ -15,7 +15,7 @@ export function InstitutionalPresentationView() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1);
+  const [scale, setScale] = useState<number>(0.75);
   const [loadError, setLoadError] = useState(false);
   const { data: presentation, isLoading } = useActivePresentation();
 
