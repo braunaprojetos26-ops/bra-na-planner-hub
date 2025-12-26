@@ -45,6 +45,10 @@ const mainNavItems = [
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
 ];
 
+const teamNavItems = [
+  { title: 'Equipe', url: '/equipe', icon: Users },
+];
+
 const managementNavItems = [
   { title: 'Estrutura', url: '/structure', icon: Network },
 ];
@@ -67,6 +71,7 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
+  const canSeeTeam = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const canSeeManagement = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const canSeeAdmin = role === 'superadmin';
 
@@ -99,6 +104,20 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       end={item.url === '/'}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {canSeeTeam && teamNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <NavLink 
+                      to={item.url}
                       className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
                     >

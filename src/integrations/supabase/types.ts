@@ -1031,6 +1031,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       opportunities: {
         Row: {
           contact_id: string
@@ -1404,6 +1437,42 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      renewal_opportunities_created: {
+        Row: {
+          client_plan_id: string
+          created_at: string
+          id: string
+          opportunity_id: string
+        }
+        Insert: {
+          client_plan_id: string
+          created_at?: string
+          id?: string
+          opportunity_id: string
+        }
+        Update: {
+          client_plan_id?: string
+          created_at?: string
+          id?: string
+          opportunity_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewal_opportunities_created_client_plan_id_fkey"
+            columns: ["client_plan_id"]
+            isOneToOne: true
+            referencedRelation: "client_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renewal_opportunities_created_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_settings: {
         Row: {
