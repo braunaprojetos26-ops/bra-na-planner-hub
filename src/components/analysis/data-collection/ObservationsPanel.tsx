@@ -17,7 +17,7 @@ export function ObservationsPanel({
   onAdditionalContextChange,
 }: ObservationsPanelProps) {
   return (
-    <Card className="sticky top-4 border-primary/20 bg-primary/5">
+    <Card className="border-primary/20 bg-primary/5">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <StickyNote className="h-4 w-4" />
