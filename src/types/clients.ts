@@ -27,6 +27,8 @@ export interface ClientPlan {
     email: string;
   };
   plan_meetings?: ClientPlanMeeting[];
+  // Computed field
+  productCount?: number;
 }
 
 export interface ClientPlanMeeting {
@@ -66,4 +68,9 @@ export interface ClientMetrics {
   meetingsCompletedThisMonth: number;
   meetingsPendingThisMonth: number;
   totalPortfolioValue: number;
+  // Novas métricas por categoria de produto
+  activePlanejamentoValue: number;
+  activeSeguroValue: number;
+  investimentosValue: number;
+  creditoRealizadoValue: number;
 }
