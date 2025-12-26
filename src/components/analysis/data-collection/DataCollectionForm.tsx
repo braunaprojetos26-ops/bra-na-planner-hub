@@ -117,7 +117,6 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
 
   // Get observations data
   const plannerSummary = (getValueByPath(formData, 'notes.planner_summary') as string) || '';
-  const additionalContext = (getValueByPath(formData, 'notes.additional_context') as string) || '';
 
   // Filter out notes section for main content
   const contentSections = schema?.sections?.filter(s => s.key !== 'notes') || [];
@@ -247,12 +246,10 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
       </div>
 
       {/* Observations Panel - scrolls with content */}
-      <div className="w-80 shrink-0 hidden lg:block self-start sticky top-4">
+      <div className="w-80 shrink-0 hidden lg:block">
         <ObservationsPanel
-          plannerSummary={plannerSummary}
-          additionalContext={additionalContext}
-          onPlannerSummaryChange={(value) => handleFieldChange('notes.planner_summary', value)}
-          onAdditionalContextChange={(value) => handleFieldChange('notes.additional_context', value)}
+          value={plannerSummary}
+          onChange={(value) => handleFieldChange('notes.planner_summary', value)}
         />
       </div>
     </div>
