@@ -246,7 +246,7 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
       </div>
 
       {/* Observations Panel - scrolls with content */}
-      <div className="w-80 shrink-0 hidden lg:block">
+      <div className="w-80 shrink-0 hidden lg:block self-start">
         <ObservationsPanel
           value={plannerSummary}
           onChange={(value) => handleFieldChange('notes.planner_summary', value)}
