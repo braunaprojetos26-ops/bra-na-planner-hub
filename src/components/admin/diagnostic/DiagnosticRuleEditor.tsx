@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Save, X } from 'lucide-react';
 import { 
@@ -14,6 +13,7 @@ import {
   useUpdateDiagnosticRule, 
   useDeleteDiagnosticRule 
 } from '@/hooks/useDiagnosticConfig';
+import { DataPathPicker } from './DataPathPicker';
 
 interface Props {
   categoryId: string;
@@ -27,7 +27,6 @@ export function DiagnosticRuleEditor({ categoryId, categoryName }: Props) {
   const deleteMutation = useDeleteDiagnosticRule();
 
   const [editingRule, setEditingRule] = useState<DiagnosticRule | null>(null);
-  const [newDataPath, setNewDataPath] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newRule, setNewRule] = useState({
     evaluation_prompt: '',
@@ -63,17 +62,20 @@ export function DiagnosticRuleEditor({ categoryId, categoryName }: Props) {
     if (!path.trim()) return;
     
     if (rule && editingRule) {
-      setEditingRule({
-        ...editingRule,
-        data_paths: [...editingRule.data_paths, path.trim()]
-      });
+      if (!editingRule.data_paths.includes(path.trim())) {
+        setEditingRule({
+          ...editingRule,
+          data_paths: [...editingRule.data_paths, path.trim()]
+        });
+      }
     } else if (isCreating) {
-      setNewRule(r => ({
-        ...r,
-        data_paths: [...r.data_paths, path.trim()]
-      }));
+      if (!newRule.data_paths.includes(path.trim())) {
+        setNewRule(r => ({
+          ...r,
+          data_paths: [...r.data_paths, path.trim()]
+        }));
+      }
     }
-    setNewDataPath('');
   };
 
   const removeDataPath = (rule: DiagnosticRule | null, index: number) => {
@@ -126,28 +128,10 @@ export function DiagnosticRuleEditor({ categoryId, categoryName }: Props) {
 
             <div className="space-y-2">
               <Label className="text-xs">Campos de Dados Utilizados</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newDataPath}
-                  onChange={(e) => setNewDataPath(e.target.value)}
-                  placeholder="Ex: orcamento.custos_fixos"
-                  className="text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addDataPath(null, newDataPath);
-                    }
-                  }}
-                />
-                <Button 
-                  type="button" 
-                  size="sm" 
-                  variant="secondary"
-                  onClick={() => addDataPath(null, newDataPath)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <DataPathPicker
+                selectedPaths={newRule.data_paths}
+                onAddPath={(path) => addDataPath(null, path)}
+              />
               <div className="flex flex-wrap gap-1 mt-2">
                 {newRule.data_paths.map((path, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
@@ -212,28 +196,10 @@ export function DiagnosticRuleEditor({ categoryId, categoryName }: Props) {
 
                   <div className="space-y-2">
                     <Label className="text-xs">Campos de Dados</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newDataPath}
-                        onChange={(e) => setNewDataPath(e.target.value)}
-                        placeholder="Ex: patrimonio.reserva"
-                        className="text-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addDataPath(rule, newDataPath);
-                          }
-                        }}
-                      />
-                      <Button 
-                        type="button" 
-                        size="sm" 
-                        variant="secondary"
-                        onClick={() => addDataPath(rule, newDataPath)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DataPathPicker
+                      selectedPaths={editingRule.data_paths}
+                      onAddPath={(path) => addDataPath(rule, path)}
+                    />
                     <div className="flex flex-wrap gap-1 mt-2">
                       {editingRule.data_paths.map((path, index) => (
                         <Badge key={index} variant="secondary" className="text-xs">

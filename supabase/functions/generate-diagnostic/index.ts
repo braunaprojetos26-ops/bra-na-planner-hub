@@ -159,13 +159,23 @@ serve(async (req) => {
       
       // Extract relevant data for this category
       const relevantData: Record<string, unknown> = {};
+      const missingPaths: string[] = [];
+      
       if (rule?.data_paths) {
         for (const path of rule.data_paths) {
           const value = getValueByPath(collectedData, path);
-          if (value !== undefined) {
+          if (value !== undefined && value !== null && value !== '') {
             relevantData[path] = value;
+          } else {
+            missingPaths.push(path);
           }
         }
+      }
+
+      // Log data coverage for debugging
+      console.log(`[${cat.key}] Data coverage: ${Object.keys(relevantData).length}/${rule?.data_paths?.length || 0} paths`);
+      if (missingPaths.length > 0) {
+        console.log(`[${cat.key}] Missing/empty paths: ${missingPaths.join(', ')}`);
       }
 
       return {
@@ -173,7 +183,8 @@ serve(async (req) => {
         name: cat.name,
         description: cat.description,
         evaluationPrompt: rule?.evaluation_prompt || '',
-        relevantData
+        relevantData,
+        missingPaths
       };
     });
 
@@ -198,7 +209,7 @@ ${categoryPrompts.map(c => `
 ### ${c.name} (${c.key})
 ${c.description}
 Critério: ${c.evaluationPrompt}
-Dados relevantes: ${JSON.stringify(c.relevantData)}
+Dados relevantes: ${JSON.stringify(c.relevantData)}${c.missingPaths.length > 0 ? `\n[ATENÇÃO: Dados não informados: ${c.missingPaths.join(', ')}]` : ''}
 `).join('\n')}
 
 Use a função evaluate_categories para retornar sua avaliação.`;
