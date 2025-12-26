@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, CheckCircle, LayoutList, Grid2X2 } from 'lucide-react';
+import { Loader2, Save, CheckCircle, LayoutList, Grid2X2, StickyNote } from 'lucide-react';
 import { useDataCollectionSchema } from '@/hooks/useDataCollectionSchema';
 import { 
   useContactDataCollection, 
@@ -19,6 +19,7 @@ import { DynamicSection } from './DynamicSection';
 import { ObservationsPanel } from './ObservationsPanel';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 interface DataCollectionFormProps {
   contactId: string;
@@ -245,12 +246,37 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
         </div>
       </div>
 
-      {/* Observations Panel - scrolls with content */}
-      <div className="w-80 shrink-0 hidden lg:block self-start">
+      {/* Observations Panel - sticky on desktop */}
+      <div className="w-80 shrink-0 hidden lg:block lg:sticky lg:top-6 self-start max-h-[calc(100vh-8rem)] overflow-auto">
         <ObservationsPanel
           value={plannerSummary}
           onChange={(value) => handleFieldChange('notes.planner_summary', value)}
         />
+      </div>
+
+      {/* Floating button for mobile */}
+      <div className="fixed bottom-6 right-6 lg:hidden z-50">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button size="lg" className="rounded-full shadow-lg h-14 w-14 p-0">
+              <StickyNote className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[50vh]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <StickyNote className="h-5 w-5 text-primary" />
+                Observações do Planejador
+              </SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              <ObservationsPanel
+                value={plannerSummary}
+                onChange={(value) => handleFieldChange('notes.planner_summary', value)}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );
