@@ -35,7 +35,35 @@ export function useClients(status?: ClientPlan['status']) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as ClientPlan[];
+
+      // Buscar contagem de contratos ativos para cada cliente
+      const contactIds = [...new Set(data?.map(p => p.contact_id) || [])];
+      
+      if (contactIds.length === 0) {
+        return data as ClientPlan[];
+      }
+
+      const { data: contractCounts, error: contractError } = await supabase
+        .from('contracts')
+        .select('contact_id')
+        .eq('status', 'active')
+        .in('contact_id', contactIds);
+
+      if (contractError) throw contractError;
+
+      // Contar contratos por contact_id
+      const countMap = new Map<string, number>();
+      contractCounts?.forEach(c => {
+        countMap.set(c.contact_id, (countMap.get(c.contact_id) || 0) + 1);
+      });
+
+      // Adicionar contagem aos planos
+      const plansWithCounts = data?.map(plan => ({
+        ...plan,
+        productCount: countMap.get(plan.contact_id) || 0,
+      })) || [];
+
+      return plansWithCounts as ClientPlan[];
     },
     enabled: !!user,
   });
@@ -106,6 +134,17 @@ export function useClientPlan(planId: string) {
   });
 }
 
+// Categorias de crédito para agrupar
+const CREDIT_CATEGORIES = [
+  'Home Equity',
+  'Financiamento Imobiliário',
+  'Financiamento Auto',
+  'Carta Contemplada Auto',
+  'Carta Contemplada Imobiliário',
+  'Crédito com Colateral XP',
+  'Consórcio',
+];
+
 export function useClientMetrics() {
   const { user } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
@@ -138,12 +177,94 @@ export function useClientMetrics() {
       // Get plan IDs for meetings query
       const planIds = plans?.map(p => p.id) || [];
 
+      // Buscar contratos ativos com categoria do produto
+      let contractsQuery = supabase
+        .from('contracts')
+        .select(`
+          id,
+          contract_value,
+          owner_id,
+          product:products(
+            id,
+            name,
+            category:product_categories(id, name)
+          )
+        `)
+        .eq('status', 'active');
+
+      if (targetUserId) {
+        contractsQuery = contractsQuery.eq('owner_id', targetUserId);
+      }
+
+      const { data: contracts, error: contractsError } = await contractsQuery;
+      if (contractsError) throw contractsError;
+
+      // Calcular valores por categoria
+      let activePlanejamentoValue = 0;
+      let activeSeguroValue = 0;
+      let investimentosValue = 0;
+      let creditoRealizadoValue = 0;
+
+      contracts?.forEach(contract => {
+        const categoryName = (contract.product as any)?.category?.name || '';
+        const productName = (contract.product as any)?.name || '';
+        const value = Number(contract.contract_value) || 0;
+
+        // Planejamento Financeiro
+        if (categoryName.toLowerCase().includes('planejamento') || 
+            productName.toLowerCase().includes('planejamento financeiro')) {
+          activePlanejamentoValue += value;
+        }
+        // Seguro de Vida
+        else if (categoryName.toLowerCase().includes('seguro') || 
+                 productName.toLowerCase().includes('seguro')) {
+          activeSeguroValue += value;
+        }
+        // Investimentos (Prunus ou categoria Investimentos)
+        else if (categoryName.toLowerCase().includes('investimento') || 
+                 categoryName.toLowerCase().includes('prunus') ||
+                 productName.toLowerCase().includes('prunus') ||
+                 productName.toLowerCase().includes('investimento')) {
+          investimentosValue += value;
+        }
+        // Crédito (várias categorias)
+        else if (CREDIT_CATEGORIES.some(cat => 
+          categoryName.toLowerCase().includes(cat.toLowerCase()) ||
+          productName.toLowerCase().includes(cat.toLowerCase())
+        )) {
+          creditoRealizadoValue += value;
+        }
+      });
+
+      // Buscar oportunidades ganhas do funil PRUNUS para investimentos
+      const { data: wonOpportunities, error: wonError } = await supabase
+        .from('opportunities')
+        .select(`
+          id,
+          proposal_value,
+          current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
+        `)
+        .eq('status', 'won');
+
+      if (!wonError && wonOpportunities) {
+        wonOpportunities.forEach(opp => {
+          const funnelName = (opp.current_funnel as any)?.name || '';
+          if (funnelName.toLowerCase().includes('prunus') && opp.proposal_value) {
+            investimentosValue += Number(opp.proposal_value);
+          }
+        });
+      }
+
       if (planIds.length === 0) {
         return {
           activeClients: 0,
           meetingsCompletedThisMonth: 0,
           meetingsPendingThisMonth: 0,
           totalPortfolioValue: 0,
+          activePlanejamentoValue,
+          activeSeguroValue,
+          investimentosValue,
+          creditoRealizadoValue,
         } as ClientMetrics;
       }
 
@@ -174,6 +295,10 @@ export function useClientMetrics() {
         meetingsCompletedThisMonth: completedCount || 0,
         meetingsPendingThisMonth: pendingCount || 0,
         totalPortfolioValue,
+        activePlanejamentoValue,
+        activeSeguroValue,
+        investimentosValue,
+        creditoRealizadoValue,
       } as ClientMetrics;
     },
     enabled: !!user,
