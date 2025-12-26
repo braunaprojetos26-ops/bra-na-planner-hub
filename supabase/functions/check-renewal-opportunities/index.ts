@@ -57,7 +57,40 @@ Deno.serve(async (req) => {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     const targetDate = thirtyDaysFromNow.toISOString().split('T')[0];
 
+    // First, get the product ID for "Planejamento Financeiro Completo"
+    const { data: planningProduct, error: productError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('name', 'Planejamento Financeiro Completo')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (productError) {
+      console.error('Error fetching product:', productError);
+      return new Response(
+        JSON.stringify({ error: 'Error fetching product' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!planningProduct) {
+      console.log('Product "Planejamento Financeiro Completo" not found or inactive');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Product not found',
+          opportunitiesCreated: 0,
+          notificationsCreated: 0,
+          plansChecked: 0 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Found product ID: ${planningProduct.id}`);
+
     // Get active client plans ending in approximately 30 days
+    // Only for contracts with the "Planejamento Financeiro Completo" product
     const { data: plansEndingSoon, error: plansError } = await supabase
       .from('client_plans')
       .select(`
@@ -65,9 +98,11 @@ Deno.serve(async (req) => {
         contact_id,
         owner_id,
         end_date,
-        contacts!inner(full_name, owner_id)
+        contacts!inner(full_name, owner_id),
+        contracts!inner(product_id)
       `)
       .eq('status', 'active')
+      .eq('contracts.product_id', planningProduct.id)
       .lte('end_date', targetDate)
       .gte('end_date', new Date().toISOString().split('T')[0]);
 
