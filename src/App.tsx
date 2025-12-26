@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ActingUserProvider } from "@/contexts/ActingUserContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -16,11 +16,7 @@ import ContactAnalysis from "./pages/ContactAnalysis";
 import Pipeline from "./pages/Pipeline";
 import OpportunityDetail from "./pages/OpportunityDetail";
 import Structure from "./pages/Structure";
-import AdminPipelines from "./pages/AdminPipelines";
-import AdminAssistant from "./pages/AdminAssistant";
-import AdminProducts from "./pages/AdminProducts";
-import AdminDataCollectionBuilder from "./pages/AdminDataCollectionBuilder";
-import AdminDiagnostic from "./pages/AdminDiagnostic";
+import AdminSettings from "./pages/AdminSettings";
 import Contracts from "./pages/Contracts";
 import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
@@ -58,11 +54,15 @@ const App = () => (
               <Route path="/clients" element={<ProtectedPage><Clients /></ProtectedPage>} />
               <Route path="/clients/:planId" element={<ProtectedPage><ClientDetail /></ProtectedPage>} />
               <Route path="/structure" element={<ProtectedPage><Structure /></ProtectedPage>} />
-              <Route path="/admin/pipelines" element={<ProtectedPage><AdminPipelines /></ProtectedPage>} />
-              <Route path="/admin/products" element={<ProtectedPage><AdminProducts /></ProtectedPage>} />
-              <Route path="/admin/assistant" element={<ProtectedPage><AdminAssistant /></ProtectedPage>} />
-              <Route path="/admin/data-collection" element={<ProtectedPage><AdminDataCollectionBuilder /></ProtectedPage>} />
-              <Route path="/admin/diagnostic" element={<ProtectedPage><AdminDiagnostic /></ProtectedPage>} />
+              <Route path="/admin/settings" element={<ProtectedPage><AdminSettings /></ProtectedPage>} />
+              <Route path="/admin/settings/:tab" element={<ProtectedPage><AdminSettings /></ProtectedPage>} />
+              {/* Redirects from old routes to new unified settings */}
+              <Route path="/admin/users" element={<Navigate to="/admin/settings" replace />} />
+              <Route path="/admin/pipelines" element={<Navigate to="/admin/settings" replace state={{ tab: 'pipelines' }} />} />
+              <Route path="/admin/products" element={<Navigate to="/admin/settings" replace state={{ tab: 'products' }} />} />
+              <Route path="/admin/data-collection" element={<Navigate to="/admin/settings" replace state={{ tab: 'data-collection' }} />} />
+              <Route path="/admin/assistant" element={<Navigate to="/admin/settings" replace state={{ tab: 'ai' }} />} />
+              <Route path="/admin/diagnostic" element={<Navigate to="/admin/settings" replace state={{ tab: 'ai' }} />} />
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
               <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />

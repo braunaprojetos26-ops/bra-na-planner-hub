@@ -5,17 +5,12 @@ import {
   Network, 
   Kanban, 
   Settings,
-  UserCog,
   GraduationCap,
-  Bot,
   FileText,
-  Package,
   CheckSquare,
   Briefcase,
   BarChart3,
   BookOpen,
-  ClipboardList,
-  Brain
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -55,12 +50,7 @@ const managementNavItems = [
 ];
 
 const adminNavItems = [
-  { title: 'Usuários', url: '/admin/users', icon: UserCog },
-  { title: 'Pipelines', url: '/admin/pipelines', icon: Settings },
-  { title: 'Produtos', url: '/admin/products', icon: Package },
-  { title: 'Coleta de Dados', url: '/admin/data-collection', icon: ClipboardList },
-  { title: 'Diagnóstico IA', url: '/admin/diagnostic', icon: Brain },
-  { title: 'Assistente IA', url: '/admin/assistant', icon: Bot },
+  { title: 'Configurações', url: '/admin/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
