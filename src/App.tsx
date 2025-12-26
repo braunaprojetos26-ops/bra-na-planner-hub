@@ -20,6 +20,7 @@ import AdminPipelines from "./pages/AdminPipelines";
 import AdminAssistant from "./pages/AdminAssistant";
 import AdminProducts from "./pages/AdminProducts";
 import AdminDataCollectionBuilder from "./pages/AdminDataCollectionBuilder";
+import AdminDiagnostic from "./pages/AdminDiagnostic";
 import Contracts from "./pages/Contracts";
 import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/admin/products" element={<ProtectedPage><AdminProducts /></ProtectedPage>} />
               <Route path="/admin/assistant" element={<ProtectedPage><AdminAssistant /></ProtectedPage>} />
               <Route path="/admin/data-collection" element={<ProtectedPage><AdminDataCollectionBuilder /></ProtectedPage>} />
+              <Route path="/admin/diagnostic" element={<ProtectedPage><AdminDiagnostic /></ProtectedPage>} />
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
               <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
