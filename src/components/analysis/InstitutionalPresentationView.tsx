@@ -1,26 +1,26 @@
 import { useRef, useState, useEffect } from 'react';
-import { AlertCircle, Maximize2, Minimize2, ExternalLink, RefreshCw } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import { AlertCircle, Maximize2, Minimize2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useActivePresentation, getStaticPresentationUrl } from '@/hooks/useInstitutionalPresentation';
 import { cn } from '@/lib/utils';
 
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
 export function InstitutionalPresentationView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [numPages, setNumPages] = useState<number>(0);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [scale, setScale] = useState<number>(1);
   const [loadError, setLoadError] = useState(false);
-  const [useGoogleViewer, setUseGoogleViewer] = useState(false);
   const { data: presentation, isLoading } = useActivePresentation();
 
   // Use the database presentation URL if available, otherwise fall back to static file
   const presentationUrl = presentation?.file_path || getStaticPresentationUrl();
-  
-  // Build full URL for the PDF
-  const fullPdfUrl = presentationUrl.startsWith('http') 
-    ? presentationUrl 
-    : `${window.location.origin}${presentationUrl}`;
-
-  // Google Docs Viewer URL (works as fallback for browsers that don't support inline PDFs)
-  const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fullPdfUrl)}&embedded=true`;
 
   const toggleFullscreen = async () => {
     try {
@@ -45,22 +45,25 @@ export function InstitutionalPresentationView() {
     };
   }, []);
 
-  // Reset error state when URL changes
+  // Reset state when URL changes
   useEffect(() => {
     setLoadError(false);
-    setUseGoogleViewer(false);
+    setPageNumber(1);
   }, [presentationUrl]);
 
-  const handleIframeError = () => {
-    console.log('PDF iframe failed to load, switching to Google Viewer');
-    setLoadError(true);
-    setUseGoogleViewer(true);
-  };
-
-  const handleRetry = () => {
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
     setLoadError(false);
-    setUseGoogleViewer(false);
-  };
+  }
+
+  function onDocumentLoadError() {
+    setLoadError(true);
+  }
+
+  const goToPrevPage = () => setPageNumber(p => Math.max(1, p - 1));
+  const goToNextPage = () => setPageNumber(p => Math.min(numPages, p + 1));
+  const zoomIn = () => setScale(s => Math.min(2, s + 0.25));
+  const zoomOut = () => setScale(s => Math.max(0.5, s - 0.25));
 
   if (isLoading) {
     return (
@@ -69,8 +72,6 @@ export function InstitutionalPresentationView() {
       </div>
     );
   }
-
-  const viewerUrl = useGoogleViewer ? googleViewerUrl : `${presentationUrl}#toolbar=0&navpanes=0&scrollbar=0`;
 
   return (
     <div
@@ -96,57 +97,109 @@ export function InstitutionalPresentationView() {
       )}
 
       <div className={cn(
-        'flex-1 relative',
+        'flex-1 relative overflow-auto flex flex-col items-center',
         isFullscreen ? 'h-full' : 'h-[600px]'
       )}>
-        <iframe
-          src={viewerUrl}
-          className="w-full h-full rounded-lg border border-border bg-background"
-          title="Apresentação Institucional"
-          onError={handleIframeError}
-        />
-
-        {/* Fallback UI when both methods fail */}
-        {loadError && !useGoogleViewer && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-muted rounded-lg border border-border">
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center gap-4 h-full bg-muted rounded-lg border border-border w-full">
             <AlertCircle className="w-12 h-12 text-muted-foreground" />
             <p className="text-muted-foreground text-center">
-              Não foi possível exibir o PDF no navegador
+              Não foi possível carregar o PDF
             </p>
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={handleRetry} className="gap-2">
-                <RefreshCw className="w-4 h-4" />
-                Tentar novamente
+            <a href={presentationUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary" size="sm" className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Abrir em nova aba
               </Button>
-              <a href={presentationUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <ExternalLink className="w-4 h-4" />
-                  Abrir em nova aba
-                </Button>
-              </a>
-            </div>
+            </a>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center py-4">
+            <Document
+              file={presentationUrl}
+              onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={onDocumentLoadError}
+              loading={
+                <div className="flex items-center justify-center h-96">
+                  <p className="text-muted-foreground">Carregando PDF...</p>
+                </div>
+              }
+            >
+              <Page 
+                pageNumber={pageNumber} 
+                scale={scale}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                className="shadow-lg rounded-lg"
+              />
+            </Document>
           </div>
         )}
       </div>
 
-      {!isFullscreen && (
-        <div className="mt-4 flex justify-between items-center">
-          {useGoogleViewer && (
-            <span className="text-xs text-muted-foreground">
-              Usando visualizador alternativo
+      {/* Navigation and controls */}
+      {!loadError && numPages > 0 && (
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Page navigation */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToPrevPage}
+              disabled={pageNumber <= 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+              Página {pageNumber} de {numPages}
             </span>
-          )}
-          <div className="flex gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToNextPage}
+              disabled={pageNumber >= numPages}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Zoom controls */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={zoomOut}
+              disabled={scale <= 0.5}
+            >
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground min-w-[60px] text-center">
+              {Math.round(scale * 100)}%
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={zoomIn}
+              disabled={scale >= 2}
+            >
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
             <a href={presentationUrl} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-2">
                 <ExternalLink className="w-4 h-4" />
                 Abrir PDF
               </Button>
             </a>
-            <Button variant="secondary" size="sm" onClick={toggleFullscreen} className="gap-2">
-              <Maximize2 className="w-4 h-4" />
-              Tela Cheia
-            </Button>
+            {!isFullscreen && (
+              <Button variant="secondary" size="sm" onClick={toggleFullscreen} className="gap-2">
+                <Maximize2 className="w-4 h-4" />
+                Tela Cheia
+              </Button>
+            )}
           </div>
         </div>
       )}
