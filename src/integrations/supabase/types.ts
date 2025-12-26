@@ -230,6 +230,51 @@ export type Database = {
           },
         ]
       }
+      contact_diagnostics: {
+        Row: {
+          category_scores: Json
+          contact_id: string
+          created_at: string
+          generated_by: string
+          id: string
+          overall_score: number
+          schema_version: string
+        }
+        Insert: {
+          category_scores?: Json
+          contact_id: string
+          created_at?: string
+          generated_by: string
+          id?: string
+          overall_score: number
+          schema_version?: string
+        }
+        Update: {
+          category_scores?: Json
+          contact_id?: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          overall_score?: number
+          schema_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_diagnostics_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_diagnostics_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       contact_history: {
         Row: {
           action: string
@@ -676,6 +721,83 @@ export type Database = {
             columns: ["schema_id"]
             isOneToOne: false
             referencedRelation: "data_collection_schemas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          order_position: number
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          order_position?: number
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          order_position?: number
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: []
+      }
+      diagnostic_rules: {
+        Row: {
+          category_id: string
+          created_at: string
+          data_paths: Json
+          evaluation_prompt: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          data_paths?: Json
+          evaluation_prompt: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          data_paths?: Json
+          evaluation_prompt?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_categories"
             referencedColumns: ["id"]
           },
         ]
