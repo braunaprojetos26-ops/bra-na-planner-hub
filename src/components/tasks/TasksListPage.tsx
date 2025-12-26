@@ -184,7 +184,7 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                     <DropdownMenuContent align="end">
                       {task.opportunity?.id && (
                         <DropdownMenuItem asChild>
-                          <Link to={`/opportunities/${task.opportunity.id}`}>
+                          <Link to={`/pipeline/${task.opportunity.id}`}>
                             <ExternalLink className="w-4 h-4 mr-2" />
                             Ver oportunidade
                           </Link>
