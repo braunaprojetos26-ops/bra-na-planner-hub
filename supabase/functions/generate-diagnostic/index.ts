@@ -293,21 +293,77 @@ Use a função evaluate_categories para retornar sua avaliação.`;
 
     const aiData = await aiResponse.json();
     console.log('AI response received');
+    console.log('Full AI response:', JSON.stringify(aiData, null, 2));
 
     // Extract the tool call result
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== 'evaluate_categories') {
-      console.error('Unexpected AI response format:', JSON.stringify(aiData));
+    
+    if (!toolCall) {
+      console.error('No tool call found in response');
+      console.error('Message content:', aiData.choices?.[0]?.message?.content);
+      return new Response(
+        JSON.stringify({ error: 'AI did not return expected tool call format' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Tool call function name:', toolCall.function?.name);
+    console.log('Tool call arguments (raw):', toolCall.function?.arguments);
+
+    if (toolCall.function?.name !== 'evaluate_categories') {
+      console.error('Unexpected function name:', toolCall.function?.name);
       return new Response(
         JSON.stringify({ error: 'Invalid AI response format' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const evaluationResult = JSON.parse(toolCall.function.arguments);
-    const categoryScores: DiagnosticResult = evaluationResult.categories;
+    let evaluationResult;
+    try {
+      evaluationResult = JSON.parse(toolCall.function.arguments);
+      console.log('Parsed evaluation result:', JSON.stringify(evaluationResult, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse tool arguments:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse AI response' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    console.log('Category scores:', JSON.stringify(categoryScores));
+    // Handle both response formats: { categories: {...} } or direct { key: {...} }
+    let categoryScores: DiagnosticResult;
+    
+    if (evaluationResult.categories && typeof evaluationResult.categories === 'object') {
+      categoryScores = evaluationResult.categories;
+      console.log('Using categories from wrapper object');
+    } else {
+      // Fallback: assume the result itself is the category scores
+      categoryScores = evaluationResult;
+      console.log('Using evaluation result directly as category scores');
+    }
+
+    console.log('Final category scores:', JSON.stringify(categoryScores));
+
+    // Validate that we have scores
+    const expectedCategoryKeys = categories.map(c => c.key);
+    const receivedKeys = Object.keys(categoryScores);
+    console.log('Expected category keys:', expectedCategoryKeys);
+    console.log('Received category keys:', receivedKeys);
+
+    if (receivedKeys.length === 0) {
+      console.error('No category scores received from AI');
+      return new Response(
+        JSON.stringify({ error: 'AI returned empty category scores' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Log missing categories
+    for (const key of expectedCategoryKeys) {
+      if (!categoryScores[key]) {
+        console.warn(`Missing score for category: ${key}`);
+      }
+    }
 
     // Calculate overall score with weights
     let totalWeight = 0;
@@ -315,16 +371,19 @@ Use a função evaluate_categories para retornar sua avaliação.`;
 
     for (const cat of categories) {
       const catScore = categoryScores[cat.key];
-      if (catScore) {
+      if (catScore && typeof catScore.score === 'number') {
         const weight = Number(cat.weight) || 1;
         totalWeight += weight;
         weightedSum += catScore.score * weight;
+        console.log(`[${cat.key}] score=${catScore.score}, weight=${weight}`);
+      } else {
+        console.warn(`[${cat.key}] No valid score found, catScore:`, catScore);
       }
     }
 
     const overallScore = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 10) / 10 : 0;
 
-    console.log(`Overall score: ${overallScore}`);
+    console.log(`Overall score: ${overallScore} (weightedSum=${weightedSum}, totalWeight=${totalWeight})`);
 
     // Save the diagnostic
     const { data: diagnostic, error: saveError } = await supabase
