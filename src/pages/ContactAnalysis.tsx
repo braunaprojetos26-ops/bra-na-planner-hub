@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Maximize } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useContact } from '@/hooks/useContacts';
@@ -11,10 +11,12 @@ import { PlannerSlideView } from '@/components/analysis/PlannerSlideView';
 import { PlannerSlideEditor } from '@/components/analysis/PlannerSlideEditor';
 import { InstitutionalPresentationView } from '@/components/analysis/InstitutionalPresentationView';
 import { DataCollectionForm } from '@/components/analysis/data-collection/DataCollectionForm';
+import { DiagnosticView } from '@/components/analysis/diagnostic/DiagnosticView';
 
 const STEPS = [
   { label: 'Quem Sou Eu', shortLabel: 'Quem Sou' },
   { label: 'Coleta de Dados', shortLabel: 'Coleta' },
+  { label: 'Diagnóstico IA', shortLabel: 'Diagnóstico' },
   { label: 'Apresentação', shortLabel: 'Apresentação' },
   { label: 'Proposta', shortLabel: 'Proposta' },
 ];
@@ -87,9 +89,17 @@ export default function ContactAnalysis() {
         );
 
       case 2:
-        return <InstitutionalPresentationView />;
+        return (
+          <DiagnosticView 
+            contactId={contactId!}
+            onComplete={handleNext}
+          />
+        );
 
       case 3:
+        return <InstitutionalPresentationView />;
+
+      case 4:
         return (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
