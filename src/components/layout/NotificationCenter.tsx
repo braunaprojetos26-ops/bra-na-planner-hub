@@ -16,11 +16,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const navigate = useNavigate();
 
   const handleClick = () => {
-    if (notification.opportunityId) {
-      navigate(`/opportunities/${notification.opportunityId}`);
-    } else {
-      navigate('/tasks');
-    }
+    navigate('/tasks');
     onClose();
   };
 
