@@ -216,7 +216,32 @@ Use a função evaluate_categories para retornar sua avaliação.`;
 
     console.log('Calling Lovable AI...');
 
-    // Call Lovable AI with tool calling
+    // Build explicit schema with category keys to ensure proper response structure
+    const categorySchema: Record<string, unknown> = {};
+    const categoryKeys: string[] = [];
+    
+    for (const cat of categories) {
+      categoryKeys.push(cat.key);
+      categorySchema[cat.key] = {
+        type: 'object',
+        description: `Avaliação para ${cat.name}`,
+        properties: {
+          score: { 
+            type: 'number', 
+            description: `Nota de 0 a 10 para ${cat.name}`
+          },
+          insight: { 
+            type: 'string',
+            description: `Insight curto (máximo 2 frases) sobre ${cat.name}`
+          }
+        },
+        required: ['score', 'insight']
+      };
+    }
+
+    console.log('Category keys for schema:', categoryKeys);
+
+    // Call Lovable AI with tool calling - using explicit properties instead of additionalProperties
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -234,32 +259,11 @@ Use a função evaluate_categories para retornar sua avaliação.`;
             type: 'function',
             function: {
               name: 'evaluate_categories',
-              description: 'Retorna a avaliação de todas as categorias do diagnóstico financeiro',
+              description: 'Retorna a avaliação de todas as categorias do diagnóstico financeiro. IMPORTANTE: Você DEVE avaliar TODAS as categorias listadas.',
               parameters: {
                 type: 'object',
-                properties: {
-                  categories: {
-                    type: 'object',
-                    description: 'Objeto com a avaliação de cada categoria',
-                    additionalProperties: {
-                      type: 'object',
-                      properties: {
-                        score: { 
-                          type: 'number', 
-                          minimum: 0, 
-                          maximum: 10,
-                          description: 'Nota de 0 a 10 para a categoria'
-                        },
-                        insight: { 
-                          type: 'string',
-                          description: 'Insight curto (máximo 2 frases) sobre a situação do cliente nesta categoria'
-                        }
-                      },
-                      required: ['score', 'insight']
-                    }
-                  }
-                },
-                required: ['categories']
+                properties: categorySchema,
+                required: categoryKeys
               }
             }
           }
