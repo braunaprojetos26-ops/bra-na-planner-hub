@@ -373,6 +373,7 @@ export type Database = {
           address_number: string | null
           birth_date: string | null
           campaign: string | null
+          city: string | null
           client_code: string | null
           cpf: string | null
           created_at: string
@@ -395,6 +396,7 @@ export type Database = {
           rg_issuer: string | null
           source: string | null
           source_detail: string | null
+          state: string | null
           temperature: string | null
           updated_at: string
           zip_code: string | null
@@ -405,6 +407,7 @@ export type Database = {
           address_number?: string | null
           birth_date?: string | null
           campaign?: string | null
+          city?: string | null
           client_code?: string | null
           cpf?: string | null
           created_at?: string
@@ -427,6 +430,7 @@ export type Database = {
           rg_issuer?: string | null
           source?: string | null
           source_detail?: string | null
+          state?: string | null
           temperature?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -437,6 +441,7 @@ export type Database = {
           address_number?: string | null
           birth_date?: string | null
           campaign?: string | null
+          city?: string | null
           client_code?: string | null
           cpf?: string | null
           created_at?: string
@@ -459,6 +464,7 @@ export type Database = {
           rg_issuer?: string | null
           source?: string | null
           source_detail?: string | null
+          state?: string | null
           temperature?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -490,6 +496,8 @@ export type Database = {
       contracts: {
         Row: {
           calculated_pbs: number
+          clicksign_document_key: string | null
+          clicksign_status: string | null
           contact_id: string
           contract_value: number
           created_at: string
@@ -498,18 +506,25 @@ export type Database = {
           id: string
           installment_value: number | null
           installments: number | null
+          meeting_count: number | null
           notes: string | null
           opportunity_id: string | null
           owner_id: string
           payment_type: string | null
+          plan_type: string | null
           product_id: string
           reported_at: string
           start_date: string | null
           status: string
           updated_at: string
+          vindi_bill_id: string | null
+          vindi_customer_id: string | null
+          vindi_status: string | null
         }
         Insert: {
           calculated_pbs: number
+          clicksign_document_key?: string | null
+          clicksign_status?: string | null
           contact_id: string
           contract_value: number
           created_at?: string
@@ -518,18 +533,25 @@ export type Database = {
           id?: string
           installment_value?: number | null
           installments?: number | null
+          meeting_count?: number | null
           notes?: string | null
           opportunity_id?: string | null
           owner_id: string
           payment_type?: string | null
+          plan_type?: string | null
           product_id: string
           reported_at?: string
           start_date?: string | null
           status?: string
           updated_at?: string
+          vindi_bill_id?: string | null
+          vindi_customer_id?: string | null
+          vindi_status?: string | null
         }
         Update: {
           calculated_pbs?: number
+          clicksign_document_key?: string | null
+          clicksign_status?: string | null
           contact_id?: string
           contract_value?: number
           created_at?: string
@@ -538,15 +560,20 @@ export type Database = {
           id?: string
           installment_value?: number | null
           installments?: number | null
+          meeting_count?: number | null
           notes?: string | null
           opportunity_id?: string | null
           owner_id?: string
           payment_type?: string | null
+          plan_type?: string | null
           product_id?: string
           reported_at?: string
           start_date?: string | null
           status?: string
           updated_at?: string
+          vindi_bill_id?: string | null
+          vindi_customer_id?: string | null
+          vindi_status?: string | null
         }
         Relationships: [
           {
