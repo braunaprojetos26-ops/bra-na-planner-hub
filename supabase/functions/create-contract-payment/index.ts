@@ -328,20 +328,36 @@ async function createVindiPayment(
       console.log("Vindi customer created:", customerId);
     }
 
-    // Determine product ID based on plan type
-    // These would be the actual Vindi product IDs
+    // Vindi Product IDs
+    const vindiProductId = contractData.planType === "novo_planejamento" 
+      ? 1015472  // Planejamento Completo
+      : 1284814; // Planejamento Pontual
+    
+    // Vindi Plan IDs (for subscriptions)
+    const vindiPlanId = contractData.planType === "novo_planejamento"
+      ? 290372   // Novo Planejamento financeiro
+      : 368991;  // Planejamento Financeiro Pontual
+
     const productName = contractData.planType === "novo_planejamento" 
       ? "Novo Planejamento Financeiro" 
       : "Planejamento Financeiro Pontual";
 
+    // Map payment method to Vindi codes
+    // pix -> pix, recorrente -> credit_card (for recurring), parcelado -> credit_card
+    let paymentMethodCode = "pix";
+    if (contractData.paymentMethod === "recorrente") {
+      paymentMethodCode = "credit_card";
+    } else if (contractData.paymentMethod === "parcelado") {
+      paymentMethodCode = "credit_card";
+    }
+
     // Create bill
     const billData: any = {
       customer_id: parseInt(customerId),
-      payment_method_code: "bank_slip", // Will allow client to choose at payment time
+      payment_method_code: paymentMethodCode,
       bill_items: [
         {
-          product_id: null, // Will use product code instead
-          product_code: contractData.planType === "novo_planejamento" ? "NPF" : "PFP",
+          product_id: vindiProductId,
           amount: contractData.planValue,
           quantity: 1,
           description: productName,
