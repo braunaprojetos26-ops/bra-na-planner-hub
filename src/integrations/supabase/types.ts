@@ -1901,6 +1901,10 @@ export type Database = {
         | "coordenador_executivo"
         | "gerente_comercial"
         | "superintendente"
+        | "operacoes_administrativo"
+        | "operacoes_investimentos"
+        | "operacoes_treinamentos"
+        | "operacoes_rh"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2052,6 +2056,10 @@ export const Constants = {
         "coordenador_executivo",
         "gerente_comercial",
         "superintendente",
+        "operacoes_administrativo",
+        "operacoes_investimentos",
+        "operacoes_treinamentos",
+        "operacoes_rh",
       ],
     },
   },
