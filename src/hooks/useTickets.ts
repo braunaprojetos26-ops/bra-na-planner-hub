@@ -142,14 +142,32 @@ export function useTicketMessages(ticketId: string | null) {
     queryFn: async () => {
       if (!ticketId) return [];
       
-      const { data, error } = await supabase
+      // Fetch messages
+      const { data: messages, error } = await supabase
         .from('ticket_messages')
         .select('*')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data as unknown as TicketMessage[];
+      if (!messages || messages.length === 0) return [];
+
+      // Get unique creator IDs
+      const creatorIds = [...new Set(messages.map(m => m.created_by))];
+
+      // Fetch profiles for all creators
+      const { data: profiles = [] } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .in('user_id', creatorIds);
+
+      const profileMap = new Map(profiles.map(p => [p.user_id, p]));
+
+      // Map messages with creator info
+      return messages.map(msg => ({
+        ...msg,
+        creator: profileMap.get(msg.created_by) || null,
+      })) as unknown as TicketMessage[];
     },
     enabled: !!user && !!ticketId,
   });
