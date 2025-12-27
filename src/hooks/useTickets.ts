@@ -10,18 +10,48 @@ export function useTickets() {
   return useQuery({
     queryKey: ['tickets'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get all tickets
+      const { data: tickets, error } = await supabase
         .from('tickets')
-        .select(`
-          *,
-          creator:profiles!tickets_created_by_fkey(full_name, email),
-          assignee:profiles!tickets_assigned_to_fkey(full_name, email),
-          contact:contacts!tickets_contact_id_fkey(id, full_name, phone, email, client_code)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as unknown as Ticket[];
+
+      // Get unique user IDs and contact IDs
+      const userIds = [...new Set([
+        ...tickets.map(t => t.created_by),
+        ...tickets.filter(t => t.assigned_to).map(t => t.assigned_to)
+      ])].filter(Boolean);
+      
+      const contactIds = tickets.filter(t => t.contact_id).map(t => t.contact_id);
+
+      // Fetch profiles
+      const { data: profiles = [] } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .in('user_id', userIds);
+
+      // Fetch contacts if any
+      let contacts: any[] = [];
+      if (contactIds.length > 0) {
+        const { data: contactData = [] } = await supabase
+          .from('contacts')
+          .select('id, full_name, phone, email, client_code')
+          .in('id', contactIds);
+        contacts = contactData;
+      }
+
+      // Map data
+      const profileMap = new Map(profiles.map(p => [p.user_id, p]));
+      const contactMap = new Map(contacts.map(c => [c.id, c]));
+
+      return tickets.map(t => ({
+        ...t,
+        creator: profileMap.get(t.created_by) || null,
+        assignee: t.assigned_to ? profileMap.get(t.assigned_to) || null : null,
+        contact: t.contact_id ? contactMap.get(t.contact_id) || null : null,
+      })) as unknown as Ticket[];
     },
     enabled: !!user,
   });
@@ -35,38 +65,70 @@ export function useTicket(ticketId: string | null) {
     queryFn: async () => {
       if (!ticketId) return null;
       
+      // Get ticket
       const { data: ticket, error } = await supabase
         .from('tickets')
-        .select(`
-          *,
-          creator:profiles!tickets_created_by_fkey(full_name, email),
-          assignee:profiles!tickets_assigned_to_fkey(full_name, email),
-          contact:contacts!tickets_contact_id_fkey(id, full_name, phone, email, client_code)
-        `)
+        .select('*')
         .eq('id', ticketId)
         .maybeSingle();
 
       if (error) throw error;
-      
-      // If there's a contact with client_code, fetch their contract
-      let contract = null;
-      if (ticket?.contact?.client_code) {
-        const { data: contractData } = await supabase
-          .from('contracts')
-          .select(`
-            id,
-            product:products!contracts_product_id_fkey(name)
-          `)
-          .eq('contact_id', ticket.contact.id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1)
+      if (!ticket) return null;
+
+      // Fetch creator profile
+      const { data: creator } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email')
+        .eq('user_id', ticket.created_by)
+        .maybeSingle();
+
+      // Fetch assignee profile if exists
+      let assignee = null;
+      if (ticket.assigned_to) {
+        const { data: assigneeData } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email')
+          .eq('user_id', ticket.assigned_to)
           .maybeSingle();
-        
-        contract = contractData;
+        assignee = assigneeData;
       }
 
-      return { ...ticket, contract } as unknown as Ticket | null;
+      // Fetch contact if exists
+      let contact = null;
+      let contract = null;
+      if (ticket.contact_id) {
+        const { data: contactData } = await supabase
+          .from('contacts')
+          .select('id, full_name, phone, email, client_code')
+          .eq('id', ticket.contact_id)
+          .maybeSingle();
+        contact = contactData;
+
+        // If contact has client_code, fetch their active contract
+        if (contactData?.client_code) {
+          const { data: contractData } = await supabase
+            .from('contracts')
+            .select(`
+              id,
+              product:products!contracts_product_id_fkey(name)
+            `)
+            .eq('contact_id', contactData.id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          contract = contractData;
+        }
+      }
+
+      return { 
+        ...ticket, 
+        creator, 
+        assignee, 
+        contact, 
+        contract 
+      } as unknown as Ticket | null;
     },
     enabled: !!user && !!ticketId,
   });
