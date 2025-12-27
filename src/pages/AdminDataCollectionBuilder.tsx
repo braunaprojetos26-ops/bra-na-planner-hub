@@ -1,18 +1,10 @@
 import { useState } from 'react';
 import { 
   Plus, 
-  GripVertical, 
-  Trash2, 
-  Edit, 
-  ChevronDown, 
-  ChevronRight,
   Save,
-  Eye,
-  EyeOff,
-  Settings2,
   FileText
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,36 +25,37 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { 
   useDataCollectionSchema, 
   useDataCollectionSections, 
-  useDataCollectionFields,
   useCreateSection,
   useUpdateSection,
   useDeleteSection,
   useCreateField,
   useUpdateField,
   useDeleteField,
+  useReorderSections,
+  useReorderFields,
 } from '@/hooks/useDataCollectionSchema';
 import { DataCollectionSection, DataCollectionField, FieldType } from '@/types/dataCollection';
+import { SortableSectionCard } from '@/components/admin/data-collection/SortableSectionCard';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'text', label: 'Texto' },
@@ -118,6 +111,20 @@ export default function AdminDataCollectionBuilder() {
   const createField = useCreateField();
   const updateField = useUpdateField();
   const deleteField = useDeleteField();
+  const reorderSections = useReorderSections();
+  const reorderFields = useReorderFields();
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => 
@@ -125,6 +132,31 @@ export default function AdminDataCollectionBuilder() {
         ? prev.filter(id => id !== sectionId)
         : [...prev, sectionId]
     );
+  };
+
+  // Section drag end handler
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = sections.findIndex((s) => s.id === active.id);
+      const newIndex = sections.findIndex((s) => s.id === over.id);
+
+      const newSections = arrayMove(sections, oldIndex, newIndex);
+      const reorderedSections = newSections.map((section, index) => ({
+        id: section.id,
+        order_position: index,
+      }));
+
+      reorderSections.mutate(reorderedSections);
+      toast({ title: 'Ordem das seções atualizada!' });
+    }
+  };
+
+  // Field reorder handler
+  const handleReorderFields = (fields: { id: string; order_position: number }[]) => {
+    reorderFields.mutate(fields);
+    toast({ title: 'Ordem dos campos atualizada!' });
   };
 
   // Section handlers
@@ -358,23 +390,35 @@ export default function AdminDataCollectionBuilder() {
         </Card>
       )}
 
-      <div className="space-y-4">
-        {sections.map((section) => (
-          <SectionCard
-            key={section.id}
-            section={section}
-            isExpanded={expandedSections.includes(section.id)}
-            onToggle={() => toggleSection(section.id)}
-            onEdit={() => openSectionModal(section)}
-            onDelete={() => handleDeleteSection(section.id)}
-            onToggleActive={() => handleToggleSectionActive(section)}
-            onAddField={() => openFieldModal(section.id)}
-            onEditField={(field) => openFieldModal(section.id, field)}
-            onDeleteField={handleDeleteField}
-            onToggleFieldActive={handleToggleFieldActive}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleSectionDragEnd}
+      >
+        <SortableContext
+          items={sections.map(s => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-4">
+            {sections.map((section) => (
+              <SortableSectionCard
+                key={section.id}
+                section={section}
+                isExpanded={expandedSections.includes(section.id)}
+                onToggle={() => toggleSection(section.id)}
+                onEdit={() => openSectionModal(section)}
+                onDelete={() => handleDeleteSection(section.id)}
+                onToggleActive={() => handleToggleSectionActive(section)}
+                onAddField={() => openFieldModal(section.id)}
+                onEditField={(field) => openFieldModal(section.id, field)}
+                onDeleteField={handleDeleteField}
+                onToggleFieldActive={handleToggleFieldActive}
+                onReorderFields={handleReorderFields}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {sections.length === 0 && (
         <Card className="border-dashed">
@@ -559,215 +603,6 @@ export default function AdminDataCollectionBuilder() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-// Section Card Component
-interface SectionCardProps {
-  section: DataCollectionSection;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onToggleActive: () => void;
-  onAddField: () => void;
-  onEditField: (field: DataCollectionField) => void;
-  onDeleteField: (fieldId: string) => void;
-  onToggleFieldActive: (field: DataCollectionField) => void;
-}
-
-function SectionCard({
-  section,
-  isExpanded,
-  onToggle,
-  onEdit,
-  onDelete,
-  onToggleActive,
-  onAddField,
-  onEditField,
-  onDeleteField,
-  onToggleFieldActive,
-}: SectionCardProps) {
-  const { data: fields = [] } = useDataCollectionFields(section.id);
-
-  return (
-    <Card className={!section.is_active ? 'opacity-60' : ''}>
-      <Collapsible open={isExpanded} onOpenChange={onToggle}>
-        <CardHeader className="py-3">
-          <div className="flex items-center justify-between">
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-3 hover:text-primary transition-colors">
-                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <CardTitle className="text-base font-medium">
-                  {section.title}
-                </CardTitle>
-                <Badge variant="secondary" className="text-xs">
-                  {fields.length} campos
-                </Badge>
-                {!section.is_active && (
-                  <Badge variant="outline" className="text-xs">
-                    Inativo
-                  </Badge>
-                )}
-              </button>
-            </CollapsibleTrigger>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggleActive}
-                title={section.is_active ? 'Desativar seção' : 'Ativar seção'}
-              >
-                {section.is_active ? (
-                  <Eye className="h-4 w-4" />
-                ) : (
-                  <EyeOff className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onEdit}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir seção?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação excluirá a seção "{section.title}" e todos os seus campos.
-                      Esta ação não pode ser desfeita.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={onDelete}>
-                      Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </div>
-        </CardHeader>
-        <CollapsibleContent>
-          <CardContent className="pt-0">
-            <div className="space-y-2 mb-4">
-              {fields.map((field) => (
-                <FieldRow
-                  key={field.id}
-                  field={field}
-                  onEdit={() => onEditField(field)}
-                  onDelete={() => onDeleteField(field.id)}
-                  onToggleActive={() => onToggleFieldActive(field)}
-                />
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddField}
-              className="w-full border-dashed"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Campo
-            </Button>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
-  );
-}
-
-// Field Row Component
-interface FieldRowProps {
-  field: DataCollectionField;
-  onEdit: () => void;
-  onDelete: () => void;
-  onToggleActive: () => void;
-}
-
-function FieldRow({ field, onEdit, onDelete, onToggleActive }: FieldRowProps) {
-  const typeLabel = FIELD_TYPES.find(t => t.value === field.field_type)?.label || field.field_type;
-
-  return (
-    <div 
-      className={`flex items-center justify-between p-3 rounded-lg border bg-background ${
-        !field.is_active ? 'opacity-50' : ''
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-        <div>
-          <p className="font-medium text-sm">{field.label}</p>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {typeLabel}
-            </Badge>
-            {field.is_required && (
-              <Badge variant="secondary" className="text-xs">
-                Obrigatório
-              </Badge>
-            )}
-            {!field.is_active && (
-              <Badge variant="outline" className="text-xs">
-                Inativo
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleActive}
-          title={field.is_active ? 'Desativar' : 'Ativar'}
-        >
-          {field.is_active ? (
-            <Eye className="h-4 w-4" />
-          ) : (
-            <EyeOff className="h-4 w-4" />
-          )}
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onEdit}>
-          <Settings2 className="h-4 w-4" />
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir campo?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação excluirá o campo "{field.label}".
-                Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={onDelete}>
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
     </div>
   );
 }
