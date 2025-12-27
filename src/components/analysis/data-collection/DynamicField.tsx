@@ -144,46 +144,48 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
         // Labels em português para todos os tipos de lista
         const fieldLabels: Record<string, string> = {
           // Objetivos
-          name: 'Nome',
+          name: 'Descrição',
           target_value_brl: 'Quanto precisa (R$)',
           target_date: 'Quando pretende',
           priority: 'Prioridade',
           how: 'Como pensa em atingir',
-          // Patrimônio (veículos e imóveis)
-          type: 'Tipo',
+          // Patrimônio (modelo único para todos)
           market_value_brl: 'Valor de Mercado (R$)',
           is_paid_off: 'Quitado',
           installment_monthly_brl: 'Valor da Parcela (R$)',
           months_remaining: 'Meses Restantes',
           has_insurance: 'Tem Seguro',
-          // Negócios
-          description: 'Descrição',
-          estimated_value_brl: 'Valor Estimado (R$)',
-          monthly_income_brl: 'Renda Mensal (R$)',
-          // Participações
-          company_name: 'Nome da Empresa',
-          share_percentage: 'Participação (%)',
-          notes: 'Observações',
-          // Outros
-          category: 'Categoria'
+          // Filhos
+          idade: 'Idade',
+          // Dívidas
+          cause: 'Causa',
+          outstanding_brl: 'Saldo Devedor (R$)',
+          interest_type: 'Tipo de Juros',
+          // Fluxo de caixa
+          value_monthly_brl: 'Valor Mensal (R$)'
         };
+        
+        // Campos de patrimônio - todos usam o mesmo modelo
+        const assetFields = ['cars', 'real_estate', 'businesses', 'company_shares', 'other_assets'];
+        const assetFieldOrder = ['name', 'market_value_brl', 'is_paid_off', 'installment_monthly_brl', 'months_remaining', 'has_insurance'];
         
         // Ordem específica por tipo de lista
         const fieldOrderByType: Record<string, string[]> = {
           // Objetivos
-          objectives: ['name', 'target_value_brl', 'target_date', 'priority', 'how'],
-          // Patrimônio - veículos e imóveis
-          cars: ['name', 'market_value_brl', 'is_paid_off', 'installment_monthly_brl', 'months_remaining', 'has_insurance'],
-          real_estate: ['type', 'market_value_brl', 'is_paid_off', 'installment_monthly_brl', 'months_remaining', 'has_insurance'],
-          // Negócios
-          businesses: ['name', 'description', 'estimated_value_brl', 'monthly_income_brl'],
-          // Participações
-          company_shares: ['company_name', 'share_percentage', 'estimated_value_brl', 'notes'],
-          // Outros
-          other_assets: ['name', 'category', 'estimated_value_brl']
+          goals_list: ['name', 'target_value_brl', 'target_date', 'priority', 'how'],
+          // Filhos
+          children: ['name', 'idade'],
+          // Dívidas
+          debts_list: ['name', 'cause', 'outstanding_brl', 'installment_monthly_brl', 'interest_type'],
+          // Fluxo de caixa
+          income: ['name', 'value_monthly_brl'],
+          fixed_expenses: ['name', 'value_monthly_brl']
         };
         
-        const fieldOrder = fieldOrderByType[field.key] || [];
+        // Usar ordem de patrimônio se for um campo de assets
+        const fieldOrder = assetFields.includes(field.key) 
+          ? assetFieldOrder 
+          : (fieldOrderByType[field.key] || []);
         
         // Ordenar as chaves do schema conforme a ordem desejada
         const orderedKeys = Object.keys(itemSchema).sort((a, b) => {
