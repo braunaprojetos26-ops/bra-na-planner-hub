@@ -1727,6 +1727,7 @@ export type Database = {
       tickets: {
         Row: {
           assigned_to: string | null
+          contact_id: string | null
           created_at: string
           created_by: string
           department: string
@@ -1741,6 +1742,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          contact_id?: string | null
           created_at?: string
           created_by: string
           department: string
@@ -1755,6 +1757,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          contact_id?: string | null
           created_at?: string
           created_by?: string
           department?: string
@@ -1767,7 +1770,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tickets_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_hierarchy: {
         Row: {

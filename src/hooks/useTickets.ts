@@ -12,7 +12,12 @@ export function useTickets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tickets')
-        .select('*')
+        .select(`
+          *,
+          creator:profiles!tickets_created_by_fkey(full_name, email),
+          assignee:profiles!tickets_assigned_to_fkey(full_name, email),
+          contact:contacts!tickets_contact_id_fkey(id, full_name, phone, email, client_code)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -30,14 +35,38 @@ export function useTicket(ticketId: string | null) {
     queryFn: async () => {
       if (!ticketId) return null;
       
-      const { data, error } = await supabase
+      const { data: ticket, error } = await supabase
         .from('tickets')
-        .select('*')
+        .select(`
+          *,
+          creator:profiles!tickets_created_by_fkey(full_name, email),
+          assignee:profiles!tickets_assigned_to_fkey(full_name, email),
+          contact:contacts!tickets_contact_id_fkey(id, full_name, phone, email, client_code)
+        `)
         .eq('id', ticketId)
         .maybeSingle();
 
       if (error) throw error;
-      return data as unknown as Ticket | null;
+      
+      // If there's a contact with client_code, fetch their contract
+      let contract = null;
+      if (ticket?.contact?.client_code) {
+        const { data: contractData } = await supabase
+          .from('contracts')
+          .select(`
+            id,
+            product:products!contracts_product_id_fkey(name)
+          `)
+          .eq('contact_id', ticket.contact.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        contract = contractData;
+      }
+
+      return { ...ticket, contract } as unknown as Ticket | null;
     },
     enabled: !!user && !!ticketId,
   });
@@ -74,6 +103,7 @@ export function useCreateTicket() {
       description: string;
       department: TicketDepartment;
       priority: TicketPriority;
+      contact_id?: string | null;
     }) => {
       if (!user) throw new Error('User not authenticated');
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,6 @@ import {
 import { useTicket, useTicketMessages, useUpdateTicket, useAddTicketMessage } from '@/hooks/useTickets';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Ticket,
   TicketStatus,
   departmentLabels,
   statusLabels,
@@ -29,7 +29,7 @@ import {
   statusColors,
   priorityColors,
 } from '@/types/tickets';
-import { MessageSquare, Clock, User, Send } from 'lucide-react';
+import { MessageSquare, Clock, User, Send, ExternalLink, FileText } from 'lucide-react';
 
 interface TicketDetailModalProps {
   ticketId: string | null;
@@ -38,6 +38,7 @@ interface TicketDetailModalProps {
 }
 
 export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetailModalProps) {
+  const navigate = useNavigate();
   const { user, role } = useAuth();
   const { data: ticket, isLoading: ticketLoading } = useTicket(ticketId);
   const { data: messages = [], isLoading: messagesLoading } = useTicketMessages(ticketId);
@@ -80,6 +81,13 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
     setIsInternal(false);
   };
 
+  const handleViewContact = () => {
+    if (ticket?.contact) {
+      onOpenChange(false);
+      navigate(`/contacts/${ticket.contact.id}`);
+    }
+  };
+
   if (!ticketId) return null;
 
   return (
@@ -114,6 +122,39 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
                   {departmentLabels[ticket.department]}
                 </Badge>
               </div>
+
+              {/* Contact Info */}
+              {ticket.contact && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <User className="h-4 w-4" />
+                        <span>{ticket.contact.full_name}</span>
+                        {ticket.contact.client_code && (
+                          <Badge variant="secondary" className="text-xs">
+                            {ticket.contact.client_code}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {ticket.contact.phone}
+                        {ticket.contact.email && ` • ${ticket.contact.email}`}
+                      </div>
+                      {ticket.contract && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          <span>Contrato: {ticket.contract.product?.name}</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleViewContact}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Ver Perfil
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,8 +16,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { useCreateTicket } from '@/hooks/useTickets';
+import { useContacts } from '@/hooks/useContacts';
+import { useContracts } from '@/hooks/useContracts';
 import { TicketDepartment, TicketPriority, departmentLabels, priorityLabels } from '@/types/tickets';
+import { Check, ChevronsUpDown, User, FileText, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface NewTicketModalProps {
   open: boolean;
@@ -29,8 +46,21 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
   const [description, setDescription] = useState('');
   const [department, setDepartment] = useState<TicketDepartment>('administrativo');
   const [priority, setPriority] = useState<TicketPriority>('normal');
+  const [contactId, setContactId] = useState<string | null>(null);
+  const [contactOpen, setContactOpen] = useState(false);
 
   const createTicket = useCreateTicket();
+  const { data: contacts = [] } = useContacts();
+  const { data: contracts = [] } = useContracts();
+
+  const selectedContact = useMemo(() => {
+    return contacts.find((c) => c.id === contactId);
+  }, [contacts, contactId]);
+
+  const selectedContactContract = useMemo(() => {
+    if (!contactId) return null;
+    return contracts.find((c) => c.contact_id === contactId && c.status === 'active');
+  }, [contracts, contactId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +70,14 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
       description,
       department,
       priority,
+      contact_id: contactId,
     });
 
     setTitle('');
     setDescription('');
     setDepartment('administrativo');
     setPriority('normal');
+    setContactId(null);
     onOpenChange(false);
   };
 
@@ -98,6 +130,100 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Contact Selector */}
+          <div className="space-y-2">
+            <Label>Cliente Relacionado (opcional)</Label>
+            <Popover open={contactOpen} onOpenChange={setContactOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={contactOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedContact ? (
+                    <span className="flex items-center gap-2 truncate">
+                      <User className="h-4 w-4 flex-shrink-0" />
+                      {selectedContact.full_name}
+                      {selectedContact.client_code && (
+                        <span className="text-muted-foreground">({selectedContact.client_code})</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Selecionar cliente...</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[350px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {contacts.map((contact) => (
+                        <CommandItem
+                          key={contact.id}
+                          value={`${contact.full_name} ${contact.phone} ${contact.client_code || ''}`}
+                          onSelect={() => {
+                            setContactId(contact.id);
+                            setContactOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              contactId === contact.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{contact.full_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {contact.phone}
+                              {contact.client_code && ` • ${contact.client_code}`}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            {/* Selected contact info with contract */}
+            {selectedContact && (
+              <div className="p-3 bg-muted rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>{selectedContact.full_name}</span>
+                    {selectedContact.client_code && (
+                      <span className="text-muted-foreground">• {selectedContact.client_code}</span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setContactId(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {selectedContactContract && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span>
+                      Contrato: {(selectedContactContract as any).product?.name || 'Planejamento Financeiro'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
