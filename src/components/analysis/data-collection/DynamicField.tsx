@@ -248,16 +248,36 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
             );
           }
           
+          // Campo de moeda com prefixo R$
+          if (type === 'currency') {
+            return (
+              <div key={key} className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder={fieldLabels[key] || key}
+                  value={(item[key] as number) ?? ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, [key]: e.target.value ? Number(e.target.value) : null };
+                    onChange(newItems);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            );
+          }
+          
           return (
             <Input
               key={key}
-              type={type === 'currency' || type === 'number' ? 'number' : 'text'}
-              step={type === 'currency' ? '0.01' : undefined}
+              type={type === 'number' ? 'number' : 'text'}
               placeholder={fieldLabels[key] || key}
               value={(item[key] as string | number) ?? ''}
               onChange={(e) => {
                 const newItems = [...items];
-                const val = (type === 'currency' || type === 'number') && e.target.value
+                const val = type === 'number' && e.target.value
                   ? Number(e.target.value)
                   : e.target.value;
                 newItems[index] = { ...item, [key]: val };
