@@ -11,6 +11,7 @@ import {
   Briefcase,
   BarChart3,
   BookOpen,
+  Headphones,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -39,6 +40,7 @@ const mainNavItems = [
   { title: 'Análises', url: '/analytics', icon: BarChart3 },
   { title: 'Wiki', url: '/wiki', icon: BookOpen },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
+  { title: 'Chamados', url: '/tickets', icon: Headphones },
 ];
 
 const teamNavItems = [

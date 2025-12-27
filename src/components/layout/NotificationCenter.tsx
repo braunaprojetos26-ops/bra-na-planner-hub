@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,18 +9,25 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useNotifications, Notification } from '@/hooks/useNotifications';
+import { useNotifications, useMarkNotificationRead, Notification } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 
 function NotificationItem({ notification, onClose }: { notification: Notification; onClose: () => void }) {
   const navigate = useNavigate();
+  const markRead = useMarkNotificationRead();
 
-  const handleClick = () => {
-    navigate('/tasks');
+  const handleClick = async () => {
+    if (notification.type === 'ticket_update' && notification.link) {
+      await markRead(notification.id);
+      navigate(notification.link);
+    } else {
+      navigate('/tasks');
+    }
     onClose();
   };
 
   const isOverdue = notification.type === 'task_overdue';
+  const isTicket = notification.type === 'ticket_update';
 
   return (
     <button
@@ -33,11 +40,15 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
       <div
         className={cn(
           'p-2 rounded-full shrink-0',
-          isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+          isOverdue ? 'bg-destructive/10 text-destructive' : 
+          isTicket ? 'bg-blue-100 text-blue-700' :
+          'bg-primary/10 text-primary'
         )}
       >
         {isOverdue ? (
           <AlertTriangle className="h-4 w-4" />
+        ) : isTicket ? (
+          <MessageSquare className="h-4 w-4" />
         ) : (
           <CalendarClock className="h-4 w-4" />
         )}
@@ -54,7 +65,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, totalCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, totalCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -82,7 +93,7 @@ export function NotificationCenter() {
       <PopoverContent align="end" className="w-80 p-0">
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold">Notificações</h3>
-          <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+          <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
             {todayCount > 0 && (
               <span className="flex items-center gap-1">
                 <CalendarClock className="h-3 w-3" />
@@ -93,6 +104,12 @@ export function NotificationCenter() {
               <span className="flex items-center gap-1 text-destructive">
                 <AlertTriangle className="h-3 w-3" />
                 {overdueCount} atrasada{overdueCount > 1 ? 's' : ''}
+              </span>
+            )}
+            {ticketCount > 0 && (
+              <span className="flex items-center gap-1 text-blue-600">
+                <MessageSquare className="h-3 w-3" />
+                {ticketCount} chamado{ticketCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
