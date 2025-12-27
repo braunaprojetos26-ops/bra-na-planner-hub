@@ -141,28 +141,51 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
         const items = (value as Record<string, unknown>[]) || [];
         const itemSchema = field.options?.itemSchema || {};
         
+        // Ordem desejada para campos de objetivos e labels em português
+        const fieldOrder = ['name', 'target_value', 'target_date', 'how', 'priority'];
+        const fieldLabels: Record<string, string> = {
+          name: 'Qual objetivo',
+          target_value: 'Quanto precisa (R$)',
+          target_date: 'Quando pretende',
+          how: 'Como pensa em atingir',
+          priority: 'Prioridade'
+        };
+        
+        // Ordenar as chaves do schema conforme a ordem desejada
+        const orderedKeys = Object.keys(itemSchema).sort((a, b) => {
+          const indexA = fieldOrder.indexOf(a);
+          const indexB = fieldOrder.indexOf(b);
+          if (indexA === -1 && indexB === -1) return 0;
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
+        
         return (
           <div className="space-y-3">
             {items.map((item, index) => (
               <div key={index} className="flex gap-2 items-start p-3 border rounded-lg bg-muted/50">
-                <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${Object.keys(itemSchema).length}, 1fr)` }}>
-                  {Object.entries(itemSchema).map(([key, type]) => (
-                    <Input
-                      key={key}
-                      type={type === 'currency' || type === 'number' ? 'number' : 'text'}
-                      step={type === 'currency' ? '0.01' : undefined}
-                      placeholder={key}
-                      value={(item[key] as string | number) ?? ''}
-                      onChange={(e) => {
-                        const newItems = [...items];
-                        const val = (type === 'currency' || type === 'number') && e.target.value
-                          ? Number(e.target.value)
-                          : e.target.value;
-                        newItems[index] = { ...item, [key]: val };
-                        onChange(newItems);
-                      }}
-                    />
-                  ))}
+                <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${orderedKeys.length}, 1fr)` }}>
+                  {orderedKeys.map((key) => {
+                    const type = itemSchema[key];
+                    return (
+                      <Input
+                        key={key}
+                        type={type === 'currency' || type === 'number' ? 'number' : 'text'}
+                        step={type === 'currency' ? '0.01' : undefined}
+                        placeholder={fieldLabels[key] || key}
+                        value={(item[key] as string | number) ?? ''}
+                        onChange={(e) => {
+                          const newItems = [...items];
+                          const val = (type === 'currency' || type === 'number') && e.target.value
+                            ? Number(e.target.value)
+                            : e.target.value;
+                          newItems[index] = { ...item, [key]: val };
+                          onChange(newItems);
+                        }}
+                      />
+                    );
+                  })}
                 </div>
                 <Button
                   variant="ghost"
