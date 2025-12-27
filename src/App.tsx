@@ -25,6 +25,7 @@ import Analytics from "./pages/Analytics";
 import Wiki from "./pages/Wiki";
 import WikiCategory from "./pages/WikiCategory";
 import Team from "./pages/Team";
+import Tickets from "./pages/Tickets";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
               <Route path="/wiki/:categorySlug/:folderId" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
               <Route path="/equipe" element={<ProtectedPage><Team /></ProtectedPage>} />
+              <Route path="/tickets" element={<ProtectedPage><Tickets /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>

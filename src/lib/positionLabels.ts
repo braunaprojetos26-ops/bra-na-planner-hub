@@ -8,7 +8,11 @@ export type UserPosition =
   | 'coordenador_comercial'
   | 'coordenador_executivo'
   | 'gerente_comercial'
-  | 'superintendente';
+  | 'superintendente'
+  | 'operacoes_administrativo'
+  | 'operacoes_investimentos'
+  | 'operacoes_treinamentos'
+  | 'operacoes_rh';
 
 export const positionLabels: Record<UserPosition, { label: string; short: string }> = {
   'planejador_financeiro': { label: 'Planejador Financeiro', short: 'PF' },
@@ -21,6 +25,10 @@ export const positionLabels: Record<UserPosition, { label: string; short: string
   'coordenador_executivo': { label: 'Coordenador Executivo', short: 'CE' },
   'gerente_comercial': { label: 'Gerente Comercial', short: 'G' },
   'superintendente': { label: 'Superintendente', short: 'S' },
+  'operacoes_administrativo': { label: 'Operações - Administrativo', short: 'OA' },
+  'operacoes_investimentos': { label: 'Operações - Investimentos', short: 'OI' },
+  'operacoes_treinamentos': { label: 'Operações - Treinamentos', short: 'OT' },
+  'operacoes_rh': { label: 'Operações - RH', short: 'ORH' },
 };
 
 export const positionOptions: { value: UserPosition; label: string }[] = [
@@ -34,6 +42,10 @@ export const positionOptions: { value: UserPosition; label: string }[] = [
   { value: 'planejador_exclusive', label: 'Planejador Exclusive' },
   { value: 'planejador_prime', label: 'Planejador Prime' },
   { value: 'planejador_financeiro', label: 'Planejador Financeiro' },
+  { value: 'operacoes_administrativo', label: 'Operações - Administrativo' },
+  { value: 'operacoes_investimentos', label: 'Operações - Investimentos' },
+  { value: 'operacoes_treinamentos', label: 'Operações - Treinamentos' },
+  { value: 'operacoes_rh', label: 'Operações - RH' },
 ];
 
 export function getPositionLabel(position: string | null): string {
