@@ -12,6 +12,7 @@ import { PlannerSlideEditor } from '@/components/analysis/PlannerSlideEditor';
 import { InstitutionalPresentationView } from '@/components/analysis/InstitutionalPresentationView';
 import { DataCollectionForm } from '@/components/analysis/data-collection/DataCollectionForm';
 import { DiagnosticView } from '@/components/analysis/diagnostic/DiagnosticView';
+import { ContractingForm } from '@/components/analysis/contracting/ContractingForm';
 
 const STEPS = [
   { label: 'Quem Sou Eu', shortLabel: 'Quem Sou' },
@@ -19,6 +20,7 @@ const STEPS = [
   { label: 'Diagnóstico IA', shortLabel: 'Diagnóstico' },
   { label: 'Apresentação', shortLabel: 'Apresentação' },
   { label: 'Proposta', shortLabel: 'Proposta' },
+  { label: 'Contratação', shortLabel: 'Contratação' },
 ];
 
 export default function ContactAnalysis() {
@@ -112,6 +114,9 @@ export default function ContactAnalysis() {
             </p>
           </div>
         );
+
+      case 5:
+        return <ContractingForm contactId={contactId!} />;
 
       default:
         return null;
