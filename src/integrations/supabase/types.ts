@@ -495,6 +495,8 @@ export type Database = {
       }
       contracts: {
         Row: {
+          billing_date: string | null
+          billing_type: string | null
           calculated_pbs: number
           clicksign_document_key: string | null
           clicksign_status: string | null
@@ -510,6 +512,7 @@ export type Database = {
           notes: string | null
           opportunity_id: string | null
           owner_id: string
+          payment_method_code: string | null
           payment_type: string | null
           plan_type: string | null
           product_id: string
@@ -520,8 +523,11 @@ export type Database = {
           vindi_bill_id: string | null
           vindi_customer_id: string | null
           vindi_status: string | null
+          vindi_subscription_id: string | null
         }
         Insert: {
+          billing_date?: string | null
+          billing_type?: string | null
           calculated_pbs: number
           clicksign_document_key?: string | null
           clicksign_status?: string | null
@@ -537,6 +543,7 @@ export type Database = {
           notes?: string | null
           opportunity_id?: string | null
           owner_id: string
+          payment_method_code?: string | null
           payment_type?: string | null
           plan_type?: string | null
           product_id: string
@@ -547,8 +554,11 @@ export type Database = {
           vindi_bill_id?: string | null
           vindi_customer_id?: string | null
           vindi_status?: string | null
+          vindi_subscription_id?: string | null
         }
         Update: {
+          billing_date?: string | null
+          billing_type?: string | null
           calculated_pbs?: number
           clicksign_document_key?: string | null
           clicksign_status?: string | null
@@ -564,6 +574,7 @@ export type Database = {
           notes?: string | null
           opportunity_id?: string | null
           owner_id?: string
+          payment_method_code?: string | null
           payment_type?: string | null
           plan_type?: string | null
           product_id?: string
@@ -574,6 +585,7 @@ export type Database = {
           vindi_bill_id?: string | null
           vindi_customer_id?: string | null
           vindi_status?: string | null
+          vindi_subscription_id?: string | null
         }
         Relationships: [
           {
