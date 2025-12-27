@@ -141,15 +141,49 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
         const items = (value as Record<string, unknown>[]) || [];
         const itemSchema = field.options?.itemSchema || {};
         
-        // Ordem desejada para campos de objetivos e labels em português
-        const fieldOrder = ['name', 'target_value_brl', 'target_date', 'priority', 'how'];
+        // Labels em português para todos os tipos de lista
         const fieldLabels: Record<string, string> = {
-          name: 'Qual objetivo',
+          // Objetivos
+          name: 'Nome',
           target_value_brl: 'Quanto precisa (R$)',
           target_date: 'Quando pretende',
           priority: 'Prioridade',
-          how: 'Como pensa em atingir'
+          how: 'Como pensa em atingir',
+          // Patrimônio (veículos e imóveis)
+          type: 'Tipo',
+          market_value_brl: 'Valor de Mercado (R$)',
+          is_paid_off: 'Quitado',
+          installment_monthly_brl: 'Valor da Parcela (R$)',
+          months_remaining: 'Meses Restantes',
+          has_insurance: 'Tem Seguro',
+          // Negócios
+          description: 'Descrição',
+          estimated_value_brl: 'Valor Estimado (R$)',
+          monthly_income_brl: 'Renda Mensal (R$)',
+          // Participações
+          company_name: 'Nome da Empresa',
+          share_percentage: 'Participação (%)',
+          notes: 'Observações',
+          // Outros
+          category: 'Categoria'
         };
+        
+        // Ordem específica por tipo de lista
+        const fieldOrderByType: Record<string, string[]> = {
+          // Objetivos
+          objectives: ['name', 'target_value_brl', 'target_date', 'priority', 'how'],
+          // Patrimônio - veículos e imóveis
+          cars: ['name', 'market_value_brl', 'is_paid_off', 'installment_monthly_brl', 'months_remaining', 'has_insurance'],
+          real_estate: ['type', 'market_value_brl', 'is_paid_off', 'installment_monthly_brl', 'months_remaining', 'has_insurance'],
+          // Negócios
+          businesses: ['name', 'description', 'estimated_value_brl', 'monthly_income_brl'],
+          // Participações
+          company_shares: ['company_name', 'share_percentage', 'estimated_value_brl', 'notes'],
+          // Outros
+          other_assets: ['name', 'category', 'estimated_value_brl']
+        };
+        
+        const fieldOrder = fieldOrderByType[field.key] || [];
         
         // Ordenar as chaves do schema conforme a ordem desejada
         const orderedKeys = Object.keys(itemSchema).sort((a, b) => {
@@ -161,36 +195,83 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
           return indexA - indexB;
         });
         
-        // Separar campos principais do campo "how"
-        const mainFields = orderedKeys.filter(k => k !== 'how');
-        const hasHowField = orderedKeys.includes('how');
+        // Separar campos principais do campo "how" (para objetivos)
+        const secondaryFields = ['how'];
+        const conditionalFields = ['installment_monthly_brl', 'months_remaining']; // Mostrar só se não quitado
+        const mainFields = orderedKeys.filter(k => !secondaryFields.includes(k) && !conditionalFields.includes(k));
+        const hasSecondaryField = orderedKeys.some(k => secondaryFields.includes(k));
+        const hasConditionalFields = orderedKeys.some(k => conditionalFields.includes(k));
+        
+        const renderListField = (key: string, item: Record<string, unknown>, index: number, items: Record<string, unknown>[]) => {
+          const type = itemSchema[key];
+          
+          if (type === 'boolean') {
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{fieldLabels[key] || key}:</span>
+                <Switch
+                  checked={Boolean(item[key])}
+                  onCheckedChange={(checked) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, [key]: checked };
+                    onChange(newItems);
+                  }}
+                />
+                <span className="text-sm">{item[key] ? 'Sim' : 'Não'}</span>
+              </div>
+            );
+          }
+          
+          if (type === 'select') {
+            const typeOptions = field.options?.typeOptions || [];
+            return (
+              <Select
+                key={key}
+                value={(item[key] as string) || ''}
+                onValueChange={(val) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...item, [key]: val };
+                  onChange(newItems);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={fieldLabels[key] || key} />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            );
+          }
+          
+          return (
+            <Input
+              key={key}
+              type={type === 'currency' || type === 'number' ? 'number' : 'text'}
+              step={type === 'currency' ? '0.01' : undefined}
+              placeholder={fieldLabels[key] || key}
+              value={(item[key] as string | number) ?? ''}
+              onChange={(e) => {
+                const newItems = [...items];
+                const val = (type === 'currency' || type === 'number') && e.target.value
+                  ? Number(e.target.value)
+                  : e.target.value;
+                newItems[index] = { ...item, [key]: val };
+                onChange(newItems);
+              }}
+            />
+          );
+        };
         
         return (
           <div className="space-y-3">
             {items.map((item, index) => (
               <div key={index} className="flex flex-col gap-2 p-3 border rounded-lg bg-muted/50">
                 <div className="flex gap-2 items-start">
-                  <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${mainFields.length}, 1fr)` }}>
-                    {mainFields.map((key) => {
-                      const type = itemSchema[key];
-                      return (
-                        <Input
-                          key={key}
-                          type={type === 'currency' || type === 'number' ? 'number' : 'text'}
-                          step={type === 'currency' ? '0.01' : undefined}
-                          placeholder={fieldLabels[key] || key}
-                          value={(item[key] as string | number) ?? ''}
-                          onChange={(e) => {
-                            const newItems = [...items];
-                            const val = (type === 'currency' || type === 'number') && e.target.value
-                              ? Number(e.target.value)
-                              : e.target.value;
-                            newItems[index] = { ...item, [key]: val };
-                            onChange(newItems);
-                          }}
-                        />
-                      );
-                    })}
+                  <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(mainFields.length, 4)}, 1fr)` }}>
+                    {mainFields.map((key) => renderListField(key, item, index, items))}
                   </div>
                   <Button
                     variant="ghost"
@@ -200,7 +281,14 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                {hasHowField && (
+                {/* Campos condicionais - só aparecem se não quitado */}
+                {hasConditionalFields && !item['is_paid_off'] && (
+                  <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-muted">
+                    {conditionalFields.filter(k => orderedKeys.includes(k)).map((key) => renderListField(key, item, index, items))}
+                  </div>
+                )}
+                {/* Campo secundário (how) em linha separada */}
+                {hasSecondaryField && orderedKeys.includes('how') && (
                   <Input
                     placeholder={fieldLabels['how']}
                     value={(item['how'] as string) ?? ''}
