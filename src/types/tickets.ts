@@ -13,6 +13,7 @@ export interface Ticket {
   assigned_to: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
+  contact_id: string | null;
   created_at: string;
   updated_at: string;
   creator?: {
@@ -22,6 +23,19 @@ export interface Ticket {
   assignee?: {
     full_name: string;
     email: string;
+  } | null;
+  contact?: {
+    id: string;
+    full_name: string;
+    phone: string;
+    email: string | null;
+    client_code: string | null;
+  } | null;
+  contract?: {
+    id: string;
+    product: {
+      name: string;
+    };
   } | null;
 }
 

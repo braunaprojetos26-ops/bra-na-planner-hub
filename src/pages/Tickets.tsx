@@ -58,6 +58,16 @@ export default function Tickets() {
           {ticket.description}
         </p>
 
+        {ticket.contact && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+            <User className="h-3 w-3" />
+            <span className="truncate">
+              {ticket.contact.full_name}
+              {ticket.contact.client_code && ` (${ticket.contact.client_code})`}
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 items-center">
           <Badge variant="outline" className="text-xs">
             {departmentLabels[ticket.department]}
