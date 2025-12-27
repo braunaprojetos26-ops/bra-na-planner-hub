@@ -1,4 +1,4 @@
-export type TicketDepartment = 'investimentos' | 'administrativo' | 'treinamentos' | 'recursos_humanos';
+export type TicketDepartment = 'investimentos' | 'administrativo' | 'treinamentos' | 'recursos_humanos' | 'marketing';
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 
@@ -54,9 +54,10 @@ export interface TicketMessage {
 
 export const departmentLabels: Record<TicketDepartment, string> = {
   investimentos: 'Investimentos',
-  administrativo: 'Administrativo',
+  administrativo: 'Administrativo/Financeiro',
   treinamentos: 'Treinamentos',
   recursos_humanos: 'Recursos Humanos',
+  marketing: 'Marketing',
 };
 
 export const statusLabels: Record<TicketStatus, string> = {
