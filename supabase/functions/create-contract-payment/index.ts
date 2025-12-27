@@ -6,16 +6,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface ContactData {
+  full_name: string;
+  cpf: string;
+  rg?: string;
+  rg_issuer?: string;
+  rg_issue_date?: string;
+  birth_date?: string;
+  marital_status?: string;
+  profession?: string;
+  income?: number;
+  email: string;
+  phone: string;
+  zip_code?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+}
+
 interface ContractRequest {
   contactId: string;
   planType: "novo_planejamento" | "planejamento_pontual";
   planValue: number;
-  paymentMethod: "pix" | "recorrente" | "parcelado";
+  billingType: "assinatura" | "fatura_avulsa";
+  paymentMethodCode: "credit_card" | "pix" | "pix_bank_slip" | "bank_slip_yapay";
+  billingDate: string;
   installments?: number;
   startDate: string;
   endDate: string;
   meetingCount: number;
   productId: string;
+  contactData: ContactData;
 }
 
 // Convert number to Brazilian currency in words
@@ -99,44 +122,80 @@ function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function getPaymentMethodLabel(code: string, billingType: string, installments?: number): string {
+  if (billingType === "assinatura") {
+    return "Assinatura mensal via Cartão de Crédito";
+  }
+  
+  const labels: Record<string, string> = {
+    credit_card: installments && installments > 1 
+      ? `Cartão de Crédito em ${installments}x` 
+      : "Cartão de Crédito à vista",
+    pix: "PIX à vista",
+    pix_bank_slip: "BolePIX",
+    bank_slip_yapay: "Boleto Bancário",
+  };
+  
+  return labels[code] || code;
+}
+
+function getMaritalStatusLabel(status: string | undefined): string {
+  const labels: Record<string, string> = {
+    solteiro: "Solteiro(a)",
+    casado: "Casado(a)",
+    divorciado: "Divorciado(a)",
+    viuvo: "Viúvo(a)",
+    uniao_estavel: "União Estável",
+  };
+  return labels[status || ""] || status || "";
+}
+
 async function createClickSignDocument(
-  contact: any,
+  contactData: ContactData,
   contractData: ContractRequest,
   templateKey: string,
   apiKey: string
 ): Promise<{ documentKey: string; error?: string }> {
   const clicksignUrl = "https://app.clicksign.com/api/v1";
   
-  // Build template data
+  // Build template data with all contact info
+  const templateVars = {
+    nome_cliente: contactData.full_name || "",
+    cpf_cliente: formatCPF(contactData.cpf),
+    rg_cliente: contactData.rg || "",
+    orgao_expedidor: contactData.rg_issuer || "",
+    data_expedicao: contactData.rg_issue_date ? formatDate(contactData.rg_issue_date) : "",
+    data_nascimento: contactData.birth_date ? formatDate(contactData.birth_date) : "",
+    estado_civil: getMaritalStatusLabel(contactData.marital_status),
+    profissao: contactData.profession || "",
+    renda_mensal: contactData.income ? formatCurrency(contactData.income) : "",
+    email_cliente: contactData.email || "",
+    telefone_cliente: formatPhone(contactData.phone),
+    cep_cliente: contactData.zip_code || "",
+    endereco_cliente: contactData.address || "",
+    numero_endereco: contactData.address_number || "",
+    complemento_endereco: contactData.address_complement || "",
+    cidade_cliente: contactData.city || "",
+    estado_cliente: contactData.state || "",
+    valor_contrato: formatCurrency(contractData.planValue),
+    valor_por_extenso: formatValueInWords(contractData.planValue),
+    data_inicio: formatDate(contractData.startDate),
+    data_fim: formatDate(contractData.endDate),
+    quantidade_reunioes: String(contractData.meetingCount),
+    forma_pagamento: getPaymentMethodLabel(
+      contractData.paymentMethodCode, 
+      contractData.billingType, 
+      contractData.installments
+    ),
+    parcelas: contractData.installments ? String(contractData.installments) : "1",
+    data_assinatura: new Date().toLocaleDateString("pt-BR"),
+  };
+
   const templateData = {
     document: {
-      path: `/Contratos/${contact.full_name.replace(/\s+/g, "_")}_${Date.now()}.docx`,
+      path: `/Contratos/${contactData.full_name.replace(/\s+/g, "_")}_${Date.now()}.docx`,
       template: {
-        data: {
-          nome_cliente: contact.full_name || "",
-          cpf_cliente: formatCPF(contact.cpf),
-          rg_cliente: contact.rg || "",
-          orgao_expedidor: contact.rg_issuer || "",
-          data_expedicao: contact.rg_issue_date ? formatDate(contact.rg_issue_date) : "",
-          email_cliente: contact.email || "",
-          telefone_cliente: formatPhone(contact.phone),
-          endereco_cliente: contact.address || "",
-          numero_endereco: contact.address_number || "",
-          complemento_endereco: contact.address_complement || "",
-          cep_cliente: contact.zip_code || "",
-          cidade_cliente: contact.city || "",
-          estado_cliente: contact.state || "",
-          valor_contrato: formatCurrency(contractData.planValue),
-          valor_por_extenso: formatValueInWords(contractData.planValue),
-          data_inicio: formatDate(contractData.startDate),
-          data_fim: formatDate(contractData.endDate),
-          quantidade_reunioes: String(contractData.meetingCount),
-          forma_pagamento: contractData.paymentMethod === "pix" 
-            ? "PIX à vista" 
-            : contractData.paymentMethod === "recorrente" 
-              ? "Recorrente mensal"
-              : `Parcelado em ${contractData.installments}x`,
-        }
+        data: templateVars
       }
     }
   };
@@ -166,7 +225,7 @@ async function createClickSignDocument(
 
     // Add signatories - client first
     const signatories = [
-      { email: contact.email, name: contact.full_name, auths: ["email"], delivery: "email" },
+      { email: contactData.email, name: contactData.full_name, auths: ["email"], delivery: "email" },
       { email: "thiago.maran@braunaplanejamento.com.br", name: "Thiago Maran", auths: ["email"], delivery: "email" },
       { email: "adm@braunaplanejamento.com.br", name: "Administrativo Braúna", auths: ["email"], delivery: "email" },
       { email: "gabriel.serrano@braunaplanejamento.com.br", name: "Gabriel Serrano", auths: ["email"], delivery: "email" },
@@ -249,10 +308,10 @@ async function createClickSignDocument(
 }
 
 async function createVindiPayment(
-  contact: any,
+  contactData: ContactData,
   contractData: ContractRequest,
   apiKey: string
-): Promise<{ customerId: string; billId: string; error?: string }> {
+): Promise<{ customerId: string; billId?: string; subscriptionId?: string; error?: string }> {
   const vindiUrl = "https://app.vindi.com.br/api/v1";
   const authHeader = "Basic " + btoa(apiKey + ":");
 
@@ -261,7 +320,7 @@ async function createVindiPayment(
     let customerId = "";
     
     const searchResponse = await fetch(
-      `${vindiUrl}/customers?query=email:${encodeURIComponent(contact.email)}`,
+      `${vindiUrl}/customers?query=email:${encodeURIComponent(contactData.email)}`,
       {
         method: "GET",
         headers: {
@@ -281,29 +340,29 @@ async function createVindiPayment(
 
     // Create customer if not found
     if (!customerId) {
-      const customerData = {
-        name: contact.full_name,
-        email: contact.email,
-        registry_code: contact.cpf?.replace(/\D/g, "") || "",
+      const customerPayload = {
+        name: contactData.full_name,
+        email: contactData.email,
+        registry_code: contactData.cpf?.replace(/\D/g, "") || "",
         phones: [
           {
             phone_type: "mobile",
-            number: contact.phone?.replace(/\D/g, "") || "",
+            number: contactData.phone?.replace(/\D/g, "") || "",
           }
         ],
         address: {
-          street: contact.address || "",
-          number: contact.address_number || "",
-          additional_details: contact.address_complement || "",
-          zipcode: contact.zip_code?.replace(/\D/g, "") || "",
+          street: contactData.address || "",
+          number: contactData.address_number || "",
+          additional_details: contactData.address_complement || "",
+          zipcode: contactData.zip_code?.replace(/\D/g, "") || "",
           neighborhood: "",
-          city: contact.city || "",
-          state: contact.state || "",
+          city: contactData.city || "",
+          state: contactData.state || "",
           country: "BR",
         },
       };
 
-      console.log("Creating Vindi customer:", JSON.stringify(customerData, null, 2));
+      console.log("Creating Vindi customer:", JSON.stringify(customerPayload, null, 2));
 
       const customerResponse = await fetch(
         `${vindiUrl}/customers`,
@@ -313,14 +372,14 @@ async function createVindiPayment(
             "Authorization": authHeader,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(customerData),
+          body: JSON.stringify(customerPayload),
         }
       );
 
       if (!customerResponse.ok) {
         const errorText = await customerResponse.text();
         console.error("Vindi create customer error:", errorText);
-        return { customerId: "", billId: "", error: `Erro ao criar cliente Vindi: ${errorText}` };
+        return { customerId: "", error: `Erro ao criar cliente Vindi: ${errorText}` };
       }
 
       const customerResult = await customerResponse.json();
@@ -328,7 +387,7 @@ async function createVindiPayment(
       console.log("Vindi customer created:", customerId);
     }
 
-    // Vindi Product IDs
+    // Vindi Product IDs (for bills)
     const vindiProductId = contractData.planType === "novo_planejamento" 
       ? 1015472  // Planejamento Completo
       : 1284814; // Planejamento Pontual
@@ -338,67 +397,96 @@ async function createVindiPayment(
       ? 290372   // Novo Planejamento financeiro
       : 368991;  // Planejamento Financeiro Pontual
 
-    const productName = contractData.planType === "novo_planejamento" 
-      ? "Novo Planejamento Financeiro" 
-      : "Planejamento Financeiro Pontual";
+    // Determine if we create a subscription or a bill
+    if (contractData.billingType === "assinatura") {
+      // Create subscription for recurring payments
+      const subscriptionPayload = {
+        customer_id: parseInt(customerId),
+        plan_id: vindiPlanId,
+        payment_method_code: "credit_card",
+        start_at: contractData.billingDate,
+      };
 
-    // Map payment method to Vindi codes
-    // pix -> pix, recorrente -> credit_card (for recurring), parcelado -> credit_card
-    let paymentMethodCode = "pix";
-    if (contractData.paymentMethod === "recorrente") {
-      paymentMethodCode = "credit_card";
-    } else if (contractData.paymentMethod === "parcelado") {
-      paymentMethodCode = "credit_card";
-    }
+      console.log("Creating Vindi subscription:", JSON.stringify(subscriptionPayload, null, 2));
 
-    // Create bill
-    const billData: any = {
-      customer_id: parseInt(customerId),
-      payment_method_code: paymentMethodCode,
-      bill_items: [
+      const subscriptionResponse = await fetch(
+        `${vindiUrl}/subscriptions`,
         {
-          product_id: vindiProductId,
-          amount: contractData.planValue,
-          quantity: 1,
-          description: productName,
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(subscriptionPayload),
         }
-      ],
-    };
+      );
 
-    // For installment payments
-    if (contractData.paymentMethod === "parcelado" && contractData.installments && contractData.installments > 1) {
-      billData.installments = contractData.installments;
-    }
-
-    console.log("Creating Vindi bill:", JSON.stringify(billData, null, 2));
-
-    const billResponse = await fetch(
-      `${vindiUrl}/bills`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": authHeader,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(billData),
+      if (!subscriptionResponse.ok) {
+        const errorText = await subscriptionResponse.text();
+        console.error("Vindi create subscription error:", errorText);
+        return { customerId, error: `Erro ao criar assinatura Vindi: ${errorText}` };
       }
-    );
 
-    if (!billResponse.ok) {
-      const errorText = await billResponse.text();
-      console.error("Vindi create bill error:", errorText);
-      return { customerId, billId: "", error: `Erro ao criar cobrança Vindi: ${errorText}` };
+      const subscriptionResult = await subscriptionResponse.json();
+      const subscriptionId = String(subscriptionResult.subscription.id);
+      console.log("Vindi subscription created:", subscriptionId);
+
+      return { customerId, subscriptionId };
+    } else {
+      // Create bill for one-time or installment payments
+      const productName = contractData.planType === "novo_planejamento" 
+        ? "Novo Planejamento Financeiro" 
+        : "Planejamento Financeiro Pontual";
+
+      const billPayload: any = {
+        customer_id: parseInt(customerId),
+        payment_method_code: contractData.paymentMethodCode,
+        due_at: contractData.billingDate,
+        bill_items: [
+          {
+            product_id: vindiProductId,
+            amount: contractData.planValue,
+            quantity: 1,
+            description: productName,
+          }
+        ],
+      };
+
+      // For installment payments (credit card only)
+      if (contractData.paymentMethodCode === "credit_card" && contractData.installments && contractData.installments > 1) {
+        billPayload.installments = contractData.installments;
+      }
+
+      console.log("Creating Vindi bill:", JSON.stringify(billPayload, null, 2));
+
+      const billResponse = await fetch(
+        `${vindiUrl}/bills`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(billPayload),
+        }
+      );
+
+      if (!billResponse.ok) {
+        const errorText = await billResponse.text();
+        console.error("Vindi create bill error:", errorText);
+        return { customerId, error: `Erro ao criar cobrança Vindi: ${errorText}` };
+      }
+
+      const billResult = await billResponse.json();
+      const billId = String(billResult.bill.id);
+      console.log("Vindi bill created:", billId);
+
+      return { customerId, billId };
     }
-
-    const billResult = await billResponse.json();
-    const billId = String(billResult.bill.id);
-    console.log("Vindi bill created:", billId);
-
-    return { customerId, billId };
   } catch (error: unknown) {
     console.error("Vindi API error:", error);
     const message = error instanceof Error ? error.message : "Erro desconhecido";
-    return { customerId: "", billId: "", error: `Erro na API Vindi: ${message}` };
+    return { customerId: "", error: `Erro na API Vindi: ${message}` };
   }
 }
 
@@ -420,41 +508,59 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Received contract request:", JSON.stringify(contractRequest, null, 2));
 
     // Validate required fields
-    if (!contractRequest.contactId || !contractRequest.planType || !contractRequest.planValue) {
+    if (!contractRequest.contactId || !contractRequest.planType || !contractRequest.planValue || !contractRequest.contactData) {
       return new Response(
-        JSON.stringify({ error: "Campos obrigatórios: contactId, planType, planValue" }),
+        JSON.stringify({ error: "Campos obrigatórios: contactId, planType, planValue, contactData" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Fetch contact details
-    const { data: contact, error: contactError } = await supabase
+    // Validate contact data
+    if (!contractRequest.contactData.email || !contractRequest.contactData.cpf) {
+      return new Response(
+        JSON.stringify({ error: "Dados do contato obrigatórios: email, cpf" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // First, update the contact with the provided data
+    console.log("Updating contact with new data...");
+    const { error: updateError } = await supabase
       .from("contacts")
-      .select("*")
-      .eq("id", contractRequest.contactId)
-      .single();
+      .update({
+        full_name: contractRequest.contactData.full_name,
+        cpf: contractRequest.contactData.cpf,
+        rg: contractRequest.contactData.rg || null,
+        rg_issuer: contractRequest.contactData.rg_issuer || null,
+        rg_issue_date: contractRequest.contactData.rg_issue_date || null,
+        birth_date: contractRequest.contactData.birth_date || null,
+        marital_status: contractRequest.contactData.marital_status || null,
+        profession: contractRequest.contactData.profession || null,
+        income: contractRequest.contactData.income || null,
+        email: contractRequest.contactData.email,
+        phone: contractRequest.contactData.phone,
+        zip_code: contractRequest.contactData.zip_code || null,
+        address: contractRequest.contactData.address || null,
+        address_number: contractRequest.contactData.address_number || null,
+        address_complement: contractRequest.contactData.address_complement || null,
+        city: contractRequest.contactData.city || null,
+        state: contractRequest.contactData.state || null,
+      })
+      .eq("id", contractRequest.contactId);
 
-    if (contactError || !contact) {
-      console.error("Contact fetch error:", contactError);
+    if (updateError) {
+      console.error("Error updating contact:", updateError);
       return new Response(
-        JSON.stringify({ error: "Contato não encontrado" }),
-        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: `Erro ao atualizar contato: ${updateError.message}` }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    console.log("Contact found:", contact.full_name);
-
-    // Validate contact has email
-    if (!contact.email) {
-      return new Response(
-        JSON.stringify({ error: "Contato precisa ter email cadastrado para receber contrato e cobrança" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    console.log("Contact updated successfully");
 
     // Create ClickSign document
     const clicksignResult = await createClickSignDocument(
-      contact,
+      contractRequest.contactData,
       contractRequest,
       clicksignTemplateKey,
       clicksignApiKey
@@ -467,7 +573,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Create Vindi payment
     const vindiResult = await createVindiPayment(
-      contact,
+      contractRequest.contactData,
       contractRequest,
       vindiApiKey
     );
@@ -486,24 +592,31 @@ const handler = async (req: Request): Promise<Response> => {
       userId = user?.id;
     }
 
-    // Calculate payment details
+    // Fetch contact to get owner_id
+    const { data: contact } = await supabase
+      .from("contacts")
+      .select("owner_id")
+      .eq("id", contractRequest.contactId)
+      .single();
+
+    // Calculate payment details for legacy fields
     let paymentType = "avista";
     let installments = null;
     let installmentValue = null;
 
-    if (contractRequest.paymentMethod === "parcelado" && contractRequest.installments) {
+    if (contractRequest.billingType === "assinatura") {
+      paymentType = "mensal";
+    } else if (contractRequest.installments && contractRequest.installments > 1) {
       paymentType = "parcelado";
       installments = contractRequest.installments;
       installmentValue = contractRequest.planValue / contractRequest.installments;
-    } else if (contractRequest.paymentMethod === "recorrente") {
-      paymentType = "mensal";
     }
 
     // Save contract to database
     const contractInsert = {
       contact_id: contractRequest.contactId,
       product_id: contractRequest.productId,
-      owner_id: userId || contact.owner_id,
+      owner_id: userId || contact?.owner_id,
       contract_value: contractRequest.planValue,
       payment_type: paymentType,
       installments,
@@ -512,18 +625,22 @@ const handler = async (req: Request): Promise<Response> => {
       end_date: contractRequest.endDate,
       meeting_count: contractRequest.meetingCount,
       plan_type: contractRequest.planType,
+      billing_type: contractRequest.billingType,
+      billing_date: contractRequest.billingDate,
+      payment_method_code: contractRequest.paymentMethodCode,
       clicksign_document_key: clicksignResult.documentKey || null,
       clicksign_status: clicksignResult.documentKey ? "pending" : "error",
       vindi_customer_id: vindiResult.customerId || null,
       vindi_bill_id: vindiResult.billId || null,
-      vindi_status: vindiResult.billId ? "pending" : "error",
+      vindi_subscription_id: vindiResult.subscriptionId || null,
+      vindi_status: (vindiResult.billId || vindiResult.subscriptionId) ? "pending" : "error",
       calculated_pbs: 0, // Will be calculated separately if needed
       status: "pending",
     };
 
     console.log("Inserting contract:", JSON.stringify(contractInsert, null, 2));
 
-    const { data: contract, error: insertError } = await supabase
+    const { data: contract2, error: insertError } = await supabase
       .from("contracts")
       .insert(contractInsert)
       .select()
@@ -537,12 +654,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("Contract created successfully:", contract.id);
+    console.log("Contract created successfully:", contract2.id);
 
     return new Response(
       JSON.stringify({
         success: true,
-        contractId: contract.id,
+        contractId: contract2.id,
         clicksign: {
           documentKey: clicksignResult.documentKey,
           status: clicksignResult.documentKey ? "sent" : "error",
@@ -551,7 +668,8 @@ const handler = async (req: Request): Promise<Response> => {
         vindi: {
           customerId: vindiResult.customerId,
           billId: vindiResult.billId,
-          status: vindiResult.billId ? "sent" : "error",
+          subscriptionId: vindiResult.subscriptionId,
+          status: (vindiResult.billId || vindiResult.subscriptionId) ? "sent" : "error",
           error: vindiResult.error,
         },
       }),

@@ -2,16 +2,39 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export interface ContactData {
+  full_name: string;
+  cpf: string;
+  rg?: string;
+  rg_issuer?: string;
+  rg_issue_date?: string;
+  birth_date?: string;
+  marital_status?: string;
+  profession?: string;
+  income?: number;
+  email: string;
+  phone: string;
+  zip_code?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+}
+
 export interface ContractIntegrationData {
   contactId: string;
   planType: 'novo_planejamento' | 'planejamento_pontual';
   planValue: number;
-  paymentMethod: 'pix' | 'recorrente' | 'parcelado';
+  billingType: 'assinatura' | 'fatura_avulsa';
+  paymentMethodCode: 'credit_card' | 'pix' | 'pix_bank_slip' | 'bank_slip_yapay';
+  billingDate: string;
   installments?: number;
   startDate: string;
   endDate: string;
   meetingCount: number;
   productId: string;
+  contactData: ContactData;
 }
 
 interface IntegrationResult {
@@ -24,7 +47,8 @@ interface IntegrationResult {
   };
   vindi: {
     customerId: string;
-    billId: string;
+    billId?: string;
+    subscriptionId?: string;
     status: string;
     error?: string;
   };
@@ -52,6 +76,7 @@ export function useContractIntegration() {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact'] });
       
       const clicksignOk = result.clicksign.status === 'sent';
       const vindiOk = result.vindi.status === 'sent';
