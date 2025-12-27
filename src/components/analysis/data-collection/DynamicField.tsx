@@ -142,13 +142,13 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
         const itemSchema = field.options?.itemSchema || {};
         
         // Ordem desejada para campos de objetivos e labels em português
-        const fieldOrder = ['name', 'target_value', 'target_date', 'how', 'priority'];
+        const fieldOrder = ['name', 'target_value_brl', 'target_date', 'priority', 'how'];
         const fieldLabels: Record<string, string> = {
           name: 'Qual objetivo',
-          target_value: 'Quanto precisa (R$)',
+          target_value_brl: 'Quanto precisa (R$)',
           target_date: 'Quando pretende',
-          how: 'Como pensa em atingir',
-          priority: 'Prioridade'
+          priority: 'Prioridade',
+          how: 'Como pensa em atingir'
         };
         
         // Ordenar as chaves do schema conforme a ordem desejada
@@ -161,39 +161,57 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
           return indexA - indexB;
         });
         
+        // Separar campos principais do campo "how"
+        const mainFields = orderedKeys.filter(k => k !== 'how');
+        const hasHowField = orderedKeys.includes('how');
+        
         return (
           <div className="space-y-3">
             {items.map((item, index) => (
-              <div key={index} className="flex gap-2 items-start p-3 border rounded-lg bg-muted/50">
-                <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${orderedKeys.length}, 1fr)` }}>
-                  {orderedKeys.map((key) => {
-                    const type = itemSchema[key];
-                    return (
-                      <Input
-                        key={key}
-                        type={type === 'currency' || type === 'number' ? 'number' : 'text'}
-                        step={type === 'currency' ? '0.01' : undefined}
-                        placeholder={fieldLabels[key] || key}
-                        value={(item[key] as string | number) ?? ''}
-                        onChange={(e) => {
-                          const newItems = [...items];
-                          const val = (type === 'currency' || type === 'number') && e.target.value
-                            ? Number(e.target.value)
-                            : e.target.value;
-                          newItems[index] = { ...item, [key]: val };
-                          onChange(newItems);
-                        }}
-                      />
-                    );
-                  })}
+              <div key={index} className="flex flex-col gap-2 p-3 border rounded-lg bg-muted/50">
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${mainFields.length}, 1fr)` }}>
+                    {mainFields.map((key) => {
+                      const type = itemSchema[key];
+                      return (
+                        <Input
+                          key={key}
+                          type={type === 'currency' || type === 'number' ? 'number' : 'text'}
+                          step={type === 'currency' ? '0.01' : undefined}
+                          placeholder={fieldLabels[key] || key}
+                          value={(item[key] as string | number) ?? ''}
+                          onChange={(e) => {
+                            const newItems = [...items];
+                            const val = (type === 'currency' || type === 'number') && e.target.value
+                              ? Number(e.target.value)
+                              : e.target.value;
+                            newItems[index] = { ...item, [key]: val };
+                            onChange(newItems);
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onChange(items.filter((_, i) => i !== index))}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {hasHowField && (
+                  <Input
+                    placeholder={fieldLabels['how']}
+                    value={(item['how'] as string) ?? ''}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...item, how: e.target.value };
+                      onChange(newItems);
+                    }}
+                    className="w-full"
+                  />
+                )}
               </div>
             ))}
             <Button
