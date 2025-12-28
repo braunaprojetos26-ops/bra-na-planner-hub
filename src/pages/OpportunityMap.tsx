@@ -7,8 +7,14 @@ import { OpportunityMapTable } from '@/components/opportunity-map/OpportunityMap
 
 export default function OpportunityMap() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOwnerId, setSelectedOwnerId] = useState('all');
+  const [selectedStructure, setSelectedStructure] = useState('all');
 
-  const { data, isLoading } = useOpportunityMap({ searchTerm });
+  const { data, isLoading } = useOpportunityMap({
+    searchTerm,
+    ownerId: selectedOwnerId,
+    structureLeaderId: selectedStructure,
+  });
 
   const rows = data?.rows || [];
   const metrics = data?.metrics || {
@@ -37,7 +43,14 @@ export default function OpportunityMap() {
 
       <OpportunityMapMetricsCards metrics={metrics} isLoading={isLoading} />
 
-      <OpportunityMapFilters searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+      <OpportunityMapFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedOwnerId={selectedOwnerId}
+        onOwnerChange={setSelectedOwnerId}
+        selectedStructure={selectedStructure}
+        onStructureChange={setSelectedStructure}
+      />
 
       <OpportunityMapTable rows={rows} isLoading={isLoading} />
     </div>
