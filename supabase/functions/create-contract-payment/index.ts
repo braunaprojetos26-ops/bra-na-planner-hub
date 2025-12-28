@@ -274,7 +274,7 @@ async function createClickSignDocument(
       const signerKey = signerResult.signer.key;
       console.log(`Signer created: ${signer.email} with key: ${signerKey}`);
 
-      // Add signer to document with message to trigger automatic email notification
+      // Add signer to document
       const listResponse = await fetch(
         `${clicksignUrl}/lists?access_token=${apiKey}`,
         {
@@ -294,14 +294,39 @@ async function createClickSignDocument(
       if (!listResponse.ok) {
         const errorText = await listResponse.text();
         console.error(`ClickSign add to list error for ${signer.email}:`, errorText);
+        continue;
+      }
+
+      const listResult = await listResponse.json();
+      const requestSignatureKey = listResult.list?.request_signature_key;
+      console.log(`Signer ${signer.email} added to document with request_signature_key: ${requestSignatureKey}`);
+
+      // Enviar notificação por e-mail explicitamente
+      if (requestSignatureKey) {
+        const notificationResponse = await fetch(
+          `${clicksignUrl}/notifications?access_token=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              request_signature_key: requestSignatureKey,
+              message: "Por favor, assine o contrato de planejamento financeiro da Braúna. Clique no botão abaixo para acessar e assinar o documento."
+            }),
+          }
+        );
+
+        if (!notificationResponse.ok) {
+          const notifError = await notificationResponse.text();
+          console.error(`ClickSign notification error for ${signer.email}:`, notifError);
+        } else {
+          console.log(`Email notification sent successfully to ${signer.email}`);
+        }
       } else {
-        console.log(`Signer ${signer.email} added to document`);
+        console.warn(`No request_signature_key found for ${signer.email}, cannot send notification`);
       }
     }
 
-    // Note: ClickSign automatically sends email notifications when signers are added
-    // with delivery: "email", so no need to call /notifications endpoint manually
-    console.log("Document ready for signing - emails sent automatically by ClickSign");
+    console.log("Document ready for signing - notification emails sent");
 
     return { documentKey };
   } catch (error: unknown) {
