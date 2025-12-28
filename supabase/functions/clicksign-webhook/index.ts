@@ -81,9 +81,9 @@ serve(async (req: Request) => {
     
     // Verify HMAC signature if secret is configured
     if (hmacSecret) {
-      const signature = req.headers.get('Content-Hmac') || req.headers.get('X-Signature') || '';
+      const rawSignature = req.headers.get('Content-Hmac') || req.headers.get('X-Signature') || '';
       
-      if (!signature) {
+      if (!rawSignature) {
         console.error('Missing HMAC signature in request headers');
         return new Response(
           JSON.stringify({ error: 'Missing signature' }),
@@ -91,6 +91,9 @@ serve(async (req: Request) => {
         );
       }
 
+      // Remove o prefixo "sha256=" se presente
+      const signature = rawSignature.replace(/^sha256=/, '');
+      
       const isValid = await verifyHmacSignature(body, signature, hmacSecret);
       
       if (!isValid) {
