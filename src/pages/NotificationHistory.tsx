@@ -106,33 +106,53 @@ export default function NotificationHistory() {
           ) : (
             <div className="divide-y divide-border">
               {notifications.map((notification) => (
-                <button
+                <div
                   key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
                   className={cn(
-                    'w-full text-left p-4 hover:bg-muted/50 transition-colors flex items-start gap-4',
+                    'p-4 flex items-start gap-4',
                     !notification.is_read && 'bg-primary/5'
                   )}
                 >
-                  <div className={cn('p-2 rounded-full shrink-0', getNotificationColor(notification.type))}>
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={cn('font-medium', !notification.is_read && 'text-primary')}>
-                        {notification.title}
-                      </p>
-                      {!notification.is_read && (
-                        <Badge variant="default" className="h-5 text-xs">Nova</Badge>
-                      )}
+                  <button
+                    onClick={() => handleNotificationClick(notification)}
+                    className="flex-1 flex items-start gap-4 text-left hover:opacity-80 transition-opacity"
+                  >
+                    <div className={cn('p-2 rounded-full shrink-0', getNotificationColor(notification.type))}>
+                      {getNotificationIcon(notification.type)}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{notification.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(notification.created_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                </button>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={cn('font-medium', !notification.is_read && 'text-primary')}>
+                          {notification.title}
+                        </p>
+                        {!notification.is_read && (
+                          <Badge variant="default" className="h-5 text-xs">Nova</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">{notification.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(notification.created_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </button>
+                  
+                  {!notification.is_read && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markRead.mutate(notification.id);
+                      }}
+                      disabled={markRead.isPending}
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Marcar como lida
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
           )}
