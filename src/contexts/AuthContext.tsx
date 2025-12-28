@@ -10,6 +10,7 @@ interface Profile {
   full_name: string;
   email: string;
   is_active: boolean;
+  position: string | null;
 }
 
 interface AuthContextType {
