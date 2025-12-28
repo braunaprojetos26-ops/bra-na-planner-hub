@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
 interface RateSettingsModalProps {
@@ -56,17 +57,17 @@ export function RateSettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Configurações da simulação</DialogTitle>
           <DialogDescription>
-            Ajuste os parâmetros para personalizar a simulação de independência financeira.
+            Ajuste os parâmetros para personalizar a simulação.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1">
           {/* Idade atual */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="idade-atual" className="text-sm font-medium">
               Idade atual do cliente
             </Label>
@@ -85,77 +86,71 @@ export function RateSettingsModal({
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              A idade será usada como ponto de partida para a simulação.
+              Ponto de partida para a simulação.
             </p>
           </div>
 
-          {/* Separador visual */}
-          <div className="border-t pt-4">
-            <p className="text-sm font-medium text-muted-foreground mb-4">Taxas de rentabilidade</p>
-          </div>
+          <Separator />
 
-          {/* Taxa de acúmulo */}
-          <div className="space-y-2">
-            <Label htmlFor="taxa-acumulo" className="text-sm font-medium">
-              Taxa de juros real anual na fase de acumulação
-            </Label>
-            <div className="relative">
-              <Input
-                id="taxa-acumulo"
-                type="number"
-                step="0.1"
-                min="0"
-                max="20"
-                value={taxaAcumulo}
-                onChange={(e) => onTaxaAcumuloChange(parseFloat(e.target.value) || 0)}
-                className="pr-8"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                %
-              </span>
+          {/* Seção de taxas */}
+          <div className="space-y-4">
+            <p className="text-sm font-medium">Taxas de rentabilidade</p>
+
+            {/* Taxa de acúmulo */}
+            <div className="space-y-1.5">
+              <Label htmlFor="taxa-acumulo" className="text-sm font-medium">
+                Taxa anual na fase de acumulação
+              </Label>
+              <div className="relative">
+                <Input
+                  id="taxa-acumulo"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="20"
+                  value={taxaAcumulo}
+                  onChange={(e) => onTaxaAcumuloChange(parseFloat(e.target.value) || 0)}
+                  className="pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  %
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Rentabilidade esperada durante a fase de acúmulo de patrimônio.
-            </p>
-          </div>
 
-          {/* Taxa de usufruto */}
-          <div className="space-y-2">
-            <Label htmlFor="taxa-usufruto" className="text-sm font-medium">
-              Taxa de juros real anual após aposentadoria
-            </Label>
-            <div className="relative">
-              <Input
-                id="taxa-usufruto"
-                type="number"
-                step="0.1"
-                min="0"
-                max="20"
-                value={taxaUsufruto}
-                onChange={(e) => onTaxaUsufruteChange(parseFloat(e.target.value) || 0)}
-                className="pr-8"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                %
-              </span>
+            {/* Taxa de usufruto */}
+            <div className="space-y-1.5">
+              <Label htmlFor="taxa-usufruto" className="text-sm font-medium">
+                Taxa anual após aposentadoria
+              </Label>
+              <div className="relative">
+                <Input
+                  id="taxa-usufruto"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="20"
+                  value={taxaUsufruto}
+                  onChange={(e) => onTaxaUsufruteChange(parseFloat(e.target.value) || 0)}
+                  className="pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  %
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Rentabilidade esperada durante a fase de usufruto do patrimônio.
-            </p>
           </div>
 
           {/* Aviso informativo */}
-          <div className="flex gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              As taxas de juros padrão estão de acordo com a visão conservadora do mercado. 
-              Alterar os valores pode gerar uma simulação que não condiz com a realidade. 
-              Consulte um especialista para ajustar com segurança.
+          <div className="flex gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              As taxas padrão seguem uma visão conservadora do mercado. Consulte um especialista antes de alterá-las.
             </p>
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
           <Button
             variant="ghost"
             onClick={handleReset}
@@ -169,7 +164,7 @@ export function RateSettingsModal({
             Cancelar
           </Button>
           <Button onClick={handleSave}>
-            Salvar configuração
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
