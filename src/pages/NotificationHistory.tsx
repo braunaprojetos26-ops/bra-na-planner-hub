@@ -76,17 +76,16 @@ export default function NotificationHistory() {
           </div>
         </div>
         
-        {unreadCount > 0 && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => markAllRead.mutate()}
-            disabled={markAllRead.isPending}
-          >
-            <Check className="h-4 w-4 mr-2" />
-            Marcar todas como lidas
-          </Button>
-        )}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => markAllRead.mutate()}
+          disabled={markAllRead.isPending || unreadCount === 0}
+        >
+          <Check className="h-4 w-4 mr-2" />
+          Marcar todas como lidas
+          {unreadCount > 0 && <Badge variant="secondary" className="ml-2">{unreadCount}</Badge>}
+        </Button>
       </div>
 
       <Card>
