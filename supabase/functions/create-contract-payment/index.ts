@@ -299,21 +299,9 @@ async function createClickSignDocument(
       }
     }
 
-    // Send document for signing
-    const notifyResponse = await fetch(
-      `${clicksignUrl}/documents/${documentKey}/notifications?access_token=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "Por favor, assine o contrato de planejamento financeiro." }),
-      }
-    );
-
-    if (!notifyResponse.ok) {
-      console.warn("ClickSign notification warning:", await notifyResponse.text());
-    } else {
-      console.log("Document sent for signing");
-    }
+    // Note: ClickSign automatically sends email notifications when signers are added
+    // with delivery: "email", so no need to call /notifications endpoint manually
+    console.log("Document ready for signing - emails sent automatically by ClickSign");
 
     return { documentKey };
   } catch (error: unknown) {
@@ -424,6 +412,8 @@ async function createVindiPayment(
         plan_id: vindiPlanId,
         payment_method_code: contractData.paymentMethodCode, // Use actual payment method (credit_card or pix)
         start_at: contractData.billingDate,
+        code: `SUB_${Date.now()}`, // Unique subscription code
+        send_invoice_via_email: true, // Vindi auto-sends email with invoice
         product_items: [
           {
             product_id: vindiProductId,
@@ -470,6 +460,8 @@ async function createVindiPayment(
         customer_id: parseInt(customerId),
         payment_method_code: contractData.paymentMethodCode,
         due_at: contractData.billingDate,
+        code: `BILL_${Date.now()}`, // Unique bill code
+        notify: true, // Vindi auto-sends email notification
         bill_items: [
           {
             product_id: vindiProductId,
