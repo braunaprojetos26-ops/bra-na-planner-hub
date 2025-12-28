@@ -575,7 +575,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
-                            captionLayout="dropdown-buttons"
+                            captionLayout="dropdown"
                             fromYear={1920}
                             toYear={new Date().getFullYear()}
                           />
