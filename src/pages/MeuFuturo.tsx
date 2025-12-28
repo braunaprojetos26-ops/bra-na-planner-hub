@@ -173,9 +173,11 @@ export default function MeuFuturo() {
               onOutrasFontesRendaChange={setOutrasFontesRenda}
               onInvestimentoMensalChange={setInvestimentoMensal}
               aporteNecessario={projection.aporteNecessario}
+              aporteIdealMensal={projection.aporteIdealMensal}
               capitalNecessario={projection.capitalNecessario}
               patrimonioFinalAposentadoria={projection.patrimonioFinalAposentadoria}
               idadePatrimonioAcaba={projection.idadePatrimonioAcaba}
+              idadeFinalIdeal={projection.idadeFinalIdeal}
               onSalvar={handleSalvarMeta}
             />
           </div>
