@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Rocket, Settings } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +45,7 @@ export default function MeuFuturo() {
 
   // Estados da UI
   const [showNegatives, setShowNegatives] = useState(false);
+  const [showPrincipalInvestido, setShowPrincipalInvestido] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("max");
   const [viewMode, setViewMode] = useState<ViewMode>("anual");
   const [rateModalOpen, setRateModalOpen] = useState(false);
@@ -208,18 +210,38 @@ export default function MeuFuturo() {
                 periodFilter={periodFilter}
                 idadeAtual={idadeAtual}
                 viewMode={viewMode}
+                showPrincipalInvestido={showPrincipalInvestido}
               />
               
-              {/* Legenda */}
+              {/* Legenda Interativa */}
               <div className="flex flex-wrap items-center justify-center gap-6 mt-4 text-xs">
+                {/* Planejamento Braúna - sempre visível */}
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                  <span className="text-muted-foreground">Patrimônio projetado</span>
+                  <span className="text-muted-foreground">Planejamento Braúna</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
-                  <span className="text-muted-foreground">Principal investido</span>
-                </div>
+                
+                {/* Principal Investido - clicável para toggle */}
+                <button
+                  onClick={() => setShowPrincipalInvestido(!showPrincipalInvestido)}
+                  className={cn(
+                    "flex items-center gap-2 transition-opacity cursor-pointer hover:opacity-80",
+                    !showPrincipalInvestido && "opacity-50"
+                  )}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-full bg-blue-500",
+                    !showPrincipalInvestido && "opacity-50"
+                  )} />
+                  <span className={cn(
+                    "text-muted-foreground",
+                    !showPrincipalInvestido && "line-through"
+                  )}>
+                    Principal investido
+                  </span>
+                </button>
+                
+                {/* Aposentadoria Ideal - sempre visível */}
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-0.5 bg-orange-500" style={{ borderStyle: "dashed" }} />
                   <span className="text-muted-foreground">Aposentadoria ideal</span>

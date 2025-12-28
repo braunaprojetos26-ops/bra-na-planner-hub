@@ -17,6 +17,7 @@ interface FinancialProjectionChartProps {
   periodFilter: "2anos" | "5anos" | "10anos" | "max";
   idadeAtual: number;
   viewMode: "mensal" | "anual";
+  showPrincipalInvestido?: boolean;
 }
 
 const formatCurrency = (value: number): string => {
@@ -61,18 +62,20 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-emerald-500" />
-            <span className="text-sm text-muted-foreground">Patrimônio projetado:</span>
+            <span className="text-sm text-muted-foreground">Planejamento Braúna:</span>
             <span className="text-sm font-medium text-foreground ml-auto">
               {formatCurrencyFull(payload.find(p => p.dataKey === "patrimonioProjetado")?.value || 0)}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-sm text-muted-foreground">Principal investido:</span>
-            <span className="text-sm font-medium text-foreground ml-auto">
-              {formatCurrencyFull(payload.find(p => p.dataKey === "patrimonioInvestido")?.value || 0)}
-            </span>
-          </div>
+          {payload.find(p => p.dataKey === "patrimonioInvestido") && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <span className="text-sm text-muted-foreground">Principal investido:</span>
+              <span className="text-sm font-medium text-foreground ml-auto">
+                {formatCurrencyFull(payload.find(p => p.dataKey === "patrimonioInvestido")?.value || 0)}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-orange-500" />
             <span className="text-sm text-muted-foreground">Aposentadoria ideal:</span>
@@ -112,6 +115,7 @@ export function FinancialProjectionChart({
   periodFilter,
   idadeAtual,
   viewMode,
+  showPrincipalInvestido = false,
 }: FinancialProjectionChartProps) {
   // Filtrar dados baseado no período selecionado
   const filteredData = (() => {
@@ -227,15 +231,17 @@ export function FinancialProjectionChart({
             dot={false}
           />
 
-          {/* Área do patrimônio investido (azul) */}
-          <Area
-            type="natural"
-            dataKey="patrimonioInvestido"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            fill="url(#colorInvestido)"
-            dot={false}
-          />
+          {/* Área do patrimônio investido (azul) - condicional */}
+          {showPrincipalInvestido && (
+            <Area
+              type="natural"
+              dataKey="patrimonioInvestido"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              fill="url(#colorInvestido)"
+              dot={false}
+            />
+          )}
 
           {/* Área do patrimônio projetado (verde) */}
           <Area
