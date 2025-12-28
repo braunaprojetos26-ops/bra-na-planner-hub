@@ -101,6 +101,7 @@ type FormData = z.infer<typeof formSchema>;
 
 interface ContractingFormProps {
   contactId: string;
+  opportunityId?: string | null;
 }
 
 // Function to convert number to words (Brazilian Portuguese)
@@ -162,7 +163,7 @@ function formatValueInWords(value: number): string {
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
-export function ContractingForm({ contactId }: ContractingFormProps) {
+export function ContractingForm({ contactId, opportunityId }: ContractingFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<{
     success: boolean;
@@ -346,6 +347,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
 
     const integrationData: ContractIntegrationData = {
       contactId,
+      opportunityId: opportunityId || undefined,
       planType: data.planType,
       planValue: data.planValue,
       billingType: data.billingType,

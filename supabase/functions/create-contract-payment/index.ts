@@ -28,6 +28,7 @@ interface ContactData {
 
 interface ContractRequest {
   contactId: string;
+  opportunityId?: string;
   planType: "novo_planejamento" | "planejamento_pontual";
   planValue: number;
   billingType: "assinatura" | "fatura_avulsa";
@@ -41,6 +42,9 @@ interface ContractRequest {
   productId: string;
   contactData: ContactData;
 }
+
+// Stage IDs for VENDA - PLANEJAMENTO funnel
+const STAGE_ASSINATURA_CONTRATO = "f9141c57-ee25-4606-98cb-6d559d9af8f1";
 
 // Convert number to Brazilian currency in words
 function numberToWords(num: number): string {
@@ -692,6 +696,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Save contract to database
     const contractInsert = {
       contact_id: contractRequest.contactId,
+      opportunity_id: contractRequest.opportunityId || null,
       product_id: contractRequest.productId,
       owner_id: userId || contact?.owner_id,
       contract_value: contractRequest.planValue,
@@ -711,7 +716,7 @@ const handler = async (req: Request): Promise<Response> => {
       vindi_bill_id: vindiResult.billId || null,
       vindi_subscription_id: vindiResult.subscriptionId || null,
       vindi_status: (vindiResult.billId || vindiResult.subscriptionId) ? "pending" : "error",
-      calculated_pbs: 0, // Will be calculated separately if needed
+      calculated_pbs: 0, // PBs zerados - será calculado ao dar ganho
       status: "pending",
     };
 
@@ -732,6 +737,53 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Contract created successfully:", contract2.id);
+
+    // Move opportunity to "Assinatura de Contrato" stage if opportunityId is provided
+    if (contractRequest.opportunityId) {
+      console.log("Moving opportunity to Assinatura de Contrato stage...");
+      
+      // Get current stage of the opportunity
+      const { data: opportunity } = await supabase
+        .from("opportunities")
+        .select("current_stage_id")
+        .eq("id", contractRequest.opportunityId)
+        .single();
+
+      const fromStageId = opportunity?.current_stage_id;
+
+      // Update opportunity stage
+      const { error: moveError } = await supabase
+        .from("opportunities")
+        .update({
+          current_stage_id: STAGE_ASSINATURA_CONTRATO,
+          stage_entered_at: new Date().toISOString(),
+        })
+        .eq("id", contractRequest.opportunityId);
+
+      if (moveError) {
+        console.error("Error moving opportunity:", moveError);
+      } else {
+        console.log("Opportunity moved to Assinatura de Contrato");
+        
+        // Create history entry
+        const { error: historyError } = await supabase
+          .from("opportunity_history")
+          .insert({
+            opportunity_id: contractRequest.opportunityId,
+            action: "stage_change",
+            from_stage_id: fromStageId || null,
+            to_stage_id: STAGE_ASSINATURA_CONTRATO,
+            changed_by: userId || contact?.owner_id,
+            notes: "Contrato gerado automaticamente após análise",
+          });
+
+        if (historyError) {
+          console.error("Error creating opportunity history:", historyError);
+        } else {
+          console.log("Opportunity history created");
+        }
+      }
+    }
 
     return new Response(
       JSON.stringify({

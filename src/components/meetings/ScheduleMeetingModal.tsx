@@ -43,6 +43,8 @@ import { useCreateMeeting, useRescheduleMeeting } from '@/hooks/useMeetings';
 import { useContactOpportunities } from '@/hooks/useContactOpportunities';
 import { MEETING_TYPES, type Meeting } from '@/types/meetings';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const formSchema = z.object({
   meeting_type: z.string().min(1, 'Selecione o tipo de reunião'),
@@ -54,6 +56,9 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+// Funnel ID for "VENDA - PLANEJAMENTO"
+const VENDA_PLANEJAMENTO_FUNNEL_ID = 'c2c80b13-b0a6-48a9-aca2-fc36c12c73f3';
 
 interface ScheduleMeetingModalProps {
   open: boolean;
@@ -84,6 +89,11 @@ export function ScheduleMeetingModal({
   // Fetch opportunities for this contact (only if no initial opportunityId)
   const { data: opportunities } = useContactOpportunities(contactId);
   const activeOpportunities = opportunities?.filter(o => o.status === 'active') || [];
+  
+  // Filter for VENDA - PLANEJAMENTO opportunities when scheduling Análise
+  const vendaPlanejamentoOpportunities = activeOpportunities.filter(
+    o => o.current_funnel?.id === VENDA_PLANEJAMENTO_FUNNEL_ID
+  );
 
   const isRescheduling = !!reschedulingMeeting;
 
@@ -97,6 +107,15 @@ export function ScheduleMeetingModal({
       time: '',
     },
   });
+
+  const currentMeetingType = form.watch('meeting_type');
+  
+  // Check if Análise requires opportunity and none is selected
+  const isAnalise = currentMeetingType === 'Análise';
+  const requiresOpportunity = isAnalise && !initialOpportunityId && !isRescheduling;
+  const hasValidOpportunity = requiresOpportunity 
+    ? (selectedOpportunityId && vendaPlanejamentoOpportunities.some(o => o.id === selectedOpportunityId))
+    : true;
 
   // Pre-fill form when rescheduling or reset on open/close
   useEffect(() => {
@@ -168,6 +187,16 @@ export function ScheduleMeetingModal({
   };
 
   const onSubmit = async (data: FormData) => {
+    // Validate opportunity requirement for Análise
+    if (data.meeting_type === 'Análise' && !initialOpportunityId && !isRescheduling && !selectedOpportunityId) {
+      toast({
+        title: 'Oportunidade obrigatória',
+        description: 'Para agendar uma Análise, é necessário vincular a uma negociação do funil VENDA - PLANEJAMENTO.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Combine date and time
       const [hours, minutes] = data.time.split(':').map(Number);
@@ -282,20 +311,33 @@ export function ScheduleMeetingModal({
               )}
             />
 
-            {/* Negociação (opcional, só mostra se não veio pré-definido e há negociações ativas) */}
-            {!initialOpportunityId && activeOpportunities.length > 0 && !isRescheduling && (
+            {/* Negociação - obrigatório para Análise */}
+            {!initialOpportunityId && !isRescheduling && (
               <div className="space-y-2">
-                <FormLabel>Vincular a Negociação (opcional)</FormLabel>
+                <FormLabel>
+                  Vincular a Negociação {isAnalise && <span className="text-destructive">*</span>}
+                </FormLabel>
+                
+                {isAnalise && vendaPlanejamentoOpportunities.length === 0 && (
+                  <Alert variant="destructive" className="mb-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Não há negociações ativas no funil VENDA - PLANEJAMENTO para este contato.
+                      Crie uma oportunidade antes de agendar a Análise.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <Select 
                   value={selectedOpportunityId || 'none'} 
                   onValueChange={(v) => setSelectedOpportunityId(v === 'none' ? null : v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={!hasValidOpportunity && isAnalise ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Selecione uma negociação" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {activeOpportunities.map((opp) => (
+                    {!isAnalise && <SelectItem value="none">Nenhuma</SelectItem>}
+                    {(isAnalise ? vendaPlanejamentoOpportunities : activeOpportunities).map((opp) => (
                       <SelectItem key={opp.id} value={opp.id}>
                         {opp.current_funnel?.name} - {opp.current_stage?.name}
                       </SelectItem>
@@ -303,7 +345,10 @@ export function ScheduleMeetingModal({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Vincule esta reunião a uma negociação específica
+                  {isAnalise 
+                    ? 'Obrigatório: vincule esta análise a uma negociação do funil VENDA - PLANEJAMENTO'
+                    : 'Vincule esta reunião a uma negociação específica (opcional)'
+                  }
                 </p>
               </div>
             )}
@@ -490,7 +535,10 @@ export function ScheduleMeetingModal({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button 
+                type="submit" 
+                disabled={isPending || (isAnalise && !hasValidOpportunity)}
+              >
                 {isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
