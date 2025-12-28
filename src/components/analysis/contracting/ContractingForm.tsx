@@ -40,6 +40,7 @@ const maritalStatusOptions = [
 const paymentMethodOptions = {
   assinatura: [
     { value: 'credit_card', label: 'Cartão de Crédito' },
+    { value: 'pix', label: 'PIX' },
   ],
   fatura_avulsa: [
     { value: 'pix_bank_slip', label: 'BolePIX' },
@@ -574,6 +575,9 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
+                            captionLayout="dropdown-buttons"
+                            fromYear={1920}
+                            toYear={new Date().getFullYear()}
                           />
                         </PopoverContent>
                       </Popover>
