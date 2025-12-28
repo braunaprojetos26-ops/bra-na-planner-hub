@@ -16,6 +16,7 @@ interface FinancialProjectionChartProps {
   showNegatives: boolean;
   periodFilter: "2anos" | "5anos" | "10anos" | "max";
   idadeAtual: number;
+  viewMode: "mensal" | "anual";
 }
 
 const formatCurrency = (value: number): string => {
@@ -110,6 +111,7 @@ export function FinancialProjectionChart({
   showNegatives,
   periodFilter,
   idadeAtual,
+  viewMode,
 }: FinancialProjectionChartProps) {
   // Filtrar dados baseado no período selecionado
   const filteredData = (() => {
@@ -131,11 +133,25 @@ export function FinancialProjectionChart({
     return data.filter(d => d.idade <= maxAge);
   })();
 
-  // Agrupar por idade (pegar apenas um ponto por idade para simplificar)
-  const chartData = filteredData.filter((d, i, arr) => {
-    if (i === 0) return true;
-    return d.idade !== arr[i - 1].idade;
-  });
+  // Modo anual: pegar apenas um ponto por idade
+  // Modo mensal: mostrar todos os pontos
+  const chartData = viewMode === "anual"
+    ? filteredData.filter((d, i, arr) => {
+        if (i === 0) return true;
+        return d.idade !== arr[i - 1].idade;
+      })
+    : filteredData;
+
+  // Gerar ticks do eixo X (apenas idades inteiras)
+  const ageTicksArray = (() => {
+    const minAge = Math.floor(chartData[0]?.idade || idadeAtual);
+    const maxAge = Math.ceil(chartData[chartData.length - 1]?.idade || 100);
+    const ticks: number[] = [];
+    for (let age = minAge; age <= maxAge; age++) {
+      ticks.push(age);
+    }
+    return ticks;
+  })();
 
   // Calcular domínio do eixo Y
   const allValues = chartData.flatMap(d => [
@@ -154,7 +170,7 @@ export function FinancialProjectionChart({
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={chartData}
-          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
         >
           <defs>
             <linearGradient id="colorProjetado" x1="0" y1="0" x2="0" y2="1">
@@ -169,10 +185,13 @@ export function FinancialProjectionChart({
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
           <XAxis
             dataKey="idade"
+            type="number"
+            domain={['dataMin', 'dataMax']}
+            ticks={ageTicksArray}
             tickLine={false}
             axisLine={false}
             className="text-xs fill-muted-foreground"
-            tickFormatter={(value) => `${value}`}
+            tickFormatter={(value) => Number.isInteger(value) ? `${value}` : ""}
           />
           <YAxis
             tickLine={false}
@@ -191,7 +210,8 @@ export function FinancialProjectionChart({
             strokeDasharray="5 5"
             label={{
               value: "Aposentadoria",
-              position: "top",
+              position: "insideTopRight",
+              offset: 10,
               className: "text-xs fill-muted-foreground",
             }}
           />

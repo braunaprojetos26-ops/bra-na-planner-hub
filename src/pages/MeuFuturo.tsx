@@ -29,6 +29,7 @@ const DEFAULT_CONFIG = {
 };
 
 type PeriodFilter = "2anos" | "5anos" | "10anos" | "max";
+type ViewMode = "mensal" | "anual";
 
 export default function MeuFuturo() {
   // Estados dos parâmetros
@@ -44,6 +45,7 @@ export default function MeuFuturo() {
   // Estados da UI
   const [showNegatives, setShowNegatives] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("max");
+  const [viewMode, setViewMode] = useState<ViewMode>("anual");
   const [rateModalOpen, setRateModalOpen] = useState(false);
   const [initialAmountModalOpen, setInitialAmountModalOpen] = useState(false);
   
@@ -168,6 +170,18 @@ export default function MeuFuturo() {
               </TabsList>
             </Tabs>
 
+            {/* Toggle visualização mensal/anual */}
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+              <TabsList className="h-8">
+                <TabsTrigger value="mensal" className="text-xs px-3 h-6">
+                  Mensal
+                </TabsTrigger>
+                <TabsTrigger value="anual" className="text-xs px-3 h-6">
+                  Anual
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             {/* Toggle negativos */}
             <div className="flex items-center gap-2">
               <Switch
@@ -192,6 +206,7 @@ export default function MeuFuturo() {
                 showNegatives={showNegatives}
                 periodFilter={periodFilter}
                 idadeAtual={idadeAtual}
+                viewMode={viewMode}
               />
               
               {/* Legenda */}
