@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.vindi-webhook]
 verify_jwt = false
+
+[functions.ai-leadership-coach]
+verify_jwt = false

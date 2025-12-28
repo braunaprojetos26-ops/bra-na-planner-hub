@@ -25,6 +25,8 @@ import Analytics from "./pages/Analytics";
 import Wiki from "./pages/Wiki";
 import WikiCategory from "./pages/WikiCategory";
 import Team from "./pages/Team";
+import TeamManagement from "./pages/TeamManagement";
+import PlannerDetail from "./pages/PlannerDetail";
 import Tickets from "./pages/Tickets";
 import MeuFuturo from "./pages/MeuFuturo";
 import NotificationHistory from "./pages/NotificationHistory";
@@ -74,6 +76,8 @@ const App = () => (
               <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
               <Route path="/wiki/:categorySlug/:folderId" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
               <Route path="/equipe" element={<ProtectedPage><Team /></ProtectedPage>} />
+              <Route path="/equipe/gestao" element={<ProtectedPage><TeamManagement /></ProtectedPage>} />
+              <Route path="/equipe/gestao/:userId" element={<ProtectedPage><PlannerDetail /></ProtectedPage>} />
               <Route path="/tickets" element={<ProtectedPage><Tickets /></ProtectedPage>} />
               <Route path="/notifications" element={<ProtectedPage><NotificationHistory /></ProtectedPage>} />
               <Route path="/meu-futuro" element={<ProtectedPage><MeuFuturo /></ProtectedPage>} />

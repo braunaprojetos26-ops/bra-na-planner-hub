@@ -51,8 +51,9 @@ const analyticsSubItems = [
   { title: 'Mapa de Oportunidades', url: '/analytics/opportunity-map', icon: Map },
 ];
 
-const teamNavItems = [
-  { title: 'Equipe', url: '/equipe', icon: Users },
+const teamSubItems = [
+  { title: 'Resultados Equipe', url: '/equipe', icon: BarChart3 },
+  { title: 'Gestão de Equipe', url: '/equipe/gestao', icon: Users },
 ];
 
 const managementNavItems = [
@@ -70,6 +71,9 @@ export function AppSidebar() {
   const [analyticsExpanded, setAnalyticsExpanded] = useState(
     location.pathname.startsWith('/analytics')
   );
+  const [teamExpanded, setTeamExpanded] = useState(
+    location.pathname.startsWith('/equipe')
+  );
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -77,6 +81,7 @@ export function AppSidebar() {
   };
 
   const isAnalyticsActive = location.pathname.startsWith('/analytics');
+  const isTeamActive = location.pathname.startsWith('/equipe');
 
   const canSeeTeam = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const canSeeManagement = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
@@ -155,20 +160,43 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {canSeeTeam && teamNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink 
-                      to={item.url}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+              {/* Equipe with expandable submenu */}
+              {canSeeTeam && (
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={isTeamActive}
+                      onClick={() => setTeamExpanded(!teamExpanded)}
+                      className="flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors cursor-pointer"
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <div className="flex items-center gap-3">
+                        <Users className="h-4 w-4" />
+                        <span>Equipe</span>
+                      </div>
+                      {teamExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  {teamExpanded && teamSubItems.map((subItem) => (
+                    <SidebarMenuItem key={subItem.title}>
+                      <SidebarMenuButton asChild isActive={location.pathname === subItem.url}>
+                        <NavLink 
+                          to={subItem.url}
+                          className="flex items-center gap-3 px-3 py-2 pl-9 rounded-md transition-colors text-sm"
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                        >
+                          <subItem.icon className="h-4 w-4" />
+                          <span>{subItem.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
