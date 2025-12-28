@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import { Save, TrendingUp, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Save, TrendingUp, AlertTriangle, Pencil, Check, X } from "lucide-react";
 
 interface FinancialControlPanelProps {
   idadeAposentadoria: number;
@@ -30,6 +32,74 @@ const formatCurrency = (value: number): string => {
     maximumFractionDigits: 0,
   });
 };
+
+interface EditableValueProps {
+  value: number;
+  onChange: (value: number) => void;
+  formatFn: (value: number) => string;
+  suffix?: string;
+  min?: number;
+  max?: number;
+  isCurrency?: boolean;
+}
+
+function EditableValue({ value, onChange, formatFn, suffix = "", min = 0, max = Infinity, isCurrency = false }: EditableValueProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempValue, setTempValue] = useState("");
+
+  const handleEdit = () => {
+    setTempValue(String(value));
+    setIsEditing(true);
+  };
+
+  const handleConfirm = () => {
+    const parsed = parseFloat(tempValue.replace(/\D/g, "")) || 0;
+    const clamped = Math.max(min, Math.min(max, parsed));
+    onChange(clamped);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleConfirm();
+    if (e.key === "Escape") handleCancel();
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="text"
+          value={tempValue}
+          onChange={(e) => setTempValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="h-6 w-24 text-right text-sm px-2"
+          autoFocus
+        />
+        <button onClick={handleConfirm} className="p-0.5 text-emerald-500 hover:text-emerald-600">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={handleCancel} className="p-0.5 text-destructive hover:text-destructive/80">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-sm font-semibold text-primary">
+        {formatFn(value)}{suffix}
+      </span>
+      <button onClick={handleEdit} className="p-0.5 text-muted-foreground hover:text-foreground transition-colors">
+        <Pencil className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
 
 export function FinancialControlPanel({
   idadeAposentadoria,
@@ -106,7 +176,14 @@ export function FinancialControlPanel({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Idade de aposentadoria</Label>
-            <span className="text-sm font-semibold text-primary">{idadeAposentadoria} anos</span>
+            <EditableValue
+              value={idadeAposentadoria}
+              onChange={onIdadeAposentadoriaChange}
+              formatFn={(v) => String(v)}
+              suffix=" anos"
+              min={50}
+              max={80}
+            />
           </div>
           <Slider
             value={[idadeAposentadoria]}
@@ -126,7 +203,14 @@ export function FinancialControlPanel({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Renda desejada (mensal)</Label>
-            <span className="text-sm font-semibold text-primary">{formatCurrency(rendaDesejada)}</span>
+            <EditableValue
+              value={rendaDesejada}
+              onChange={onRendaDesejadaChange}
+              formatFn={formatCurrency}
+              min={0}
+              max={100000}
+              isCurrency
+            />
           </div>
           <Slider
             value={[rendaDesejada]}
@@ -146,7 +230,14 @@ export function FinancialControlPanel({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Outras fontes de renda</Label>
-            <span className="text-sm font-semibold text-primary">{formatCurrency(outrasFontesRenda)}</span>
+            <EditableValue
+              value={outrasFontesRenda}
+              onChange={onOutrasFontesRendaChange}
+              formatFn={formatCurrency}
+              min={0}
+              max={50000}
+              isCurrency
+            />
           </div>
           <Slider
             value={[outrasFontesRenda]}
@@ -166,7 +257,14 @@ export function FinancialControlPanel({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Investimento mensal</Label>
-            <span className="text-sm font-semibold text-primary">{formatCurrency(investimentoMensal)}</span>
+            <EditableValue
+              value={investimentoMensal}
+              onChange={onInvestimentoMensalChange}
+              formatFn={formatCurrency}
+              min={0}
+              max={100000}
+              isCurrency
+            />
           </div>
           <Slider
             value={[investimentoMensal]}
