@@ -36,34 +36,48 @@ export function useClients(status?: ClientPlan['status']) {
 
       if (error) throw error;
 
-      // Buscar contagem de contratos ativos para cada cliente
+      // Buscar contagem de contratos ativos e dados de pagamento para cada cliente
       const contactIds = [...new Set(data?.map(p => p.contact_id) || [])];
       
       if (contactIds.length === 0) {
         return data as ClientPlan[];
       }
 
-      const { data: contractCounts, error: contractError } = await supabase
+      const { data: contractsData, error: contractError } = await supabase
         .from('contracts')
-        .select('contact_id')
+        .select('contact_id, installments, vindi_status, custom_data')
         .eq('status', 'active')
         .in('contact_id', contactIds);
 
       if (contractError) throw contractError;
 
-      // Contar contratos por contact_id
+      // Contar contratos e extrair dados de pagamento por contact_id
       const countMap = new Map<string, number>();
-      contractCounts?.forEach(c => {
+      const paymentMap = new Map<string, { paidInstallments: number; totalInstallments: number; vindiStatus: string | null }>();
+      
+      contractsData?.forEach(c => {
         countMap.set(c.contact_id, (countMap.get(c.contact_id) || 0) + 1);
+        
+        // Pegar dados de pagamento do contrato mais recente (primeira iteração ganha)
+        if (!paymentMap.has(c.contact_id)) {
+          const customData = c.custom_data as Record<string, unknown> | null;
+          const paidInstallments = (customData?.paid_installments as number) || 0;
+          paymentMap.set(c.contact_id, {
+            paidInstallments,
+            totalInstallments: c.installments || 1,
+            vindiStatus: c.vindi_status || null,
+          });
+        }
       });
 
-      // Adicionar contagem aos planos
-      const plansWithCounts = data?.map(plan => ({
+      // Adicionar contagem e dados de pagamento aos planos
+      const plansWithData = data?.map(plan => ({
         ...plan,
         productCount: countMap.get(plan.contact_id) || 0,
+        paymentProgress: paymentMap.get(plan.contact_id) || null,
       })) || [];
 
-      return plansWithCounts as ClientPlan[];
+      return plansWithData as ClientPlan[];
     },
     enabled: !!user,
   });

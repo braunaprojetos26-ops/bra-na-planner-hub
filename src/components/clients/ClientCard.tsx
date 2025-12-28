@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { User, DollarSign, Calendar, ChevronRight, Package } from 'lucide-react';
+import { User, DollarSign, Calendar, ChevronRight, Package, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, isBefore, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -89,6 +89,24 @@ export function ClientCard({ client }: ClientCardProps) {
               <Badge variant="outline" className="gap-1">
                 <Package className="h-3 w-3" />
                 {client.productCount}
+              </Badge>
+            )}
+            {client.paymentProgress && (
+              <Badge 
+                variant="outline" 
+                className={`gap-1 ${
+                  client.paymentProgress.vindiStatus === 'paid' 
+                    ? 'bg-green-500/10 text-green-600 border-green-500/20' 
+                    : client.paymentProgress.vindiStatus === 'pending'
+                    ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+                    : ''
+                }`}
+              >
+                <CreditCard className="h-3 w-3" />
+                {client.paymentProgress.totalInstallments > 1 
+                  ? `${client.paymentProgress.paidInstallments}/${client.paymentProgress.totalInstallments}`
+                  : client.paymentProgress.vindiStatus === 'paid' ? 'Pago' : 'Pendente'
+                }
               </Badge>
             )}
           </div>
