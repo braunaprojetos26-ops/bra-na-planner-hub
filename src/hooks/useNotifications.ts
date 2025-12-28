@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUserTasks } from './useTasks';
 import { format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface Notification {
   id: string;
-  type: 'task_today' | 'task_overdue' | 'ticket_update';
+  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update';
   title: string;
   description: string;
   createdAt: Date;
@@ -19,11 +19,12 @@ export interface Notification {
 
 export function useNotifications() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: tasks, isLoading: tasksLoading } = useUserTasks();
 
-  // Fetch ticket notifications from notifications table
-  const { data: ticketNotifications = [], isLoading: ticketLoading } = useQuery({
-    queryKey: ['ticket-notifications', user?.id],
+  // Fetch all notifications from notifications table (tickets and contracts)
+  const { data: dbNotifications = [], isLoading: dbLoading } = useQuery({
+    queryKey: ['all-notifications', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
@@ -31,16 +32,41 @@ export function useNotifications() {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .eq('type', 'ticket_update')
+        .in('type', ['ticket_update', 'contract_update'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (error) throw error;
       return data || [];
     },
     enabled: !!user,
   });
+
+  // Subscribe to realtime notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('notifications-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['all-notifications', user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 
   const notifications = useMemo(() => {
     const notifs: Notification[] = [];
@@ -80,11 +106,12 @@ export function useNotifications() {
       });
     }
 
-    // Ticket notifications
-    ticketNotifications.forEach((notif) => {
+    // DB notifications (tickets and contracts)
+    dbNotifications.forEach((notif) => {
+      const notifType = notif.type as 'ticket_update' | 'contract_update';
       notifs.push({
-        id: `ticket-${notif.id}`,
-        type: 'ticket_update',
+        id: `db-${notif.id}`,
+        type: notifType,
         title: notif.title,
         description: notif.message,
         createdAt: new Date(notif.created_at),
@@ -99,34 +126,40 @@ export function useNotifications() {
       }
       return b.createdAt.getTime() - a.createdAt.getTime(); // Most recent first
     });
-  }, [tasks, ticketNotifications]);
+  }, [tasks, dbNotifications]);
 
   const todayCount = notifications.filter((n) => n.type === 'task_today').length;
   const overdueCount = notifications.filter((n) => n.type === 'task_overdue').length;
   const ticketCount = notifications.filter((n) => n.type === 'ticket_update').length;
+  const contractCount = notifications.filter((n) => n.type === 'contract_update').length;
 
   return {
     notifications,
     todayCount,
     overdueCount,
     ticketCount,
+    contractCount,
     totalCount: notifications.length,
-    isLoading: tasksLoading || ticketLoading,
+    isLoading: tasksLoading || dbLoading,
   };
 }
 
 export function useMarkNotificationRead() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   return async (notificationId: string) => {
     if (!user) return;
     
     // Extract actual notification ID from our prefixed ID
-    const actualId = notificationId.replace('ticket-', '');
+    const actualId = notificationId.replace('db-', '').replace('ticket-', '');
     
     await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('id', actualId);
+    
+    // Invalidate to refresh the list
+    queryClient.invalidateQueries({ queryKey: ['all-notifications', user.id] });
   };
 }
