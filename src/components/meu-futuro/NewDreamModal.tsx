@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import {
   Dialog,
@@ -21,13 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { Dream, DreamCategory, RepetitionType, REPETITION_OPTIONS } from "@/types/dreams";
 import { DreamCategorySelector } from "./DreamCategorySelector";
 
@@ -156,55 +148,45 @@ export function NewDreamModal({ open, onOpenChange, onSave, editingDream }: NewD
           {/* Datas */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Data de início</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="start-date">Data de início</Label>
+              <div className="relative">
+                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="start-date"
+                  type="date"
+                  className="pl-10"
+                  value={startDate ? format(startDate, "yyyy-MM-dd") : ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      setStartDate(new Date(value + "T00:00:00"));
+                    } else {
+                      setStartDate(undefined);
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Data de realização</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !realizationDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {realizationDate ? format(realizationDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={realizationDate}
-                    onSelect={setRealizationDate}
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="realization-date">Data de realização</Label>
+              <div className="relative">
+                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="realization-date"
+                  type="date"
+                  className="pl-10"
+                  value={realizationDate ? format(realizationDate, "yyyy-MM-dd") : ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      setRealizationDate(new Date(value + "T00:00:00"));
+                    } else {
+                      setRealizationDate(undefined);
+                    }
+                  }}
+                />
+              </div>
             </div>
           </div>
 
