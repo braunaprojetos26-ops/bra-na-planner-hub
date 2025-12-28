@@ -124,7 +124,8 @@ function formatCurrency(value: number): string {
 
 function getPaymentMethodLabel(code: string, billingType: string, installments?: number): string {
   if (billingType === "assinatura") {
-    return "Assinatura mensal via Cartão de Crédito";
+    const paymentLabel = code === "pix" ? "PIX" : "Cartão de Crédito";
+    return `Assinatura mensal via ${paymentLabel}`;
   }
   
   const labels: Record<string, string> = {
@@ -159,9 +160,23 @@ async function createClickSignDocument(
   const clicksignUrl = "https://app.clicksign.com/api/v1";
   
   // Build template data with EXACT placeholder names from ClickSign template
-  const installmentValue = contractData.installments && contractData.installments > 1
-    ? contractData.planValue / contractData.installments
-    : contractData.planValue;
+  // Calculate installment value and count based on billing type
+  let installmentValue: number;
+  let numberOfInstallments: number;
+
+  if (contractData.billingType === "assinatura") {
+    // Assinatura mensal: 12 pagamentos recorrentes
+    numberOfInstallments = 12;
+    installmentValue = contractData.planValue / 12;
+  } else if (contractData.installments && contractData.installments > 1) {
+    // Fatura parcelada
+    numberOfInstallments = contractData.installments;
+    installmentValue = contractData.planValue / contractData.installments;
+  } else {
+    // Pagamento único
+    numberOfInstallments = 1;
+    installmentValue = contractData.planValue;
+  }
   
   const vigenciaContrato = `${formatDate(contractData.startDate)} a ${formatDate(contractData.endDate)}`;
   
@@ -178,7 +193,7 @@ async function createClickSignDocument(
     "CEP": contactData.zip_code || "",
     "E-mail": contactData.email || "",
     "Telefone": formatPhone(contactData.phone),
-    "Número de Parcelas": contractData.installments ? String(contractData.installments) : "1",
+    "Número de Parcelas": String(numberOfInstallments),
     "Valor das Parcelas": formatCurrency(installmentValue),
     "Valor do Plano": formatCurrency(contractData.planValue),
     "Valor do Plano por Extenso": formatValueInWords(contractData.planValue),
@@ -400,6 +415,9 @@ async function createVindiPayment(
     // Determine if we create a subscription or a bill
     if (contractData.billingType === "assinatura") {
       // Create subscription for recurring payments with product items to set the price
+      // Para assinatura mensal, o valor é dividido em 12 pagamentos
+      const monthlyValue = contractData.planValue / 12;
+      
       const subscriptionPayload = {
         customer_id: parseInt(customerId),
         plan_id: vindiPlanId,
@@ -409,7 +427,7 @@ async function createVindiPayment(
           {
             product_id: vindiProductId,
             pricing_schema: {
-              price: contractData.planValue,
+              price: monthlyValue, // Valor mensal (planValue / 12)
               schema_type: "flat"
             }
           }
