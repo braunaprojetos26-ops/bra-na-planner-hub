@@ -27,8 +27,13 @@ export interface ClientPlan {
     email: string;
   };
   plan_meetings?: ClientPlanMeeting[];
-  // Computed field
+  // Computed fields
   productCount?: number;
+  paymentProgress?: {
+    paidInstallments: number;
+    totalInstallments: number;
+    vindiStatus: string | null;
+  } | null;
 }
 
 export interface ClientPlanMeeting {

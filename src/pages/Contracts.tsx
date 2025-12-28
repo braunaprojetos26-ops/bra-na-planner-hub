@@ -42,6 +42,27 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
   return <Badge variant="outline">{status}</Badge>;
 }
 
+function getPaymentStatusBadge(vindiStatus?: string | null) {
+  if (!vindiStatus) {
+    return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
+  }
+  
+  switch (vindiStatus) {
+    case 'pending':
+      return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Aguardando</Badge>;
+    case 'paid':
+      return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Pago</Badge>;
+    case 'rejected':
+      return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Rejeitado</Badge>;
+    case 'refunded':
+      return <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">Estornado</Badge>;
+    case 'cancelled':
+      return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20">Cancelado</Badge>;
+    default:
+      return <Badge variant="outline">{vindiStatus}</Badge>;
+  }
+}
+
 interface MetricsCardsProps {
   totalPbs: number;
   totalValue: number;
@@ -95,6 +116,7 @@ interface ContractsTableProps {
     reported_at: string;
     status: string;
     clicksign_status?: string | null;
+    vindi_status?: string | null;
     contact?: { full_name: string } | null;
     product?: { 
       name: string; 
@@ -133,6 +155,7 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
           <TableHead className="text-right">PBs</TableHead>
           <TableHead>Data</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead>Pagamento</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -166,6 +189,7 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
               {format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR })}
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
+            <TableCell>{getPaymentStatusBadge(contract.vindi_status)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
