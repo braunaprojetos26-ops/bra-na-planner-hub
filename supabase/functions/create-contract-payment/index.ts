@@ -274,7 +274,7 @@ async function createClickSignDocument(
       const signerKey = signerResult.signer.key;
       console.log(`Signer created: ${signer.email} with key: ${signerKey}`);
 
-      // Add signer to document
+      // Add signer to document with message to trigger automatic email notification
       const listResponse = await fetch(
         `${clicksignUrl}/lists?access_token=${apiKey}`,
         {
@@ -285,6 +285,7 @@ async function createClickSignDocument(
               document_key: documentKey,
               signer_key: signerKey,
               sign_as: "sign",
+              message: "Por favor, assine o contrato de planejamento financeiro da Braúna. Clique no botão abaixo para acessar e assinar o documento.",
             }
           }),
         }
