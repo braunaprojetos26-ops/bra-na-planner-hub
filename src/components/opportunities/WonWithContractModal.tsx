@@ -709,26 +709,13 @@ export function WonWithContractModal({
                         <SelectContent>
                           <SelectItem value="avista">À vista</SelectItem>
                           <SelectItem value="mensal">Mensal</SelectItem>
-                          <SelectItem value="parcelado">Parcelado</SelectItem>
+                          <SelectItem value="anual_seguros">Anual (seguros)</SelectItem>
+                          <SelectItem value="saldamento_total">Saldamento total (seguros)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   )}
 
-                  {contract.payment_type === 'parcelado' && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Número de Parcelas</Label>
-                      <Input
-                        type="number"
-                        min="2"
-                        placeholder="12"
-                        value={contract.installments || ''}
-                        onChange={(e) =>
-                          handleContractChange(contract.id, 'installments', parseInt(e.target.value) || undefined)
-                        }
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* PB Calculation Preview */}
