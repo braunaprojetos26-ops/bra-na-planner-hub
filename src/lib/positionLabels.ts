@@ -12,7 +12,26 @@ export type UserPosition =
   | 'operacoes_administrativo'
   | 'operacoes_investimentos'
   | 'operacoes_treinamentos'
-  | 'operacoes_rh';
+  | 'operacoes_rh'
+  | 'operacoes_marketing'
+  | 'operacoes_aquisicao_bens'
+  | 'operacoes_patrimonial';
+
+// Lista de todas as posições de operações
+export const OPERATIONS_POSITIONS: UserPosition[] = [
+  'operacoes_administrativo',
+  'operacoes_investimentos',
+  'operacoes_treinamentos',
+  'operacoes_rh',
+  'operacoes_marketing',
+  'operacoes_aquisicao_bens',
+  'operacoes_patrimonial',
+];
+
+export function isOperationsPosition(position: string | null): boolean {
+  if (!position) return false;
+  return OPERATIONS_POSITIONS.includes(position as UserPosition);
+}
 
 export const positionLabels: Record<UserPosition, { label: string; short: string }> = {
   'planejador_financeiro': { label: 'Planejador Financeiro', short: 'PF' },
@@ -29,6 +48,9 @@ export const positionLabels: Record<UserPosition, { label: string; short: string
   'operacoes_investimentos': { label: 'Operações - Investimentos', short: 'OI' },
   'operacoes_treinamentos': { label: 'Operações - Treinamentos', short: 'OT' },
   'operacoes_rh': { label: 'Operações - RH', short: 'ORH' },
+  'operacoes_marketing': { label: 'Operações - Marketing', short: 'OM' },
+  'operacoes_aquisicao_bens': { label: 'Operações - Aquisição de Bens', short: 'OAB' },
+  'operacoes_patrimonial': { label: 'Operações - Patrimonial', short: 'OP' },
 };
 
 export const positionOptions: { value: UserPosition; label: string }[] = [
@@ -46,6 +68,9 @@ export const positionOptions: { value: UserPosition; label: string }[] = [
   { value: 'operacoes_investimentos', label: 'Operações - Investimentos' },
   { value: 'operacoes_treinamentos', label: 'Operações - Treinamentos' },
   { value: 'operacoes_rh', label: 'Operações - RH' },
+  { value: 'operacoes_marketing', label: 'Operações - Marketing' },
+  { value: 'operacoes_aquisicao_bens', label: 'Operações - Aquisição de Bens' },
+  { value: 'operacoes_patrimonial', label: 'Operações - Patrimonial' },
 ];
 
 export function getPositionLabel(position: string | null): string {

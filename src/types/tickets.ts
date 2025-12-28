@@ -95,3 +95,25 @@ export const priorityColors: Record<TicketPriority, string> = {
   high: 'bg-orange-100 text-orange-700',
   urgent: 'bg-red-100 text-red-700',
 };
+
+// Mapeamento de departamento para posição de operações
+export const DEPARTMENT_TO_OPERATIONS_POSITION: Record<TicketDepartment, string> = {
+  investimentos: 'operacoes_investimentos',
+  administrativo: 'operacoes_administrativo',
+  treinamentos: 'operacoes_treinamentos',
+  recursos_humanos: 'operacoes_rh',
+  marketing: 'operacoes_marketing',
+  aquisicao_bens: 'operacoes_aquisicao_bens',
+  patrimonial: 'operacoes_patrimonial',
+};
+
+// Mapeamento inverso: posição de operações para departamento
+export const OPERATIONS_POSITION_TO_DEPARTMENT: Record<string, TicketDepartment> = {
+  operacoes_investimentos: 'investimentos',
+  operacoes_administrativo: 'administrativo',
+  operacoes_treinamentos: 'treinamentos',
+  operacoes_rh: 'recursos_humanos',
+  operacoes_marketing: 'marketing',
+  operacoes_aquisicao_bens: 'aquisicao_bens',
+  operacoes_patrimonial: 'patrimonial',
+};
