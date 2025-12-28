@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useProducts, useProductCategories } from '@/hooks/useProducts';
-import { useCreateContract } from '@/hooks/useContracts';
+import { useCreateContract, useOpportunityContracts, useUpdateContractPbs } from '@/hooks/useContracts';
 import { useMarkOpportunityWon } from '@/hooks/useOpportunities';
 import { useCreateClientPlan } from '@/hooks/useClients';
 import {
@@ -70,7 +70,7 @@ export function WonWithContractModal({
   nextStage,
   onSuccess,
 }: WonWithContractModalProps) {
-  const [step, setStep] = useState<'ask' | 'contracts' | 'client_plan'>('ask');
+  const [step, setStep] = useState<'ask' | 'confirm_existing' | 'contracts' | 'client_plan'>('ask');
   const [contracts, setContracts] = useState<ContractEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdContracts, setCreatedContracts] = useState<Array<{ id: string; product_name: string; is_planning: boolean; contact_id: string; contract_value: number }>>([]);
@@ -81,7 +81,9 @@ export function WonWithContractModal({
 
   const { data: allProducts } = useProducts({ sortBy: 'alphabetical' });
   const { data: allCategories } = useProductCategories();
+  const { data: existingContracts } = useOpportunityContracts(opportunity.id);
   const createContract = useCreateContract();
+  const updateContractPbs = useUpdateContractPbs();
   const markWon = useMarkOpportunityWon();
   const createClientPlan = useCreateClientPlan();
 
@@ -151,6 +153,14 @@ export function WonWithContractModal({
 
   const funnelGeneratesContract = opportunity.current_funnel?.generates_contract ?? false;
   const promptText = opportunity.current_funnel?.contract_prompt_text || 'Essa negociação gerou algum contrato?';
+
+  // Detect existing contracts with zero PBs (from analysis phase)
+  const pendingContracts = useMemo(() => {
+    if (!existingContracts) return [];
+    return existingContracts.filter(c => c.calculated_pbs === 0 && c.status !== 'cancelled');
+  }, [existingContracts]);
+
+  const hasPendingContracts = pendingContracts.length > 0;
 
   const totalPbs = useMemo(
     () => contracts.reduce((sum, c) => sum + c.calculated_pbs, 0),
@@ -275,6 +285,49 @@ export function WonWithContractModal({
       onSuccess?.();
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handler for confirming existing contracts (update PBs only)
+  const handleConfirmExistingContracts = async () => {
+    if (pendingContracts.length === 0) {
+      await handleMarkWonWithoutContract();
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // First mark as won - this will recalculate PBs via useMarkOpportunityWon
+      await markWon.mutateAsync({
+        opportunityId: opportunity.id,
+        fromStageId: opportunity.current_stage_id,
+        nextFunnelId: nextFunnel?.id,
+        nextStageId: nextStage?.id,
+      });
+
+      // Check if any contract is a planning product for client plan step
+      const planningContracts = pendingContracts.filter(c => 
+        c.product?.name?.toLowerCase().includes('planejamento')
+      );
+
+      if (planningContracts.length > 0) {
+        const confirmedContractsList = pendingContracts.map(c => ({
+          id: c.id,
+          product_name: c.product?.name || 'Produto',
+          is_planning: c.product?.name?.toLowerCase().includes('planejamento') || false,
+          contact_id: opportunity.contact_id,
+          contract_value: c.contract_value,
+        }));
+        setCreatedContracts(confirmedContractsList);
+        setStep('client_plan');
+        setIsSubmitting(false);
+      } else {
+        onOpenChange(false);
+        onSuccess?.();
+      }
+    } catch (error) {
+      setIsSubmitting(false);
+      throw error;
     }
   };
 
@@ -429,8 +482,67 @@ export function WonWithContractModal({
     );
   }
 
-  // Step 1: Ask if contract was generated
+  // Step 1: Ask if contract was generated OR show existing contracts
   if (step === 'ask') {
+    // If there are pending contracts from analysis phase, show confirmation option
+    if (hasPendingContracts) {
+      return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <PartyPopper className="w-5 h-5 text-green-500" />
+                Oportunidade Ganha!
+              </DialogTitle>
+              <DialogDescription>
+                {pendingContracts.length === 1 
+                  ? 'Foi encontrado 1 contrato já vinculado a esta oportunidade.'
+                  : `Foram encontrados ${pendingContracts.length} contratos já vinculados a esta oportunidade.`}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-2">
+              {pendingContracts.map((contract) => (
+                <div key={contract.id} className="p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{contract.product?.name || 'Produto'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(contract.contract_value)}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">PBs pendentes</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <DialogFooter className="flex gap-2 sm:gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStep('contracts');
+                  if (contracts.length === 0) handleAddContract();
+                }}
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                Adicionar novos
+              </Button>
+              <Button
+                onClick={handleConfirmExistingContracts}
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                {isSubmitting ? 'Processando...' : 'Confirmar e calcular PBs'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+
+    // Standard flow - no existing contracts
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">

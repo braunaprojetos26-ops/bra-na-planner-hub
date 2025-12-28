@@ -58,6 +58,37 @@ export function useContactContracts(contactId: string) {
   return useContracts({ contactId });
 }
 
+export function useOpportunityContracts(opportunityId: string | undefined) {
+  return useContracts(opportunityId ? { opportunityId } : undefined);
+}
+
+export function useUpdateContractPbs() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, calculated_pbs }: { id: string; calculated_pbs: number }) => {
+      const { error } = await supabase
+        .from('contracts')
+        .update({ calculated_pbs, status: 'active' })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      toast({ title: 'PBs do contrato atualizados!' });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: 'Erro ao atualizar PBs', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+}
+
 export function useCreateContract() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
