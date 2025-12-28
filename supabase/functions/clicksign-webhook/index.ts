@@ -177,8 +177,9 @@ serve(async (req: Request) => {
           notificationMessage = 'Contrato assinado com sucesso!';
           console.log('Final signature received, document closed');
         } else {
-          // Partial signature, just update clicksign status
+          // Partial signature - client signed, awaiting Braúna signatures
           newClicksignStatus = 'partially_signed';
+          notificationMessage = 'Cliente assinou o contrato!';
           console.log('Partial signature received');
         }
         break;
