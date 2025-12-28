@@ -32,7 +32,8 @@ import {
 import { useCreateTicket } from '@/hooks/useTickets';
 import { useContacts } from '@/hooks/useContacts';
 import { useContracts } from '@/hooks/useContracts';
-import { TicketDepartment, TicketPriority, departmentLabels, priorityLabels } from '@/types/tickets';
+import { TicketDepartment, TicketPriority, departmentLabels, priorityLabels, DEPARTMENTS_REQUIRING_CONTACT } from '@/types/tickets';
+import { toast } from 'sonner';
 import { Check, ChevronsUpDown, User, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -62,8 +63,15 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
     return contracts.find((c) => c.contact_id === contactId && c.status === 'active');
   }, [contracts, contactId]);
 
+  const isContactRequired = DEPARTMENTS_REQUIRING_CONTACT.includes(department);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isContactRequired && !contactId) {
+      toast.error('Para este departamento, é obrigatório selecionar um cliente.');
+      return;
+    }
     
     await createTicket.mutateAsync({
       title,
@@ -134,7 +142,9 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
 
           {/* Contact Selector */}
           <div className="space-y-2">
-            <Label>Cliente Relacionado (opcional)</Label>
+            <Label>
+              Cliente Relacionado {isContactRequired ? <span className="text-destructive">*</span> : '(opcional)'}
+            </Label>
             <Popover open={contactOpen} onOpenChange={setContactOpen}>
               <PopoverTrigger asChild>
                 <Button

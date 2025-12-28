@@ -1,4 +1,4 @@
-export type TicketDepartment = 'investimentos' | 'administrativo' | 'treinamentos' | 'recursos_humanos' | 'marketing';
+export type TicketDepartment = 'investimentos' | 'administrativo' | 'treinamentos' | 'recursos_humanos' | 'marketing' | 'aquisicao_bens' | 'patrimonial';
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 
@@ -58,7 +58,14 @@ export const departmentLabels: Record<TicketDepartment, string> = {
   treinamentos: 'Treinamentos',
   recursos_humanos: 'Recursos Humanos',
   marketing: 'Marketing',
+  aquisicao_bens: 'Aquisição de Bens',
+  patrimonial: 'Patrimonial',
 };
+
+export const DEPARTMENTS_REQUIRING_CONTACT: TicketDepartment[] = [
+  'aquisicao_bens',
+  'patrimonial',
+];
 
 export const statusLabels: Record<TicketStatus, string> = {
   open: 'Aberto',
