@@ -132,6 +132,9 @@ export function useNotifications() {
   const overdueCount = notifications.filter((n) => n.type === 'task_overdue').length;
   const ticketCount = notifications.filter((n) => n.type === 'ticket_update').length;
   const contractCount = notifications.filter((n) => n.type === 'contract_update').length;
+  
+  // dbUnreadCount = only database notifications (tickets + contracts) that can be marked as read
+  const dbUnreadCount = dbNotifications.length;
 
   return {
     notifications,
@@ -139,6 +142,7 @@ export function useNotifications() {
     overdueCount,
     ticketCount,
     contractCount,
+    dbUnreadCount,
     totalCount: notifications.length,
     isLoading: tasksLoading || dbLoading,
   };
