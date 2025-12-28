@@ -1034,6 +1034,94 @@ export type Database = {
           },
         ]
       }
+      leadership_knowledge_base: {
+        Row: {
+          category: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          source: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          source?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          source?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leadership_knowledge_base_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      leadership_meeting_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          order_position: number | null
+          template_content: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          order_position?: number | null
+          template_content: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          order_position?: number | null
+          template_content?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leadership_meeting_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       lost_reasons: {
         Row: {
           created_at: string
@@ -1225,6 +1313,73 @@ export type Database = {
         }
         Relationships: []
       }
+      one_on_one_meetings: {
+        Row: {
+          ai_preparation: string | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          leader_id: string
+          leader_inputs: Json | null
+          notes: string | null
+          planner_id: string
+          scheduled_date: string | null
+          status: string | null
+          template_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_preparation?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          leader_id: string
+          leader_inputs?: Json | null
+          notes?: string | null
+          planner_id: string
+          scheduled_date?: string | null
+          status?: string | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_preparation?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          leader_id?: string
+          leader_inputs?: Json | null
+          notes?: string | null
+          planner_id?: string
+          scheduled_date?: string | null
+          status?: string | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "one_on_one_meetings_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "one_on_one_meetings_planner_id_fkey"
+            columns: ["planner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "one_on_one_meetings_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "leadership_meeting_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           contact_id: string
@@ -1405,6 +1560,162 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      planner_behavioral_profiles: {
+        Row: {
+          analista_score: number | null
+          areas_to_develop: string | null
+          auto_motivation: string | null
+          communication_style: string | null
+          comunicador_score: number | null
+          created_at: string | null
+          created_by: string | null
+          decision_making: string | null
+          distancing_factors: string | null
+          energy_level: string | null
+          executor_score: number | null
+          external_demand: string | null
+          extracted_at: string | null
+          flexibility: string | null
+          id: string
+          leadership_style: string | null
+          motivational_factors: string | null
+          planejador_score: number | null
+          profile_date: string | null
+          raw_report_url: string | null
+          self_confidence: string | null
+          self_esteem: string | null
+          strengths: string | null
+          updated_at: string | null
+          user_id: string
+          work_environment: string | null
+        }
+        Insert: {
+          analista_score?: number | null
+          areas_to_develop?: string | null
+          auto_motivation?: string | null
+          communication_style?: string | null
+          comunicador_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          decision_making?: string | null
+          distancing_factors?: string | null
+          energy_level?: string | null
+          executor_score?: number | null
+          external_demand?: string | null
+          extracted_at?: string | null
+          flexibility?: string | null
+          id?: string
+          leadership_style?: string | null
+          motivational_factors?: string | null
+          planejador_score?: number | null
+          profile_date?: string | null
+          raw_report_url?: string | null
+          self_confidence?: string | null
+          self_esteem?: string | null
+          strengths?: string | null
+          updated_at?: string | null
+          user_id: string
+          work_environment?: string | null
+        }
+        Update: {
+          analista_score?: number | null
+          areas_to_develop?: string | null
+          auto_motivation?: string | null
+          communication_style?: string | null
+          comunicador_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          decision_making?: string | null
+          distancing_factors?: string | null
+          energy_level?: string | null
+          executor_score?: number | null
+          external_demand?: string | null
+          extracted_at?: string | null
+          flexibility?: string | null
+          id?: string
+          leadership_style?: string | null
+          motivational_factors?: string | null
+          planejador_score?: number | null
+          profile_date?: string | null
+          raw_report_url?: string | null
+          self_confidence?: string | null
+          self_esteem?: string | null
+          strengths?: string | null
+          updated_at?: string | null
+          user_id?: string
+          work_environment?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planner_behavioral_profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "planner_behavioral_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      planner_goals: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          goal_type: string
+          id: string
+          status: string | null
+          target_date: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          goal_type: string
+          id?: string
+          status?: string | null
+          target_date?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          goal_type?: string
+          id?: string
+          status?: string | null
+          target_date?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planner_goals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "planner_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       planner_profiles: {
         Row: {
