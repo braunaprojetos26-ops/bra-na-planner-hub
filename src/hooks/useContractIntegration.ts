@@ -32,6 +32,7 @@ export interface ContractIntegrationData {
   installments?: number;
   startDate: string;
   endDate: string;
+  contractMonths: number;
   meetingCount: number;
   productId: string;
   contactData: ContactData;

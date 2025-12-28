@@ -36,6 +36,7 @@ interface ContractRequest {
   installments?: number;
   startDate: string;
   endDate: string;
+  contractMonths?: number;
   meetingCount: number;
   productId: string;
   contactData: ContactData;
@@ -178,7 +179,10 @@ async function createClickSignDocument(
     installmentValue = contractData.planValue;
   }
   
-  const vigenciaContrato = `${formatDate(contractData.startDate)} a ${formatDate(contractData.endDate)}`;
+  // Exibir vigência em meses (por extenso)
+  const vigenciaContrato = contractData.contractMonths 
+    ? `${contractData.contractMonths} ${contractData.contractMonths === 1 ? 'mês' : 'meses'}`
+    : `${formatDate(contractData.startDate)} a ${formatDate(contractData.endDate)}`;
   
   const templateVars = {
     "Nome Completo": contactData.full_name || "",

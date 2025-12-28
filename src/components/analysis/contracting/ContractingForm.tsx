@@ -54,21 +54,21 @@ const formSchema = z.object({
   // Contact data
   full_name: z.string().min(1, 'Nome é obrigatório'),
   cpf: z.string().min(11, 'CPF é obrigatório'),
-  rg: z.string().optional(),
+  rg: z.string().min(1, 'RG é obrigatório'),
   rg_issuer: z.string().optional(),
   rg_issue_date: z.date().optional().nullable(),
   birth_date: z.date({ required_error: 'Data de nascimento é obrigatória' }),
-  marital_status: z.string().optional(),
-  profession: z.string().optional(),
-  income: z.number().optional(),
+  marital_status: z.string().min(1, 'Estado civil é obrigatório'),
+  profession: z.string().min(1, 'Profissão é obrigatória'),
+  income: z.number().min(1, 'Renda mensal é obrigatória'),
   email: z.string().email('Email inválido'),
   phone: z.string().min(1, 'Telefone é obrigatório'),
-  zip_code: z.string().optional(),
-  address: z.string().optional(),
-  address_number: z.string().optional(),
+  zip_code: z.string().min(8, 'CEP é obrigatório'),
+  address: z.string().min(1, 'Endereço é obrigatório'),
+  address_number: z.string().min(1, 'Número é obrigatório'),
   address_complement: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
+  city: z.string().min(1, 'Cidade é obrigatória'),
+  state: z.string().min(2, 'Estado é obrigatório'),
   
   // Payment data
   planType: z.enum(['novo_planejamento', 'planejamento_pontual'], {
@@ -84,8 +84,17 @@ const formSchema = z.object({
   installments: z.number().optional(),
   billingDate: z.date({ required_error: 'Selecione a data da cobrança' }),
   startDate: z.date({ required_error: 'Selecione a data de início' }),
-  endDate: z.date({ required_error: 'Selecione a data de fim' }),
-  meetingCount: z.number().min(1, 'Mínimo de 1 reunião'),
+  contractMonths: z.number().min(1, 'Mínimo de 1 mês').max(12, 'Máximo de 12 meses'),
+  meetingCount: z.number().min(1, 'Mínimo de 1 reunião').max(12, 'Máximo de 12 reuniões'),
+}).refine((data) => {
+  // Parcelas obrigatórias apenas quando fatura_avulsa
+  if (data.billingType === 'fatura_avulsa') {
+    return data.installments && data.installments >= 1;
+  }
+  return true;
+}, {
+  message: 'Número de parcelas é obrigatório',
+  path: ['installments'],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -193,7 +202,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
       installments: 1,
       billingDate: new Date(),
       startDate: new Date(),
-      endDate: addMonths(new Date(), 12),
+      contractMonths: 12,
       meetingCount: 12,
     },
   });
@@ -226,7 +235,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
         installments: 1,
         billingDate: new Date(),
         startDate: new Date(),
-        endDate: addMonths(new Date(), 12),
+        contractMonths: 12,
         meetingCount: 12,
       });
     }
@@ -236,7 +245,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
   const watchPaymentMethodCode = form.watch('paymentMethodCode');
   const watchPlanValue = form.watch('planValue');
   const watchStartDate = form.watch('startDate');
-  const watchMeetingCount = form.watch('meetingCount');
+  const watchContractMonths = form.watch('contractMonths');
 
   // Reset payment method when billing type changes
   useEffect(() => {
@@ -247,13 +256,6 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
       form.setValue('paymentMethodCode', 'pix');
     }
   }, [watchBillingType, form]);
-
-  // Auto-update end date based on meeting count
-  useEffect(() => {
-    if (watchStartDate && watchMeetingCount > 0) {
-      form.setValue('endDate', addMonths(watchStartDate, watchMeetingCount));
-    }
-  }, [watchStartDate, watchMeetingCount, form]);
 
   // Handle CEP lookup
   const handleCepBlur = async (cep: string) => {
@@ -339,6 +341,9 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
       state: data.state,
     };
 
+    // Calcular endDate baseado em startDate + contractMonths
+    const calculatedEndDate = addMonths(data.startDate, data.contractMonths);
+
     const integrationData: ContractIntegrationData = {
       contactId,
       planType: data.planType,
@@ -348,7 +353,8 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
       billingDate: format(data.billingDate, 'yyyy-MM-dd'),
       installments: data.billingType === 'fatura_avulsa' && data.installments ? data.installments : undefined,
       startDate: format(data.startDate, 'yyyy-MM-dd'),
-      endDate: format(data.endDate, 'yyyy-MM-dd'),
+      endDate: format(calculatedEndDate, 'yyyy-MM-dd'),
+      contractMonths: data.contractMonths,
       meetingCount: data.meetingCount,
       productId,
       contactData,
@@ -488,7 +494,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                   name="rg"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>RG</FormLabel>
+                      <FormLabel>RG *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -591,7 +597,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                   name="marital_status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Estado Civil</FormLabel>
+                      <FormLabel>Estado Civil *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -616,7 +622,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                   name="profession"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Profissão</FormLabel>
+                      <FormLabel>Profissão *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -630,7 +636,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                   name="income"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Renda Mensal</FormLabel>
+                      <FormLabel>Renda Mensal *</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="R$ 0,00"
@@ -688,7 +694,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                     name="zip_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CEP</FormLabel>
+                        <FormLabel>CEP *</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
@@ -707,7 +713,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                     name="address"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Endereço</FormLabel>
+                        <FormLabel>Endereço *</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -721,7 +727,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                     name="address_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Número</FormLabel>
+                        <FormLabel>Número *</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -749,7 +755,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                     name="city"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cidade</FormLabel>
+                        <FormLabel>Cidade *</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -763,7 +769,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                     name="state"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Estado</FormLabel>
+                        <FormLabel>Estado *</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="SP" maxLength={2} />
                         </FormControl>
@@ -898,7 +904,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                     name="installments"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Parcelas</FormLabel>
+                        <FormLabel>Parcelas *</FormLabel>
                         <Select 
                           onValueChange={(value) => field.onChange(parseInt(value, 10))} 
                           value={String(field.value || 1)}
@@ -995,6 +1001,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
+                            className="pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
@@ -1005,34 +1012,32 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
 
                 <FormField
                   control={form.control}
-                  name="endDate"
+                  name="contractMonths"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Fim do Contrato</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? format(field.value, "dd/MM/yyyy") : "Selecione"}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormLabel>Vigência do Contrato *</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(parseInt(value, 10))} 
+                        value={String(field.value || 12)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                            <SelectItem key={num} value={String(num)}>
+                              {num} {num === 1 ? 'mês' : 'meses'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {watchStartDate && watchContractMonths && (
+                        <FormDescription>
+                          Término: {format(addMonths(watchStartDate, watchContractMonths), "dd/MM/yyyy")}
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1044,14 +1049,23 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Número de Reuniões *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
-                        />
-                      </FormControl>
+                      <Select 
+                        onValueChange={(value) => field.onChange(parseInt(value, 10))} 
+                        value={String(field.value || 12)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                            <SelectItem key={num} value={String(num)}>
+                              {num} {num === 1 ? 'reunião' : 'reuniões'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
