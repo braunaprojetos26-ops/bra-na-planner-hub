@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
@@ -12,6 +13,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useContracts, useContractMetrics } from '@/hooks/useContracts';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', {
@@ -164,8 +167,34 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
 }
 
 export default function Contracts() {
+  const queryClient = useQueryClient();
   const { data: contracts = [], isLoading } = useContracts();
   const { data: metrics } = useContractMetrics();
+
+  // Real-time subscription for contract updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('contracts-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contracts',
+        },
+        (payload) => {
+          console.log('Contract update received:', payload);
+          // Invalidate queries to refetch data
+          queryClient.invalidateQueries({ queryKey: ['contracts'] });
+          queryClient.invalidateQueries({ queryKey: ['contract-metrics'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return (
     <div className="p-6 space-y-6">
