@@ -212,7 +212,7 @@ async function createClickSignDocument(
 
   const templateData = {
     document: {
-      path: `/Contratos/${contactData.full_name.replace(/\s+/g, "_")}_${Date.now()}.docx`,
+      path: `/Contratos/Contrato Prestação de Serviço - Planejamento Financeiro: ${contactData.full_name}.docx`,
       template: {
         data: templateVars
       }
@@ -242,12 +242,40 @@ async function createClickSignDocument(
     const documentKey = docResult.document.key;
     console.log("Document created with key:", documentKey);
 
-    // Add signatories - client first
+    // Configure document settings: 10 days deadline, reminders every 2 days, sequential signing
+    const now = new Date();
+    const deadlineDate = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000); // 10 days from now
+    const deadline_at = deadlineDate.toISOString();
+
+    const updateDocResponse = await fetch(
+      `${clicksignUrl}/documents/${documentKey}?access_token=${apiKey}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          document: {
+            deadline_at: deadline_at,
+            remind_interval: 2, // Reminders every 2 days
+            auto_close: true,
+            sequence_enabled: true // Enable sequential signing
+          }
+        }),
+      }
+    );
+
+    if (!updateDocResponse.ok) {
+      const errorText = await updateDocResponse.text();
+      console.error("ClickSign update document settings error:", errorText);
+    } else {
+      console.log("Document settings updated: 10 days deadline, 2 day reminders, sequential signing enabled");
+    }
+
+    // Add signatories with groups: Client (Group 1) signs first, then internal (Group 2)
     const signatories = [
-      { email: contactData.email, name: contactData.full_name, auths: ["email"], delivery: "email" },
-      { email: "thiago.maran@braunaplanejamento.com.br", name: "Thiago Maran", auths: ["email"], delivery: "email" },
-      { email: "adm@braunaplanejamento.com.br", name: "Administrativo Braúna", auths: ["email"], delivery: "email" },
-      { email: "gabriel.serrano@braunaplanejamento.com.br", name: "Gabriel Serrano", auths: ["email"], delivery: "email" },
+      { email: contactData.email, name: contactData.full_name, auths: ["email"], delivery: "email", group: 1 },
+      { email: "thiago.maran@braunaplanejamento.com.br", name: "Thiago Maran", auths: ["email"], delivery: "email", group: 2 },
+      { email: "adm@braunaplanejamento.com.br", name: "Administrativo Braúna", auths: ["email"], delivery: "email", group: 2 },
+      { email: "gabriel.serrano@braunaplanejamento.com.br", name: "Gabriel Serrano", auths: ["email"], delivery: "email", group: 2 },
     ];
 
     for (const signer of signatories) {
@@ -278,7 +306,7 @@ async function createClickSignDocument(
       const signerKey = signerResult.signer.key;
       console.log(`Signer created: ${signer.email} with key: ${signerKey}`);
 
-      // Add signer to document
+      // Add signer to document with group for sequential signing
       const listResponse = await fetch(
         `${clicksignUrl}/lists?access_token=${apiKey}`,
         {
@@ -289,6 +317,7 @@ async function createClickSignDocument(
               document_key: documentKey,
               signer_key: signerKey,
               sign_as: "sign",
+              group: signer.group, // Group 1 = client (first), Group 2 = internal (after client signs)
               message: "Por favor, assine o contrato de planejamento financeiro da Braúna. Clique no botão abaixo para acessar e assinar o documento.",
             }
           }),
@@ -303,10 +332,11 @@ async function createClickSignDocument(
 
       const listResult = await listResponse.json();
       const requestSignatureKey = listResult.list?.request_signature_key;
-      console.log(`Signer ${signer.email} added to document with request_signature_key: ${requestSignatureKey}`);
+      console.log(`Signer ${signer.email} added to document (Group ${signer.group}) with request_signature_key: ${requestSignatureKey}`);
 
-      // Enviar notificação por e-mail explicitamente
-      if (requestSignatureKey) {
+      // Only send email notification to Group 1 (client) initially
+      // Group 2 will be notified automatically when client signs (sequential signing)
+      if (requestSignatureKey && signer.group === 1) {
         const notificationResponse = await fetch(
           `${clicksignUrl}/notifications?access_token=${apiKey}`,
           {
@@ -323,14 +353,14 @@ async function createClickSignDocument(
           const notifError = await notificationResponse.text();
           console.error(`ClickSign notification error for ${signer.email}:`, notifError);
         } else {
-          console.log(`Email notification sent successfully to ${signer.email}`);
+          console.log(`Email notification sent to client ${signer.email}`);
         }
-      } else {
-        console.warn(`No request_signature_key found for ${signer.email}, cannot send notification`);
+      } else if (signer.group === 2) {
+        console.log(`Signer ${signer.email} is in Group 2 - will be notified automatically after client signs`);
       }
     }
 
-    console.log("Document ready for signing - notification emails sent");
+    console.log("Document ready for signing - client will sign first, then internal signers");
 
     return { documentKey };
   } catch (error: unknown) {
