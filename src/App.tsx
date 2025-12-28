@@ -26,6 +26,7 @@ import Wiki from "./pages/Wiki";
 import WikiCategory from "./pages/WikiCategory";
 import Team from "./pages/Team";
 import Tickets from "./pages/Tickets";
+import MeuFuturo from "./pages/MeuFuturo";
 import NotificationHistory from "./pages/NotificationHistory";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/equipe" element={<ProtectedPage><Team /></ProtectedPage>} />
               <Route path="/tickets" element={<ProtectedPage><Tickets /></ProtectedPage>} />
               <Route path="/notifications" element={<ProtectedPage><NotificationHistory /></ProtectedPage>} />
+              <Route path="/meu-futuro" element={<ProtectedPage><MeuFuturo /></ProtectedPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ActingUserProvider>
