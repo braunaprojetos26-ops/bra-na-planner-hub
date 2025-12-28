@@ -98,10 +98,11 @@ export interface ContractFormData {
   notes?: string;
 }
 
-export type PaymentType = 'avista' | 'mensal' | 'parcelado';
+export type PaymentType = 'avista' | 'mensal' | 'anual_seguros' | 'saldamento_total';
 
 export const paymentTypeLabels: Record<PaymentType, string> = {
   avista: 'À vista',
   mensal: 'Mensal',
-  parcelado: 'Parcelado',
+  anual_seguros: 'Anual (seguros)',
+  saldamento_total: 'Saldamento total (seguros)',
 };
