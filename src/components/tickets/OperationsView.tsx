@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Ticket, OPERATIONS_POSITION_TO_DEPARTMENT, TicketDepartment } from '@/types/tickets';
 import { OperationsMetricCards } from './OperationsMetricCards';
 import { OperationsTicketTable } from './OperationsTicketTable';
+import { OperationsEfficiencySection } from './OperationsEfficiencySection';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,13 @@ export function OperationsView({
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('active');
 
+  // Determinar o departamento do usuário
+  const userDepartment = useMemo<TicketDepartment | null>(() => {
+    if (isSuperAdmin) return null; // Super admin vê tudo
+    if (!userPosition) return null;
+    return OPERATIONS_POSITION_TO_DEPARTMENT[userPosition] || null;
+  }, [userPosition, isSuperAdmin]);
+
   // Filtrar chamados pelo departamento do usuário de operações
   const departmentTickets = useMemo(() => {
     if (isSuperAdmin) {
@@ -29,13 +37,10 @@ export function OperationsView({
       return tickets;
     }
     
-    if (!userPosition) return [];
+    if (!userDepartment) return [];
     
-    const department = OPERATIONS_POSITION_TO_DEPARTMENT[userPosition];
-    if (!department) return [];
-    
-    return tickets.filter(t => t.department === department);
-  }, [tickets, userPosition, isSuperAdmin]);
+    return tickets.filter(t => t.department === userDepartment);
+  }, [tickets, userDepartment, isSuperAdmin]);
 
   // Aplicar filtro de prioridade
   const filteredTickets = useMemo(() => {
@@ -98,6 +103,9 @@ export function OperationsView({
           />
         </TabsContent>
       </Tabs>
+
+      {/* Seção de Métricas de Eficiência */}
+      <OperationsEfficiencySection department={userDepartment} />
     </div>
   );
 }
