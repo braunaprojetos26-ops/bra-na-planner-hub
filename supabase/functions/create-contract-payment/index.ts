@@ -158,37 +158,37 @@ async function createClickSignDocument(
 ): Promise<{ documentKey: string; error?: string }> {
   const clicksignUrl = "https://app.clicksign.com/api/v1";
   
-  // Build template data with all contact info
+  // Build template data with EXACT placeholder names from ClickSign template
+  const installmentValue = contractData.installments && contractData.installments > 1
+    ? contractData.planValue / contractData.installments
+    : contractData.planValue;
+  
+  const vigenciaContrato = `${formatDate(contractData.startDate)} a ${formatDate(contractData.endDate)}`;
+  
   const templateVars = {
-    nome_cliente: contactData.full_name || "",
-    cpf_cliente: formatCPF(contactData.cpf),
-    rg_cliente: contactData.rg || "",
-    orgao_expedidor: contactData.rg_issuer || "",
-    data_expedicao: contactData.rg_issue_date ? formatDate(contactData.rg_issue_date) : "",
-    data_nascimento: contactData.birth_date ? formatDate(contactData.birth_date) : "",
-    estado_civil: getMaritalStatusLabel(contactData.marital_status),
-    profissao: contactData.profession || "",
-    renda_mensal: contactData.income ? formatCurrency(contactData.income) : "",
-    email_cliente: contactData.email || "",
-    telefone_cliente: formatPhone(contactData.phone),
-    cep_cliente: contactData.zip_code || "",
-    endereco_cliente: contactData.address || "",
-    numero_endereco: contactData.address_number || "",
-    complemento_endereco: contactData.address_complement || "",
-    cidade_cliente: contactData.city || "",
-    estado_cliente: contactData.state || "",
-    valor_contrato: formatCurrency(contractData.planValue),
-    valor_por_extenso: formatValueInWords(contractData.planValue),
-    data_inicio: formatDate(contractData.startDate),
-    data_fim: formatDate(contractData.endDate),
-    quantidade_reunioes: String(contractData.meetingCount),
-    forma_pagamento: getPaymentMethodLabel(
+    "Nome Completo": contactData.full_name || "",
+    "CPF": formatCPF(contactData.cpf),
+    "RG": contactData.rg || "",
+    "Profissão": contactData.profession || "",
+    "Estado Civil": getMaritalStatusLabel(contactData.marital_status),
+    "Data de Nascimento": contactData.birth_date ? formatDate(contactData.birth_date) : "",
+    "Logradouro": contactData.address ? `${contactData.address}${contactData.address_number ? `, ${contactData.address_number}` : ""}${contactData.address_complement ? ` - ${contactData.address_complement}` : ""}` : "",
+    "Cidade": contactData.city || "",
+    "Estado": contactData.state || "",
+    "CEP": contactData.zip_code || "",
+    "E-mail": contactData.email || "",
+    "Telefone": formatPhone(contactData.phone),
+    "Número de Parcelas": contractData.installments ? String(contractData.installments) : "1",
+    "Valor das Parcelas": formatCurrency(installmentValue),
+    "Valor do Plano": formatCurrency(contractData.planValue),
+    "Valor do Plano por Extenso": formatValueInWords(contractData.planValue),
+    "Forma de pagamento": getPaymentMethodLabel(
       contractData.paymentMethodCode, 
       contractData.billingType, 
       contractData.installments
     ),
-    parcelas: contractData.installments ? String(contractData.installments) : "1",
-    data_assinatura: new Date().toLocaleDateString("pt-BR"),
+    "Vigência do Contrato": vigenciaContrato,
+    "Número de Reuniões": String(contractData.meetingCount),
   };
 
   const templateData = {
@@ -399,12 +399,21 @@ async function createVindiPayment(
 
     // Determine if we create a subscription or a bill
     if (contractData.billingType === "assinatura") {
-      // Create subscription for recurring payments
+      // Create subscription for recurring payments with product items to set the price
       const subscriptionPayload = {
         customer_id: parseInt(customerId),
         plan_id: vindiPlanId,
-        payment_method_code: "credit_card",
+        payment_method_code: contractData.paymentMethodCode, // Use actual payment method (credit_card or pix)
         start_at: contractData.billingDate,
+        product_items: [
+          {
+            product_id: vindiProductId,
+            pricing_schema: {
+              price: contractData.planValue,
+              schema_type: "flat"
+            }
+          }
+        ]
       };
 
       console.log("Creating Vindi subscription:", JSON.stringify(subscriptionPayload, null, 2));
