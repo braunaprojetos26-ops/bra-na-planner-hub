@@ -465,9 +465,7 @@ async function createVindiPayment(
         bill_items: [
           {
             product_id: vindiProductId,
-            amount: contractData.planValue,
-            quantity: 1,
-            description: productName,
+            amount: contractData.planValue
           }
         ],
       };
