@@ -78,7 +78,7 @@ export function NotificationCenter() {
   const handleClose = () => setOpen(false);
 
   const handleViewAll = () => {
-    navigate('/tasks');
+    navigate('/notifications');
     handleClose();
   };
 
@@ -155,7 +155,7 @@ export function NotificationCenter() {
             className="w-full text-xs"
             onClick={handleViewAll}
           >
-            Ver todas as tarefas
+            Ver central de notificações
           </Button>
         </div>
       </PopoverContent>
