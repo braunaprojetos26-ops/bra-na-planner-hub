@@ -2040,6 +2040,9 @@ export type Database = {
         | "operacoes_investimentos"
         | "operacoes_treinamentos"
         | "operacoes_rh"
+        | "operacoes_marketing"
+        | "operacoes_aquisicao_bens"
+        | "operacoes_patrimonial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2195,6 +2198,9 @@ export const Constants = {
         "operacoes_investimentos",
         "operacoes_treinamentos",
         "operacoes_rh",
+        "operacoes_marketing",
+        "operacoes_aquisicao_bens",
+        "operacoes_patrimonial",
       ],
     },
   },
