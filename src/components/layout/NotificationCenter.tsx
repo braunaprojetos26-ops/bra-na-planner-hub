@@ -72,7 +72,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, contractCount, totalCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, dbUnreadCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -82,17 +82,21 @@ export function NotificationCenter() {
     handleClose();
   };
 
+  // Badge shows only DB notifications (can be marked as read)
+  // But uses destructive color if there are overdue tasks
+  const hasTasks = todayCount > 0 || overdueCount > 0;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {totalCount > 0 && (
+          {dbUnreadCount > 0 && (
             <Badge
               variant={overdueCount > 0 ? 'destructive' : 'default'}
               className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center"
             >
-              {totalCount > 99 ? '99+' : totalCount}
+              {dbUnreadCount > 99 ? '99+' : dbUnreadCount}
             </Badge>
           )}
         </Button>
@@ -100,32 +104,45 @@ export function NotificationCenter() {
       <PopoverContent align="end" className="w-80 p-0">
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold">Notificações</h3>
-          <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-            {todayCount > 0 && (
-              <span className="flex items-center gap-1">
-                <CalendarClock className="h-3 w-3" />
-                {todayCount} para hoje
-              </span>
-            )}
-            {overdueCount > 0 && (
-              <span className="flex items-center gap-1 text-destructive">
-                <AlertTriangle className="h-3 w-3" />
-                {overdueCount} atrasada{overdueCount > 1 ? 's' : ''}
-              </span>
-            )}
-            {ticketCount > 0 && (
-              <span className="flex items-center gap-1 text-blue-600">
-                <MessageSquare className="h-3 w-3" />
-                {ticketCount} chamado{ticketCount > 1 ? 's' : ''}
-              </span>
-            )}
-            {contractCount > 0 && (
-              <span className="flex items-center gap-1 text-emerald-600">
-                <FileText className="h-3 w-3" />
-                {contractCount} contrato{contractCount > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
+          
+          {/* Task reminders section */}
+          {hasTasks && (
+            <div className="mt-2 p-2 bg-muted/50 rounded-md">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Lembretes de tarefas:</p>
+              <div className="flex gap-3 text-xs flex-wrap">
+                {todayCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <CalendarClock className="h-3 w-3" />
+                    {todayCount} para hoje
+                  </span>
+                )}
+                {overdueCount > 0 && (
+                  <span className="flex items-center gap-1 text-destructive">
+                    <AlertTriangle className="h-3 w-3" />
+                    {overdueCount} atrasada{overdueCount > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* DB notifications section */}
+          {(ticketCount > 0 || contractCount > 0) && (
+            <div className="flex gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+              {ticketCount > 0 && (
+                <span className="flex items-center gap-1 text-blue-600">
+                  <MessageSquare className="h-3 w-3" />
+                  {ticketCount} chamado{ticketCount > 1 ? 's' : ''}
+                </span>
+              )}
+              {contractCount > 0 && (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <FileText className="h-3 w-3" />
+                  {contractCount} contrato{contractCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {isLoading ? (
