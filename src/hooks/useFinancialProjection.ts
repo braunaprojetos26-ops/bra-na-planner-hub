@@ -24,11 +24,29 @@ export interface FinancialProjectionResult {
   data: ProjectionDataPoint[];
   idadePatrimonioAcaba: number | null;
   aporteNecessario: number;
+  aporteIdealMensal: number;
   patrimonioFinalAposentadoria: number;
   capitalNecessario: number;
+  idadeFinalIdeal: number;
 }
 
 const IDADE_MAXIMA = 100;
+const IDADE_FINAL_IDEAL = 90; // Idade onde o patrimônio ideal zera
+
+// Função auxiliar para calcular aporte necessário
+function calcularAporteNecessario(
+  fv: number,
+  pv: number,
+  r: number,
+  n: number
+): number {
+  if (n <= 0 || r <= 0) return 0;
+  
+  const fvPv = fv - pv * Math.pow(1 + r, n);
+  const divisor = (Math.pow(1 + r, n) - 1) / r;
+  
+  return Math.max(0, fvPv / divisor);
+}
 
 export function useFinancialProjection(params: FinancialProjectionParams): FinancialProjectionResult {
   return useMemo(() => {
@@ -47,23 +65,41 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
     const taxaMensalAcumulo = Math.pow(1 + taxaAcumuloAnual / 100, 1 / 12) - 1;
     const taxaMensalUsufruto = Math.pow(1 + taxaUsufruteAnual / 100, 1 / 12) - 1;
 
-    // Capital necessário para aposentadoria ideal (regra baseada na taxa de usufruto)
-    const capitalNecessario = rendaDesejada > 0 
-      ? (rendaDesejada * 12) / (taxaUsufruteAnual / 100)
+    const mesesAteAposentadoria = (idadeAposentadoria - idadeAtual) * 12;
+    const mesesAte100Anos = (IDADE_MAXIMA - idadeAtual) * 12;
+    
+    // Período de usufruto dinâmico (baseado na idade de aposentadoria escolhida)
+    const mesesUsufruto = (IDADE_FINAL_IDEAL - idadeAposentadoria) * 12;
+
+    // Renda líquida mensal necessária (desejada - outras fontes)
+    const rendaLiquidaMensal = Math.max(0, rendaDesejada - outrasFontesRenda);
+
+    // Capital necessário = Valor presente de uma anuidade com duração variável
+    // Fórmula: PV = PMT × [(1 - (1+r)^-n) / r]
+    const capitalNecessario = rendaLiquidaMensal > 0 && taxaMensalUsufruto > 0 && mesesUsufruto > 0
+      ? rendaLiquidaMensal * ((1 - Math.pow(1 + taxaMensalUsufruto, -mesesUsufruto)) / taxaMensalUsufruto)
       : 0;
+
+    // Aporte ideal mensal para atingir o capital necessário
+    const aporteIdealMensal = calcularAporteNecessario(
+      capitalNecessario,
+      patrimonioInicial,
+      taxaMensalAcumulo,
+      mesesAteAposentadoria
+    );
+
+    // Aporte necessário para atingir capital necessário (para comparação com aporte atual)
+    const aporteNecessario = aporteIdealMensal;
 
     const data: ProjectionDataPoint[] = [];
     let patrimonioProjetado = patrimonioInicial;
     let patrimonioInvestido = patrimonioInicial;
+    let aposentadoriaIdealAtual = patrimonioInicial;
     let idadePatrimonioAcaba: number | null = null;
-
-    const mesesAteAposentadoria = (idadeAposentadoria - idadeAtual) * 12;
-    const mesesAte100Anos = (IDADE_MAXIMA - idadeAtual) * 12;
 
     // Data inicial
     const dataInicial = new Date();
     
-    // FASE DE ACÚMULO (idade atual → idade aposentadoria)
     for (let mes = 0; mes <= mesesAte100Anos; mes++) {
       const idadeDecimal = idadeAtual + mes / 12;
       const idade = Math.floor(idadeDecimal);
@@ -73,14 +109,20 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       const anoMes = `${dataAtual.toLocaleString('pt-BR', { month: 'short' })}/${dataAtual.getFullYear()}`;
 
       if (mes <= mesesAteAposentadoria) {
-        // Fase de acúmulo
+        // FASE DE ACÚMULO
         if (mes > 0) {
+          // Patrimônio projetado (com aporte atual do usuário)
           patrimonioProjetado = patrimonioProjetado * (1 + taxaMensalAcumulo) + aporteMensal;
           patrimonioInvestido += aporteMensal;
+          
+          // Aposentadoria ideal (com aporte ideal calculado)
+          aposentadoriaIdealAtual = aposentadoriaIdealAtual * (1 + taxaMensalAcumulo) + aporteIdealMensal;
         }
       } else {
-        // Fase de usufruto
+        // FASE DE USUFRUTO
         const rendaLiquida = Math.max(0, rendaDesejada - outrasFontesRenda);
+        
+        // Patrimônio projetado do usuário
         patrimonioProjetado = patrimonioProjetado * (1 + taxaMensalUsufruto) - rendaLiquida;
         
         if (rendaLiquida > 0) {
@@ -90,6 +132,14 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         if (patrimonioProjetado <= 0 && idadePatrimonioAcaba === null) {
           idadePatrimonioAcaba = idade;
         }
+
+        // Aposentadoria ideal - decresce até zerar aos 90 anos
+        if (idade <= IDADE_FINAL_IDEAL) {
+          aposentadoriaIdealAtual = aposentadoriaIdealAtual * (1 + taxaMensalUsufruto) - rendaLiquida;
+          aposentadoriaIdealAtual = Math.max(0, aposentadoriaIdealAtual);
+        } else {
+          aposentadoriaIdealAtual = 0;
+        }
       }
 
       data.push({
@@ -98,23 +148,8 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         anoMes,
         patrimonioProjetado: Math.max(0, patrimonioProjetado),
         patrimonioInvestido: Math.max(0, patrimonioInvestido),
-        aposentadoriaIdeal: capitalNecessario,
+        aposentadoriaIdeal: aposentadoriaIdealAtual,
       });
-    }
-
-    // Calcular aporte necessário para atingir aposentadoria ideal
-    // Fórmula: PMT = (FV - PV * (1+r)^n) / (((1+r)^n - 1) / r)
-    let aporteNecessario = 0;
-    if (capitalNecessario > 0 && mesesAteAposentadoria > 0) {
-      const fv = capitalNecessario;
-      const pv = patrimonioInicial;
-      const r = taxaMensalAcumulo;
-      const n = mesesAteAposentadoria;
-      
-      const fvPv = fv - pv * Math.pow(1 + r, n);
-      const divisor = (Math.pow(1 + r, n) - 1) / r;
-      
-      aporteNecessario = Math.max(0, fvPv / divisor);
     }
 
     const patrimonioFinalAposentadoria = data.find(d => d.idade === idadeAposentadoria)?.patrimonioProjetado || 0;
@@ -123,8 +158,10 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       data,
       idadePatrimonioAcaba,
       aporteNecessario,
+      aporteIdealMensal,
       patrimonioFinalAposentadoria,
       capitalNecessario,
+      idadeFinalIdeal: IDADE_FINAL_IDEAL,
     };
   }, [params]);
 }

@@ -14,9 +14,11 @@ interface FinancialControlPanelProps {
   onOutrasFontesRendaChange: (value: number) => void;
   onInvestimentoMensalChange: (value: number) => void;
   aporteNecessario: number;
+  aporteIdealMensal: number;
   capitalNecessario: number;
   patrimonioFinalAposentadoria: number;
   idadePatrimonioAcaba: number | null;
+  idadeFinalIdeal: number;
   onSalvar: () => void;
 }
 
@@ -39,9 +41,11 @@ export function FinancialControlPanel({
   onOutrasFontesRendaChange,
   onInvestimentoMensalChange,
   aporteNecessario,
+  aporteIdealMensal,
   capitalNecessario,
   patrimonioFinalAposentadoria,
   idadePatrimonioAcaba,
+  idadeFinalIdeal,
   onSalvar,
 }: FinancialControlPanelProps) {
   const atingiuMeta = patrimonioFinalAposentadoria >= capitalNecessario;
@@ -73,10 +77,14 @@ export function FinancialControlPanel({
                 <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
                 <div>
                   <p className="text-sm text-foreground">
-                    Você precisa investir{" "}
-                    <span className="font-semibold text-orange-600">{formatCurrency(aporteNecessario)}/mês</span>{" "}
-                    para chegar na aposentadoria ideal com{" "}
-                    <span className="font-semibold">{formatCurrency(capitalNecessario)}</span> acumulados.
+                    Para a aposentadoria ideal, você precisa investir{" "}
+                    <span className="font-semibold text-orange-600">{formatCurrency(aporteIdealMensal)}/mês</span>{" "}
+                    para acumular{" "}
+                    <span className="font-semibold">{formatCurrency(capitalNecessario)}</span>{" "}
+                    aos {idadeAposentadoria} anos.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No cenário ideal, o patrimônio durará até os {idadeFinalIdeal} anos.
                   </p>
                 </div>
               </div>
