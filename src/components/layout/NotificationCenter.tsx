@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,9 +17,12 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const markRead = useMarkNotificationRead();
 
   const handleClick = async () => {
-    if (notification.type === 'ticket_update' && notification.link) {
+    if ((notification.type === 'ticket_update' || notification.type === 'contract_update') && notification.link) {
       await markRead(notification.id);
       navigate(notification.link);
+    } else if (notification.type === 'contract_update') {
+      await markRead(notification.id);
+      navigate('/contracts');
     } else {
       navigate('/tasks');
     }
@@ -28,6 +31,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
   const isOverdue = notification.type === 'task_overdue';
   const isTicket = notification.type === 'ticket_update';
+  const isContract = notification.type === 'contract_update';
 
   return (
     <button
@@ -42,6 +46,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           'p-2 rounded-full shrink-0',
           isOverdue ? 'bg-destructive/10 text-destructive' : 
           isTicket ? 'bg-blue-100 text-blue-700' :
+          isContract ? 'bg-emerald-100 text-emerald-700' :
           'bg-primary/10 text-primary'
         )}
       >
@@ -49,6 +54,8 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           <AlertTriangle className="h-4 w-4" />
         ) : isTicket ? (
           <MessageSquare className="h-4 w-4" />
+        ) : isContract ? (
+          <FileText className="h-4 w-4" />
         ) : (
           <CalendarClock className="h-4 w-4" />
         )}
@@ -65,7 +72,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, totalCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, totalCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -110,6 +117,12 @@ export function NotificationCenter() {
               <span className="flex items-center gap-1 text-blue-600">
                 <MessageSquare className="h-3 w-3" />
                 {ticketCount} chamado{ticketCount > 1 ? 's' : ''}
+              </span>
+            )}
+            {contractCount > 0 && (
+              <span className="flex items-center gap-1 text-emerald-600">
+                <FileText className="h-3 w-3" />
+                {contractCount} contrato{contractCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
