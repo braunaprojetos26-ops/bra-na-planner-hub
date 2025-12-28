@@ -31,6 +31,36 @@ interface ClickSignEvent {
   };
 }
 
+async function verifyHmacSignature(body: string, signature: string, secret: string): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(body)
+    );
+    
+    const hashArray = Array.from(new Uint8Array(signatureBuffer));
+    const calculatedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    console.log('Calculated signature:', calculatedSignature);
+    console.log('Received signature:', signature);
+    
+    return calculatedSignature === signature;
+  } catch (error) {
+    console.error('Error verifying HMAC signature:', error);
+    return false;
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -42,11 +72,42 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const hmacSecret = Deno.env.get('CLICKSIGN_HMAC_SECRET');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Read the raw body for HMAC verification
+    const body = await req.text();
+    
+    // Verify HMAC signature if secret is configured
+    if (hmacSecret) {
+      const signature = req.headers.get('Content-Hmac') || req.headers.get('X-Signature') || '';
+      
+      if (!signature) {
+        console.error('Missing HMAC signature in request headers');
+        return new Response(
+          JSON.stringify({ error: 'Missing signature' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const isValid = await verifyHmacSignature(body, signature, hmacSecret);
+      
+      if (!isValid) {
+        console.error('Invalid HMAC signature - request rejected');
+        return new Response(
+          JSON.stringify({ error: 'Invalid signature' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('HMAC signature verified successfully');
+    } else {
+      console.warn('CLICKSIGN_HMAC_SECRET not configured - skipping signature verification');
+    }
+
     // Parse the webhook payload
-    const payload: ClickSignEvent = await req.json();
+    const payload: ClickSignEvent = JSON.parse(body);
     
     console.log('Webhook payload:', JSON.stringify(payload, null, 2));
 
