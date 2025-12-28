@@ -218,7 +218,7 @@ export function FinancialProjectionChart({
 
           {/* Linha de aposentadoria ideal (laranja) */}
           <Area
-            type="monotone"
+            type="natural"
             dataKey="aposentadoriaIdeal"
             stroke="#f97316"
             strokeWidth={2}
@@ -229,7 +229,7 @@ export function FinancialProjectionChart({
 
           {/* Área do patrimônio investido (azul) */}
           <Area
-            type="monotone"
+            type="natural"
             dataKey="patrimonioInvestido"
             stroke="#3b82f6"
             strokeWidth={2}
@@ -239,7 +239,7 @@ export function FinancialProjectionChart({
 
           {/* Área do patrimônio projetado (verde) */}
           <Area
-            type="monotone"
+            type="natural"
             dataKey="patrimonioProjetado"
             stroke="#10b981"
             strokeWidth={2}
