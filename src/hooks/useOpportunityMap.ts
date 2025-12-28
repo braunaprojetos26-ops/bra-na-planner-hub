@@ -16,6 +16,7 @@ const CREDIT_CATEGORIES = [
 export interface OpportunityMapRow {
   contactId: string;
   clientName: string;
+  ownerId: string | null;
   ownerName: string | null;
   planejamento: number | null;
   paAtivo: number | null;
@@ -41,6 +42,39 @@ export interface OpportunityMapMetrics {
 interface UseOpportunityMapOptions {
   searchTerm?: string;
   ownerId?: string;
+  structureLeaderId?: string;
+}
+
+// Helper to get all user IDs under a structure leader
+async function getStructureUserIds(leaderId: string): Promise<string[]> {
+  const { data: hierarchies } = await supabase
+    .from('user_hierarchy')
+    .select('user_id, manager_user_id');
+
+  if (!hierarchies) return [leaderId];
+
+  // Build a map of manager -> children
+  const childrenMap = new Map<string, string[]>();
+  hierarchies.forEach((h) => {
+    if (h.manager_user_id) {
+      const children = childrenMap.get(h.manager_user_id) || [];
+      children.push(h.user_id);
+      childrenMap.set(h.manager_user_id, children);
+    }
+  });
+
+  // Recursively collect all descendants
+  const result: string[] = [leaderId];
+  const collectDescendants = (userId: string) => {
+    const children = childrenMap.get(userId) || [];
+    children.forEach((childId) => {
+      result.push(childId);
+      collectDescendants(childId);
+    });
+  };
+  collectDescendants(leaderId);
+
+  return result;
 }
 
 export function useOpportunityMap(options: UseOpportunityMapOptions = {}) {
@@ -48,8 +82,14 @@ export function useOpportunityMap(options: UseOpportunityMapOptions = {}) {
   const effectiveUserId = actingUser?.id;
 
   return useQuery({
-    queryKey: ['opportunity-map', options.searchTerm, options.ownerId, effectiveUserId],
+    queryKey: ['opportunity-map', options.searchTerm, options.ownerId, options.structureLeaderId, effectiveUserId],
     queryFn: async (): Promise<{ rows: OpportunityMapRow[]; metrics: OpportunityMapMetrics }> => {
+      // Get structure user IDs if filtering by structure
+      let structureUserIds: string[] | null = null;
+      if (options.structureLeaderId && options.structureLeaderId !== 'all') {
+        structureUserIds = await getStructureUserIds(options.structureLeaderId);
+      }
+
       // Fetch all active contracts with product and category info
       const { data: contracts, error: contractsError } = await supabase
         .from('contracts')
@@ -69,7 +109,9 @@ export function useOpportunityMap(options: UseOpportunityMapOptions = {}) {
           contact:contacts (
             id,
             full_name,
+            owner_id,
             owner:profiles!contacts_owner_id_fkey (
+              user_id,
               full_name
             )
           )
@@ -82,6 +124,7 @@ export function useOpportunityMap(options: UseOpportunityMapOptions = {}) {
       const contactMap = new Map<string, {
         contactId: string;
         clientName: string;
+        ownerId: string | null;
         ownerName: string | null;
         planejamento: number;
         paAtivo: number;
@@ -99,15 +142,27 @@ export function useOpportunityMap(options: UseOpportunityMapOptions = {}) {
 
         const contactId = contact.id;
         const clientName = contact.full_name;
+        const ownerId = contact.owner_id || null;
         const ownerName = contact.owner?.full_name || null;
         const categoryName = category?.name || '';
         const productName = product.name || '';
         const value = Number(contract.contract_value) || 0;
 
+        // Apply owner filter
+        if (options.ownerId && options.ownerId !== 'all' && ownerId !== options.ownerId) {
+          return;
+        }
+
+        // Apply structure filter
+        if (structureUserIds && ownerId && !structureUserIds.includes(ownerId)) {
+          return;
+        }
+
         if (!contactMap.has(contactId)) {
           contactMap.set(contactId, {
             contactId,
             clientName,
+            ownerId,
             ownerName,
             planejamento: 0,
             paAtivo: 0,
@@ -137,6 +192,7 @@ export function useOpportunityMap(options: UseOpportunityMapOptions = {}) {
       let rows: OpportunityMapRow[] = Array.from(contactMap.values()).map((entry) => ({
         contactId: entry.contactId,
         clientName: entry.clientName,
+        ownerId: entry.ownerId,
         ownerName: entry.ownerName,
         planejamento: entry.planejamento > 0 ? entry.planejamento : null,
         paAtivo: entry.paAtivo > 0 ? entry.paAtivo : null,
