@@ -34,9 +34,9 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
   
   if (status === 'pending') {
     if (clicksignStatus === 'partially_signed') {
-      return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Assinado pelo Cliente</Badge>;
+      return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 whitespace-nowrap">Assinado pelo Cliente</Badge>;
     }
-    return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Aguardando Assinatura</Badge>;
+    return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 whitespace-nowrap">Aguardando Assinatura</Badge>;
   }
   
   return <Badge variant="outline">{status}</Badge>;
