@@ -63,6 +63,7 @@ export const departmentLabels: Record<TicketDepartment, string> = {
 };
 
 export const DEPARTMENTS_REQUIRING_CONTACT: TicketDepartment[] = [
+  'investimentos',
   'aquisicao_bens',
   'patrimonial',
 ];
