@@ -33,7 +33,7 @@ type ViewMode = "mensal" | "anual";
 
 export default function MeuFuturo() {
   // Estados dos parâmetros
-  const [idadeAtual] = useState(DEFAULT_CONFIG.idadeAtual);
+  const [idadeAtual, setIdadeAtual] = useState(DEFAULT_CONFIG.idadeAtual);
   const [patrimonioInicial, setPatrimonioInicial] = useState(DEFAULT_CONFIG.patrimonioInicial);
   const [idadeAposentadoria, setIdadeAposentadoria] = useState(DEFAULT_CONFIG.idadeAposentadoria);
   const [rendaDesejada, setRendaDesejada] = useState(DEFAULT_CONFIG.rendaDesejada);
@@ -75,6 +75,7 @@ export default function MeuFuturo() {
   };
 
   const handleResetTaxas = () => {
+    setIdadeAtual(DEFAULT_CONFIG.idadeAtual);
     setTaxaAcumuloAnual(DEFAULT_CONFIG.taxaAcumuloAnual);
     setTaxaUsufruteAnual(DEFAULT_CONFIG.taxaUsufruteAnual);
   };
@@ -265,6 +266,8 @@ export default function MeuFuturo() {
       <RateSettingsModal
         open={rateModalOpen}
         onOpenChange={setRateModalOpen}
+        idadeAtual={idadeAtual}
+        onIdadeAtualChange={setIdadeAtual}
         taxaAcumulo={taxaAcumuloAnual}
         taxaUsufruto={taxaUsufruteAnual}
         onTaxaAcumuloChange={setTaxaAcumuloAnual}

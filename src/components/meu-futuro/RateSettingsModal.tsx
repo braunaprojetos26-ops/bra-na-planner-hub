@@ -14,6 +14,8 @@ import { AlertCircle, RotateCcw } from "lucide-react";
 interface RateSettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  idadeAtual: number;
+  onIdadeAtualChange: (value: number) => void;
   taxaAcumulo: number;
   taxaUsufruto: number;
   onTaxaAcumuloChange: (value: number) => void;
@@ -22,12 +24,15 @@ interface RateSettingsModalProps {
   onSave: () => void;
 }
 
+const DEFAULT_IDADE_ATUAL = 33;
 const DEFAULT_TAXA_ACUMULO = 4;
 const DEFAULT_TAXA_USUFRUTO = 3.5;
 
 export function RateSettingsModal({
   open,
   onOpenChange,
+  idadeAtual,
+  onIdadeAtualChange,
   taxaAcumulo,
   taxaUsufruto,
   onTaxaAcumuloChange,
@@ -44,7 +49,10 @@ export function RateSettingsModal({
     onResetToDefaults();
   };
 
-  const isDefault = taxaAcumulo === DEFAULT_TAXA_ACUMULO && taxaUsufruto === DEFAULT_TAXA_USUFRUTO;
+  const isDefault = 
+    idadeAtual === DEFAULT_IDADE_ATUAL &&
+    taxaAcumulo === DEFAULT_TAXA_ACUMULO && 
+    taxaUsufruto === DEFAULT_TAXA_USUFRUTO;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,11 +60,40 @@ export function RateSettingsModal({
         <DialogHeader>
           <DialogTitle>Configurações da simulação</DialogTitle>
           <DialogDescription>
-            Ajuste as taxas de rentabilidade para a simulação de independência financeira.
+            Ajuste os parâmetros para personalizar a simulação de independência financeira.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Idade atual */}
+          <div className="space-y-2">
+            <Label htmlFor="idade-atual" className="text-sm font-medium">
+              Idade atual do cliente
+            </Label>
+            <div className="relative">
+              <Input
+                id="idade-atual"
+                type="number"
+                min="18"
+                max="90"
+                value={idadeAtual}
+                onChange={(e) => onIdadeAtualChange(parseInt(e.target.value) || 18)}
+                className="pr-12"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                anos
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A idade será usada como ponto de partida para a simulação.
+            </p>
+          </div>
+
+          {/* Separador visual */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground mb-4">Taxas de rentabilidade</p>
+          </div>
+
           {/* Taxa de acúmulo */}
           <div className="space-y-2">
             <Label htmlFor="taxa-acumulo" className="text-sm font-medium">
@@ -126,7 +163,7 @@ export function RateSettingsModal({
             className="sm:mr-auto"
           >
             <RotateCcw className="h-4 w-4 mr-2" />
-            Voltar às taxas padrão
+            Restaurar padrões
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
