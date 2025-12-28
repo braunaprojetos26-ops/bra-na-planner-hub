@@ -13,6 +13,9 @@ import { FinancialControlPanel } from "@/components/meu-futuro/FinancialControlP
 import { RateSettingsModal } from "@/components/meu-futuro/RateSettingsModal";
 import { InitialAmountModal } from "@/components/meu-futuro/InitialAmountModal";
 import { InitialAmountSection } from "@/components/meu-futuro/InitialAmountSection";
+import { DreamsSection } from "@/components/meu-futuro/DreamsSection";
+import { NewDreamModal } from "@/components/meu-futuro/NewDreamModal";
+import { Dream } from "@/types/dreams";
 
 const DEFAULT_CONFIG = {
   idadeAtual: 33,
@@ -43,6 +46,11 @@ export default function MeuFuturo() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("max");
   const [rateModalOpen, setRateModalOpen] = useState(false);
   const [initialAmountModalOpen, setInitialAmountModalOpen] = useState(false);
+  
+  // Estados dos sonhos
+  const [dreams, setDreams] = useState<Dream[]>([]);
+  const [dreamModalOpen, setDreamModalOpen] = useState(false);
+  const [editingDream, setEditingDream] = useState<Dream | null>(null);
 
   // Calcular projeção
   const projection = useFinancialProjection({
@@ -54,6 +62,7 @@ export default function MeuFuturo() {
     outrasFontesRenda,
     taxaAcumuloAnual,
     taxaUsufruteAnual,
+    dreams,
   });
 
   const handleSalvarMeta = () => {
@@ -73,6 +82,43 @@ export default function MeuFuturo() {
       title: "Taxas atualizadas",
       description: "As taxas de rentabilidade foram atualizadas com sucesso.",
     });
+  };
+
+  // Handlers dos sonhos
+  const handleSaveDream = (dream: Dream) => {
+    if (editingDream) {
+      setDreams(prev => prev.map(d => d.id === dream.id ? dream : d));
+      toast({
+        title: "Sonho atualizado",
+        description: `"${dream.name}" foi atualizado com sucesso.`,
+      });
+    } else {
+      setDreams(prev => [...prev, dream]);
+      toast({
+        title: "Sonho adicionado",
+        description: `"${dream.name}" foi adicionado ao seu planejamento.`,
+      });
+    }
+    setEditingDream(null);
+  };
+
+  const handleEditDream = (dream: Dream) => {
+    setEditingDream(dream);
+    setDreamModalOpen(true);
+  };
+
+  const handleDeleteDream = (id: string) => {
+    const dream = dreams.find(d => d.id === id);
+    setDreams(prev => prev.filter(d => d.id !== id));
+    toast({
+      title: "Sonho removido",
+      description: dream ? `"${dream.name}" foi removido do planejamento.` : "Objetivo removido.",
+    });
+  };
+
+  const handleAddDream = () => {
+    setEditingDream(null);
+    setDreamModalOpen(true);
   };
 
   return (
@@ -169,6 +215,14 @@ export default function MeuFuturo() {
                 patrimonioInicial={patrimonioInicial}
                 onOpenModal={() => setInitialAmountModalOpen(true)}
               />
+              
+              {/* Seção Meus Sonhos */}
+              <DreamsSection
+                dreams={dreams}
+                onAddDream={handleAddDream}
+                onEditDream={handleEditDream}
+                onDeleteDream={handleDeleteDream}
+              />
             </div>
             {/* Painel de controles */}
             <FinancialControlPanel
@@ -218,6 +272,14 @@ export default function MeuFuturo() {
               : "O patrimônio inicial foi removido da simulação",
           });
         }}
+      />
+
+      {/* Modal de novo/editar sonho */}
+      <NewDreamModal
+        open={dreamModalOpen}
+        onOpenChange={setDreamModalOpen}
+        onSave={handleSaveDream}
+        editingDream={editingDream}
       />
     </div>
   );

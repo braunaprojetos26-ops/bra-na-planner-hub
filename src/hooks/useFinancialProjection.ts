@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Dream, RepetitionType } from "@/types/dreams";
 
 export interface FinancialProjectionParams {
   idadeAtual: number;
@@ -7,8 +8,9 @@ export interface FinancialProjectionParams {
   idadeAposentadoria: number;
   rendaDesejada: number;
   outrasFontesRenda: number;
-  taxaAcumuloAnual: number; // % a.a. real
-  taxaUsufruteAnual: number; // % a.a. real
+  taxaAcumuloAnual: number;
+  taxaUsufruteAnual: number;
+  dreams?: Dream[];
 }
 
 export interface ProjectionDataPoint {
@@ -30,10 +32,16 @@ export interface FinancialProjectionResult {
   idadeFinalIdeal: number;
 }
 
-const IDADE_MAXIMA = 100;
-const IDADE_FINAL_IDEAL = 90; // Idade onde o patrimônio ideal zera
+interface ExpandedDreamEvent {
+  date: Date;
+  value: number;
+  isPositive: boolean;
+  dreamId: string;
+}
 
-// Função auxiliar para calcular aporte necessário
+const IDADE_MAXIMA = 100;
+const IDADE_FINAL_IDEAL = 90;
+
 function calcularAporteNecessario(
   fv: number,
   pv: number,
@@ -48,6 +56,74 @@ function calcularAporteNecessario(
   return Math.max(0, fvPv / divisor);
 }
 
+function getRepetitionMonths(type: RepetitionType): number {
+  switch (type) {
+    case 'quarterly': return 3;
+    case 'semiannual': return 6;
+    case 'annual': return 12;
+    case '2years': return 24;
+    case '3years': return 36;
+    case '4years': return 48;
+    default: return 0;
+  }
+}
+
+function expandDreamsToEvents(dreams: Dream[]): ExpandedDreamEvent[] {
+  const events: ExpandedDreamEvent[] = [];
+  
+  for (const dream of dreams) {
+    const baseDate = new Date(dream.realizationDate);
+    const totalRepetitions = dream.repetitionType !== 'none' && dream.repetitionCount 
+      ? dream.repetitionCount 
+      : 1;
+    const repetitionMonths = getRepetitionMonths(dream.repetitionType);
+    
+    for (let rep = 0; rep < totalRepetitions; rep++) {
+      const repDate = new Date(baseDate);
+      if (rep > 0 && repetitionMonths > 0) {
+        repDate.setMonth(repDate.getMonth() + (rep * repetitionMonths));
+      }
+      
+      if (dream.isInstallment && dream.installments && dream.installments > 1) {
+        const installmentValue = dream.totalValue / dream.installments;
+        for (let inst = 0; inst < dream.installments; inst++) {
+          const instDate = new Date(repDate);
+          instDate.setMonth(instDate.getMonth() + inst);
+          events.push({
+            date: instDate,
+            value: installmentValue,
+            isPositive: dream.isPositive,
+            dreamId: dream.id,
+          });
+        }
+      } else {
+        events.push({
+          date: repDate,
+          value: dream.totalValue,
+          isPositive: dream.isPositive,
+          dreamId: dream.id,
+        });
+      }
+    }
+  }
+  
+  return events;
+}
+
+function getEventsForMonth(
+  events: ExpandedDreamEvent[],
+  targetDate: Date
+): ExpandedDreamEvent[] {
+  const targetYear = targetDate.getFullYear();
+  const targetMonth = targetDate.getMonth();
+  
+  return events.filter((e) => {
+    const eventYear = e.date.getFullYear();
+    const eventMonth = e.date.getMonth();
+    return eventYear === targetYear && eventMonth === targetMonth;
+  });
+}
+
 export function useFinancialProjection(params: FinancialProjectionParams): FinancialProjectionResult {
   return useMemo(() => {
     const {
@@ -59,28 +135,22 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       outrasFontesRenda,
       taxaAcumuloAnual,
       taxaUsufruteAnual,
+      dreams = [],
     } = params;
 
-    // Converter taxas anuais para mensais
     const taxaMensalAcumulo = Math.pow(1 + taxaAcumuloAnual / 100, 1 / 12) - 1;
     const taxaMensalUsufruto = Math.pow(1 + taxaUsufruteAnual / 100, 1 / 12) - 1;
 
     const mesesAteAposentadoria = (idadeAposentadoria - idadeAtual) * 12;
     const mesesAte100Anos = (IDADE_MAXIMA - idadeAtual) * 12;
-    
-    // Período de usufruto dinâmico (baseado na idade de aposentadoria escolhida)
     const mesesUsufruto = (IDADE_FINAL_IDEAL - idadeAposentadoria) * 12;
 
-    // Renda líquida mensal necessária (desejada - outras fontes)
     const rendaLiquidaMensal = Math.max(0, rendaDesejada - outrasFontesRenda);
 
-    // Capital necessário = Valor presente de uma anuidade com duração variável
-    // Fórmula: PV = PMT × [(1 - (1+r)^-n) / r]
     const capitalNecessario = rendaLiquidaMensal > 0 && taxaMensalUsufruto > 0 && mesesUsufruto > 0
       ? rendaLiquidaMensal * ((1 - Math.pow(1 + taxaMensalUsufruto, -mesesUsufruto)) / taxaMensalUsufruto)
       : 0;
 
-    // Aporte ideal mensal para atingir o capital necessário
     const aporteIdealMensal = calcularAporteNecessario(
       capitalNecessario,
       patrimonioInicial,
@@ -88,8 +158,10 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       mesesAteAposentadoria
     );
 
-    // Aporte necessário para atingir capital necessário (para comparação com aporte atual)
     const aporteNecessario = aporteIdealMensal;
+
+    // Expandir todos os sonhos em eventos mensais
+    const dreamEvents = expandDreamsToEvents(dreams);
 
     const data: ProjectionDataPoint[] = [];
     let patrimonioProjetado = patrimonioInicial;
@@ -97,7 +169,6 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
     let aposentadoriaIdealAtual = patrimonioInicial;
     let idadePatrimonioAcaba: number | null = null;
 
-    // Data inicial
     const dataInicial = new Date();
     
     for (let mes = 0; mes <= mesesAte100Anos; mes++) {
@@ -108,22 +179,39 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       dataAtual.setMonth(dataAtual.getMonth() + mes);
       const anoMes = `${dataAtual.toLocaleString('pt-BR', { month: 'short' })}/${dataAtual.getFullYear()}`;
 
+      // Buscar eventos de sonhos para este mês
+      const monthEvents = getEventsForMonth(dreamEvents, dataAtual);
+      let dreamImpact = 0;
+      for (const evt of monthEvents) {
+        if (evt.isPositive) {
+          dreamImpact += evt.value;
+        } else {
+          dreamImpact -= evt.value;
+        }
+      }
+
       if (mes <= mesesAteAposentadoria) {
         // FASE DE ACÚMULO
         if (mes > 0) {
-          // Patrimônio projetado (com aporte atual do usuário)
           patrimonioProjetado = patrimonioProjetado * (1 + taxaMensalAcumulo) + aporteMensal;
           patrimonioInvestido += aporteMensal;
           
-          // Aposentadoria ideal (com aporte ideal calculado)
           aposentadoriaIdealAtual = aposentadoriaIdealAtual * (1 + taxaMensalAcumulo) + aporteIdealMensal;
+        }
+        
+        // Aplicar impacto dos sonhos (positivo = aporte extra, negativo = retirada)
+        patrimonioProjetado += dreamImpact;
+        if (dreamImpact > 0) {
+          patrimonioInvestido += dreamImpact;
         }
       } else {
         // FASE DE USUFRUTO
         const rendaLiquida = Math.max(0, rendaDesejada - outrasFontesRenda);
         
-        // Patrimônio projetado do usuário
         patrimonioProjetado = patrimonioProjetado * (1 + taxaMensalUsufruto) - rendaLiquida;
+        
+        // Aplicar impacto dos sonhos durante usufruto
+        patrimonioProjetado += dreamImpact;
         
         if (rendaLiquida > 0) {
           patrimonioInvestido = Math.max(0, patrimonioInvestido - rendaLiquida);
@@ -133,7 +221,6 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
           idadePatrimonioAcaba = idade;
         }
 
-        // Aposentadoria ideal - decresce até zerar aos 90 anos
         if (idade <= IDADE_FINAL_IDEAL) {
           aposentadoriaIdealAtual = aposentadoriaIdealAtual * (1 + taxaMensalUsufruto) - rendaLiquida;
           aposentadoriaIdealAtual = Math.max(0, aposentadoriaIdealAtual);
