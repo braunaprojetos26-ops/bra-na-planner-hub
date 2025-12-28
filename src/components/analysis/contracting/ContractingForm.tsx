@@ -280,7 +280,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
     if (!products) return '';
     
     const productName = planType === 'novo_planejamento' 
-      ? 'Novo Planejamento Financeiro'
+      ? 'Planejamento Financeiro Completo'
       : 'Planejamento Financeiro Pontual';
     
     const product = products.find(p => 
@@ -288,7 +288,7 @@ export function ContractingForm({ contactId }: ContractingFormProps) {
       productName.toLowerCase().includes(p.name.toLowerCase())
     );
     
-    return product?.id || products[0]?.id || '';
+    return product?.id || '';
   };
 
   const formatCurrency = (value: number) => {
