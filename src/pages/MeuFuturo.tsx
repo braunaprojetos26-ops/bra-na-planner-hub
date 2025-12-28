@@ -11,6 +11,8 @@ import { useFinancialProjection } from "@/hooks/useFinancialProjection";
 import { FinancialProjectionChart } from "@/components/meu-futuro/FinancialProjectionChart";
 import { FinancialControlPanel } from "@/components/meu-futuro/FinancialControlPanel";
 import { RateSettingsModal } from "@/components/meu-futuro/RateSettingsModal";
+import { InitialAmountModal } from "@/components/meu-futuro/InitialAmountModal";
+import { InitialAmountSection } from "@/components/meu-futuro/InitialAmountSection";
 
 const DEFAULT_CONFIG = {
   idadeAtual: 33,
@@ -28,7 +30,7 @@ type PeriodFilter = "2anos" | "5anos" | "10anos" | "max";
 export default function MeuFuturo() {
   // Estados dos parâmetros
   const [idadeAtual] = useState(DEFAULT_CONFIG.idadeAtual);
-  const [patrimonioInicial] = useState(DEFAULT_CONFIG.patrimonioInicial);
+  const [patrimonioInicial, setPatrimonioInicial] = useState(DEFAULT_CONFIG.patrimonioInicial);
   const [idadeAposentadoria, setIdadeAposentadoria] = useState(DEFAULT_CONFIG.idadeAposentadoria);
   const [rendaDesejada, setRendaDesejada] = useState(DEFAULT_CONFIG.rendaDesejada);
   const [investimentoMensal, setInvestimentoMensal] = useState(DEFAULT_CONFIG.investimentoMensal);
@@ -40,6 +42,7 @@ export default function MeuFuturo() {
   const [showNegatives, setShowNegatives] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("max");
   const [rateModalOpen, setRateModalOpen] = useState(false);
+  const [initialAmountModalOpen, setInitialAmountModalOpen] = useState(false);
 
   // Calcular projeção
   const projection = useFinancialProjection({
@@ -160,8 +163,13 @@ export default function MeuFuturo() {
                   <span className="text-muted-foreground">Aposentadoria ideal</span>
                 </div>
               </div>
-            </div>
 
+              {/* Seção Montante Inicial */}
+              <InitialAmountSection
+                patrimonioInicial={patrimonioInicial}
+                onOpenModal={() => setInitialAmountModalOpen(true)}
+              />
+            </div>
             {/* Painel de controles */}
             <FinancialControlPanel
               idadeAposentadoria={idadeAposentadoria}
@@ -194,6 +202,22 @@ export default function MeuFuturo() {
         onTaxaUsufruteChange={setTaxaUsufruteAnual}
         onResetToDefaults={handleResetTaxas}
         onSave={handleSaveTaxas}
+      />
+
+      {/* Modal de montante inicial */}
+      <InitialAmountModal
+        open={initialAmountModalOpen}
+        onOpenChange={setInitialAmountModalOpen}
+        currentValue={patrimonioInicial}
+        onConfirm={(value) => {
+          setPatrimonioInicial(value);
+          toast({
+            title: value > 0 ? "Montante definido" : "Montante removido",
+            description: value > 0
+              ? `Patrimônio inicial definido como ${value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+              : "O patrimônio inicial foi removido da simulação",
+          });
+        }}
       />
     </div>
   );
