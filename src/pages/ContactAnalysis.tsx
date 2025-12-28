@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useContact } from '@/hooks/useContacts';
 import { useMyPlannerProfile } from '@/hooks/usePlannerProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMeetings } from '@/hooks/useMeetings';
 import { AnalysisStepIndicator } from '@/components/analysis/AnalysisStepIndicator';
 import { PlannerSlideView } from '@/components/analysis/PlannerSlideView';
 import { PlannerSlideEditor } from '@/components/analysis/PlannerSlideEditor';
@@ -25,6 +26,7 @@ const STEPS = [
 
 export default function ContactAnalysis() {
   const { contactId } = useParams<{ contactId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
@@ -32,6 +34,14 @@ export default function ContactAnalysis() {
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId || '');
   const { data: plannerProfile } = useMyPlannerProfile();
+  const { data: meetings } = useMeetings(contactId);
+  
+  // Get opportunityId from URL query params or from the most recent Análise meeting
+  const urlOpportunityId = searchParams.get('opportunityId');
+  const analysisMeeting = meetings?.find(
+    m => m.meeting_type === 'Análise' && (m.status === 'scheduled' || m.status === 'completed')
+  );
+  const opportunityId = urlOpportunityId || analysisMeeting?.opportunity_id || null;
 
   const handlePrevious = () => {
     if (currentStep > 0) {
@@ -116,7 +126,7 @@ export default function ContactAnalysis() {
         );
 
       case 5:
-        return <ContractingForm contactId={contactId!} />;
+        return <ContractingForm contactId={contactId!} opportunityId={opportunityId} />;
 
       default:
         return null;

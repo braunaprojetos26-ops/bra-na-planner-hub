@@ -40,6 +40,10 @@ const notificationMessages: Record<string, { title: string; message: string }> =
   'subscription_reactivated': { title: 'Assinatura reativada', message: 'A assinatura do cliente foi reativada' },
 };
 
+// Stage IDs for VENDA - PLANEJAMENTO funnel
+const STAGE_PLANEJAMENTO_PAGO = "71043c49-5d81-4673-9910-c9c65a43df77";
+const STAGE_PAGAMENTO = "ac5bba1b-282d-415d-89b1-96e1cc6aa8c4";
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -82,7 +86,7 @@ Deno.serve(async (req) => {
     if (vindiSubscriptionId) {
       const { data, error } = await supabase
         .from('contracts')
-        .select('id, owner_id, contact_id, vindi_status, installments, contact:contacts(full_name)')
+        .select('id, owner_id, contact_id, opportunity_id, vindi_status, installments, contact:contacts(full_name)')
         .eq('vindi_subscription_id', vindiSubscriptionId)
         .maybeSingle();
       
@@ -95,7 +99,7 @@ Deno.serve(async (req) => {
     if (!contract && vindiBillId) {
       const { data, error } = await supabase
         .from('contracts')
-        .select('id, owner_id, contact_id, vindi_status, installments, contact:contacts(full_name)')
+        .select('id, owner_id, contact_id, opportunity_id, vindi_status, installments, contact:contacts(full_name)')
         .eq('vindi_bill_id', vindiBillId)
         .maybeSingle();
       
@@ -195,6 +199,34 @@ Deno.serve(async (req) => {
         console.error('Error creating notification:', notifError);
       } else {
         console.log('Notification created for user:', contract.owner_id);
+      }
+    }
+
+    // Move opportunity to "Planejamento Pago" when payment is confirmed
+    const paymentConfirmedEvents = ['charge_paid', 'bill_paid', 'subscription_activated'];
+    if (paymentConfirmedEvents.includes(eventType) && contract.opportunity_id) {
+      console.log('Moving opportunity to Planejamento Pago stage...');
+      
+      const { error: moveError } = await supabase
+        .from('opportunities')
+        .update({
+          current_stage_id: STAGE_PLANEJAMENTO_PAGO,
+          stage_entered_at: new Date().toISOString(),
+        })
+        .eq('id', contract.opportunity_id);
+
+      if (moveError) {
+        console.error('Error moving opportunity:', moveError);
+      } else {
+        await supabase.from('opportunity_history').insert({
+          opportunity_id: contract.opportunity_id,
+          action: 'stage_change',
+          from_stage_id: STAGE_PAGAMENTO,
+          to_stage_id: STAGE_PLANEJAMENTO_PAGO,
+          changed_by: contract.owner_id,
+          notes: 'Cliente pagou (automático)',
+        });
+        console.log('Opportunity moved to Planejamento Pago');
       }
     }
 

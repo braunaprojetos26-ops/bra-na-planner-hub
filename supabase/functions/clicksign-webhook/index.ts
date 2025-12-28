@@ -131,9 +131,13 @@ serve(async (req: Request) => {
     // Find the contract by clicksign_document_key
     const { data: contract, error: fetchError } = await supabase
       .from('contracts')
-      .select('id, status, clicksign_status, owner_id, contact_id')
+      .select('id, status, clicksign_status, owner_id, contact_id, opportunity_id')
       .eq('clicksign_document_key', documentKey)
       .maybeSingle();
+
+    // Stage IDs for VENDA - PLANEJAMENTO funnel
+    const STAGE_PAGAMENTO = "ac5bba1b-282d-415d-89b1-96e1cc6aa8c4";
+    const STAGE_ASSINATURA_CONTRATO = "f9141c57-ee25-4606-98cb-6d559d9af8f1";
 
     if (fetchError) {
       console.error('Error fetching contract:', fetchError);
@@ -263,7 +267,35 @@ serve(async (req: Request) => {
           console.error('Error creating notification:', notifError);
           // Don't fail the webhook for notification errors
         } else {
-          console.log('Notification created for owner');
+        console.log('Notification created for owner');
+        }
+      }
+
+      // Move opportunity to "Pagamento" stage when client signs (partial signature)
+      if (eventName === 'sign' && newClicksignStatus === 'partially_signed' && contract.opportunity_id) {
+        console.log('Moving opportunity to Pagamento stage...');
+        
+        const { error: moveError } = await supabase
+          .from('opportunities')
+          .update({
+            current_stage_id: STAGE_PAGAMENTO,
+            stage_entered_at: new Date().toISOString(),
+          })
+          .eq('id', contract.opportunity_id);
+
+        if (moveError) {
+          console.error('Error moving opportunity:', moveError);
+        } else {
+          // Create history
+          await supabase.from('opportunity_history').insert({
+            opportunity_id: contract.opportunity_id,
+            action: 'stage_change',
+            from_stage_id: STAGE_ASSINATURA_CONTRATO,
+            to_stage_id: STAGE_PAGAMENTO,
+            changed_by: contract.owner_id,
+            notes: 'Cliente assinou o contrato (automático)',
+          });
+          console.log('Opportunity moved to Pagamento');
         }
       }
     }

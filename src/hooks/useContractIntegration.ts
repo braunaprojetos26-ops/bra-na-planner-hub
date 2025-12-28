@@ -24,6 +24,7 @@ export interface ContactData {
 
 export interface ContractIntegrationData {
   contactId: string;
+  opportunityId?: string;
   planType: 'novo_planejamento' | 'planejamento_pontual';
   planValue: number;
   billingType: 'assinatura' | 'fatura_avulsa';

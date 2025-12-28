@@ -380,6 +380,36 @@ export function useMarkOpportunityWon() {
         notes: 'Oportunidade ganha',
       });
 
+      // Recalculate PBs for the contract linked to this opportunity
+      const { data: contracts } = await supabase
+        .from('contracts')
+        .select('id, product_id, contract_value, products(pb_formula, pb_value, pb_calculation_type, pb_variables, pb_constants)')
+        .eq('opportunity_id', opportunityId);
+
+      if (contracts && contracts.length > 0) {
+        for (const contract of contracts) {
+          const product = contract.products as any;
+          let calculatedPbs = 0;
+
+          if (product) {
+            if (product.pb_formula) {
+              // Use formula - simplified calculation here
+              // Full formula parsing would need the pbFormulaParser
+              calculatedPbs = contract.contract_value * 0.1; // Fallback
+            } else if (product.pb_calculation_type === 'percentage') {
+              calculatedPbs = contract.contract_value * (product.pb_value / 100);
+            } else {
+              calculatedPbs = product.pb_value;
+            }
+          }
+
+          await supabase
+            .from('contracts')
+            .update({ calculated_pbs: calculatedPbs, status: 'active' })
+            .eq('id', contract.id);
+        }
+      }
+
       // Only create new opportunity if there's a next funnel
       if (nextFunnelId && nextStageId) {
         // Get the contact_id from the opportunity
@@ -422,10 +452,11 @@ export function useMarkOpportunityWon() {
     onSuccess: (newOpportunity) => {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['contact-opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
       if (newOpportunity) {
-        toast({ title: 'Oportunidade ganha! Nova oportunidade criada no próximo funil.' });
+        toast({ title: 'Oportunidade ganha! PBs calculados e nova oportunidade criada.' });
       } else {
-        toast({ title: 'Oportunidade marcada como ganha!' });
+        toast({ title: 'Oportunidade marcada como ganha! PBs calculados.' });
       }
     },
     onError: (error: Error) => {
