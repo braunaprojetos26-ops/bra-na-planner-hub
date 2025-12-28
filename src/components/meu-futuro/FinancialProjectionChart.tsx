@@ -86,6 +86,24 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   return null;
 };
 
+const TICK_INTERVAL = 500000; // R$ 500.000
+
+const generateYAxisTicks = (minValue: number, maxValue: number): number[] => {
+  const ticks: number[] = [];
+  
+  // Arredondar mínimo para baixo no múltiplo de 500K
+  const startTick = Math.floor(minValue / TICK_INTERVAL) * TICK_INTERVAL;
+  
+  // Arredondar máximo para cima no múltiplo de 500K
+  const endTick = Math.ceil((maxValue * 1.1) / TICK_INTERVAL) * TICK_INTERVAL;
+  
+  for (let tick = startTick; tick <= endTick; tick += TICK_INTERVAL) {
+    ticks.push(tick);
+  }
+  
+  return ticks;
+};
+
 export function FinancialProjectionChart({
   data,
   idadeAposentadoria,
@@ -128,6 +146,9 @@ export function FinancialProjectionChart({
   const maxValue = Math.max(...allValues);
   const minValue = showNegatives ? Math.min(...allValues, 0) : 0;
 
+  // Gerar ticks padronizados em intervalos de R$ 500K
+  const yAxisTicks = generateYAxisTicks(minValue, maxValue);
+
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -158,7 +179,8 @@ export function FinancialProjectionChart({
             axisLine={false}
             className="text-xs fill-muted-foreground"
             tickFormatter={formatCurrency}
-            domain={[minValue, maxValue * 1.1]}
+            domain={[yAxisTicks[0], yAxisTicks[yAxisTicks.length - 1]]}
+            ticks={yAxisTicks}
           />
           <Tooltip content={<CustomTooltip />} />
           
