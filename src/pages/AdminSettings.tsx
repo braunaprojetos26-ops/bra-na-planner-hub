@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
-import { Settings, Users, Kanban, Package, ClipboardList, Sparkles } from 'lucide-react';
+import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { UsersTab, PipelinesTab, AITab } from '@/components/admin/tabs';
+import { UsersTab, PipelinesTab, AITab, TeamManagementTab } from '@/components/admin/tabs';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
@@ -34,7 +34,7 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4 hidden sm:inline" />
             Usuários
@@ -51,9 +51,13 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
             <ClipboardList className="h-4 w-4 hidden sm:inline" />
             Coleta de Dados
           </TabsTrigger>
+          <TabsTrigger value="team-management" className="gap-2">
+            <UsersRound className="h-4 w-4 hidden sm:inline" />
+            Gestão de Equipe
+          </TabsTrigger>
           <TabsTrigger value="ai" className="gap-2">
             <Sparkles className="h-4 w-4 hidden sm:inline" />
-            Inteligência Artificial
+            IA
           </TabsTrigger>
         </TabsList>
 
@@ -71,6 +75,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
 
         <TabsContent value="data-collection" className="space-y-0">
           <AdminDataCollectionContent />
+        </TabsContent>
+
+        <TabsContent value="team-management">
+          <TeamManagementTab />
         </TabsContent>
 
         <TabsContent value="ai">
