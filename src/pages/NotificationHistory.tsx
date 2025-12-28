@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Check, ArrowLeft } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Check, ArrowLeft, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,7 @@ export default function NotificationHistory() {
     
     if (notification.link) {
       navigate(notification.link);
-    } else if (notification.type === 'contract_update') {
+    } else if (notification.type === 'contract_update' || notification.type === 'payment') {
       navigate('/contracts');
     } else if (notification.type === 'ticket_update') {
       navigate('/tickets');
@@ -38,6 +38,8 @@ export default function NotificationHistory() {
         return <MessageSquare className="h-4 w-4" />;
       case 'contract_update':
         return <FileText className="h-4 w-4" />;
+      case 'payment':
+        return <Wallet className="h-4 w-4" />;
       default:
         return <CalendarClock className="h-4 w-4" />;
     }
@@ -51,6 +53,8 @@ export default function NotificationHistory() {
         return 'bg-blue-100 text-blue-700';
       case 'contract_update':
         return 'bg-emerald-100 text-emerald-700';
+      case 'payment':
+        return 'bg-amber-100 text-amber-700';
       default:
         return 'bg-primary/10 text-primary';
     }

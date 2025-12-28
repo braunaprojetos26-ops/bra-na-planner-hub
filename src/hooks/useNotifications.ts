@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface Notification {
   id: string;
-  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update';
+  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment';
   title: string;
   description: string;
   createdAt: Date;
@@ -32,7 +32,7 @@ export function useNotifications() {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .in('type', ['ticket_update', 'contract_update'])
+        .in('type', ['ticket_update', 'contract_update', 'payment'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -108,7 +108,7 @@ export function useNotifications() {
 
     // DB notifications (tickets and contracts)
     dbNotifications.forEach((notif) => {
-      const notifType = notif.type as 'ticket_update' | 'contract_update';
+      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment';
       notifs.push({
         id: `db-${notif.id}`,
         type: notifType,
@@ -132,8 +132,9 @@ export function useNotifications() {
   const overdueCount = notifications.filter((n) => n.type === 'task_overdue').length;
   const ticketCount = notifications.filter((n) => n.type === 'ticket_update').length;
   const contractCount = notifications.filter((n) => n.type === 'contract_update').length;
+  const paymentCount = notifications.filter((n) => n.type === 'payment').length;
   
-  // dbUnreadCount = only database notifications (tickets + contracts) that can be marked as read
+  // dbUnreadCount = only database notifications (tickets + contracts + payments) that can be marked as read
   const dbUnreadCount = dbNotifications.length;
 
   return {
@@ -142,6 +143,7 @@ export function useNotifications() {
     overdueCount,
     ticketCount,
     contractCount,
+    paymentCount,
     dbUnreadCount,
     totalCount: notifications.length,
     isLoading: tasksLoading || dbLoading,
