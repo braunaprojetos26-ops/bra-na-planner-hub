@@ -58,7 +58,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 // Funnel ID for "VENDA - PLANEJAMENTO"
-const VENDA_PLANEJAMENTO_FUNNEL_ID = 'c2c80b13-b0a6-48a9-aca2-fc36c12c73f3';
+const VENDA_PLANEJAMENTO_FUNNEL_ID = '22222222-2222-2222-2222-222222222222';
 
 interface ScheduleMeetingModalProps {
   open: boolean;
