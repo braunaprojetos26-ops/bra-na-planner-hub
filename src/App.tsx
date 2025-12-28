@@ -28,6 +28,7 @@ import Team from "./pages/Team";
 import Tickets from "./pages/Tickets";
 import MeuFuturo from "./pages/MeuFuturo";
 import NotificationHistory from "./pages/NotificationHistory";
+import OpportunityMap from "./pages/OpportunityMap";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/admin/diagnostic" element={<Navigate to="/admin/settings" replace state={{ tab: 'ai' }} />} />
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
+              <Route path="/analytics/opportunity-map" element={<ProtectedPage><OpportunityMap /></ProtectedPage>} />
               <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
               <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
               <Route path="/wiki/:categorySlug/:folderId" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
