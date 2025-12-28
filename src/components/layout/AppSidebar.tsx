@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -12,6 +13,9 @@ import {
   BarChart3,
   BookOpen,
   Headphones,
+  ChevronDown,
+  ChevronRight,
+  Map,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -37,10 +41,14 @@ const mainNavItems = [
   { title: 'Clientes', url: '/clients', icon: Briefcase },
   { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { title: 'Contratos', url: '/contracts', icon: FileText },
-  { title: 'Análises', url: '/analytics', icon: BarChart3 },
   { title: 'Wiki', url: '/wiki', icon: BookOpen },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
   { title: 'Chamados', url: '/tickets', icon: Headphones },
+];
+
+const analyticsSubItems = [
+  { title: 'Dashboard de Funis', url: '/analytics', icon: BarChart3 },
+  { title: 'Mapa de Oportunidades', url: '/analytics/opportunity-map', icon: Map },
 ];
 
 const teamNavItems = [
@@ -59,11 +67,16 @@ export function AppSidebar() {
   const location = useLocation();
   const { role } = useAuth();
   const { isImpersonating } = useActingUser();
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(
+    location.pathname.startsWith('/analytics')
+  );
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
+
+  const isAnalyticsActive = location.pathname.startsWith('/analytics');
 
   const canSeeTeam = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const canSeeManagement = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
@@ -107,6 +120,41 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Análises with expandable submenu */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isAnalyticsActive}
+                  onClick={() => setAnalyticsExpanded(!analyticsExpanded)}
+                  className="flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="h-4 w-4" />
+                    <span>Análises</span>
+                  </div>
+                  {analyticsExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {analyticsExpanded && analyticsSubItems.map((subItem) => (
+                <SidebarMenuItem key={subItem.title}>
+                  <SidebarMenuButton asChild isActive={location.pathname === subItem.url}>
+                    <NavLink 
+                      to={subItem.url}
+                      className="flex items-center gap-3 px-3 py-2 pl-9 rounded-md transition-colors text-sm"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <subItem.icon className="h-4 w-4" />
+                      <span>{subItem.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+
               {canSeeTeam && teamNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
