@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,10 +17,10 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const markRead = useMarkNotificationRead();
 
   const handleClick = async () => {
-    if ((notification.type === 'ticket_update' || notification.type === 'contract_update') && notification.link) {
+    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment') && notification.link) {
       await markRead(notification.id);
       navigate(notification.link);
-    } else if (notification.type === 'contract_update') {
+    } else if (notification.type === 'contract_update' || notification.type === 'payment') {
       await markRead(notification.id);
       navigate('/contracts');
     } else {
@@ -32,6 +32,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const isOverdue = notification.type === 'task_overdue';
   const isTicket = notification.type === 'ticket_update';
   const isContract = notification.type === 'contract_update';
+  const isPayment = notification.type === 'payment';
 
   return (
     <button
@@ -47,6 +48,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           isOverdue ? 'bg-destructive/10 text-destructive' : 
           isTicket ? 'bg-blue-100 text-blue-700' :
           isContract ? 'bg-emerald-100 text-emerald-700' :
+          isPayment ? 'bg-amber-100 text-amber-700' :
           'bg-primary/10 text-primary'
         )}
       >
@@ -56,6 +58,8 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           <MessageSquare className="h-4 w-4" />
         ) : isContract ? (
           <FileText className="h-4 w-4" />
+        ) : isPayment ? (
+          <Wallet className="h-4 w-4" />
         ) : (
           <CalendarClock className="h-4 w-4" />
         )}
@@ -72,7 +76,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, contractCount, dbUnreadCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, dbUnreadCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -127,7 +131,7 @@ export function NotificationCenter() {
           )}
           
           {/* DB notifications section */}
-          {(ticketCount > 0 || contractCount > 0) && (
+          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0) && (
             <div className="flex gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
               {ticketCount > 0 && (
                 <span className="flex items-center gap-1 text-blue-600">
@@ -139,6 +143,12 @@ export function NotificationCenter() {
                 <span className="flex items-center gap-1 text-emerald-600">
                   <FileText className="h-3 w-3" />
                   {contractCount} contrato{contractCount > 1 ? 's' : ''}
+                </span>
+              )}
+              {paymentCount > 0 && (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <Wallet className="h-3 w-3" />
+                  {paymentCount} pagamento{paymentCount > 1 ? 's' : ''}
                 </span>
               )}
             </div>
