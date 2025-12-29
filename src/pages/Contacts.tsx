@@ -106,10 +106,7 @@ export default function Contacts() {
     const result = contacts.filter(contact => {
       const matchesSearch = !searchTerm ||
         normalizeString(contact.full_name).includes(searchNormalized) ||
-        normalizeString(contact.owner?.full_name || '').includes(searchNormalized) ||
         normalizeString(contact.email || '').includes(searchNormalized) ||
-        normalizeString(contact.source_detail || '').includes(searchNormalized) ||
-        normalizeString(contact.campaign || '').includes(searchNormalized) ||
         normalizeString(contact.client_code || '').includes(searchNormalized) ||
         contact.phone.includes(searchTerm) ||
         contact.cpf?.replace(/\D/g, '').includes(searchClean) ||
@@ -149,13 +146,7 @@ export default function Contacts() {
         if (name === searchNormalized) return 0;
         if (name.startsWith(searchNormalized)) return 1;
         if (name.includes(searchNormalized)) return 2;
-        const owner = normalizeString(c.owner?.full_name || '');
-        if (owner === searchNormalized) return 3;
-        if (owner.startsWith(searchNormalized)) return 4;
-        if (owner.includes(searchNormalized)) return 5;
-        const sourceDetail = normalizeString(c.source_detail || '');
-        if (sourceDetail.includes(searchNormalized)) return 6;
-        return 7;
+        return 3;
       };
 
       return [...result].sort((a, b) => score(a) - score(b));
