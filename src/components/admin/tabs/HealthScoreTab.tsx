@@ -5,19 +5,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, Download, FileSpreadsheet, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, CheckCircle, XCircle, Loader2, Play, Camera } from 'lucide-react';
 import { useNpsImport, useNpsImportHistory } from '@/hooks/useNpsImport';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function HealthScoreTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewData, setPreviewData] = useState<Array<{ email: string; npsValue: number; responseDate: string }>>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [isGeneratingSnapshots, setIsGeneratingSnapshots] = useState(false);
   
   const { importNps, isImporting, importResult } = useNpsImport();
   const { data: importHistory } = useNpsImportHistory();
+
+  const handleGenerateSnapshots = async () => {
+    setIsGeneratingSnapshots(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('save-health-snapshots');
+      
+      if (error) throw error;
+      
+      toast.success(`Snapshots gerados: ${data.count} clientes processados`);
+    } catch (err) {
+      console.error('Error generating snapshots:', err);
+      toast.error('Erro ao gerar snapshots');
+    } finally {
+      setIsGeneratingSnapshots(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,6 +115,28 @@ export function HealthScoreTab() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5" />
+            Snapshots Diários
+          </CardTitle>
+          <CardDescription>
+            Os snapshots são gerados automaticamente todos os dias às 3h. Use o botão abaixo para gerar manualmente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleGenerateSnapshots} disabled={isGeneratingSnapshots}>
+            {isGeneratingSnapshots ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            Gerar Snapshots Agora
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
