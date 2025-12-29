@@ -16,6 +16,7 @@ import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityMo
 import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
 import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
+import { ContactProposalsSection } from '@/components/contacts/ContactProposalsSection';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import { useActingUser } from '@/contexts/ActingUserContext';
@@ -380,6 +381,9 @@ export default function ContactDetail() {
       
       {/* Meeting Minutes Section */}
       {contactId && contact && <MeetingMinutesList contactId={contactId} contactName={contact.full_name} />}
+
+      {/* Proposals Section */}
+      {contactId && contact && <ContactProposalsSection contactId={contactId} contactName={contact.full_name} />}
 
 
       {/* Contract Section - Placeholder */}
