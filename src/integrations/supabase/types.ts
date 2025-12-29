@@ -1830,6 +1830,87 @@ export type Database = {
           },
         ]
       }
+      planner_cases: {
+        Row: {
+          advantage: number | null
+          created_at: string
+          description: string | null
+          final_value: number | null
+          id: string
+          initial_value: number | null
+          is_active: boolean
+          order_position: number
+          planner_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          advantage?: number | null
+          created_at?: string
+          description?: string | null
+          final_value?: number | null
+          id?: string
+          initial_value?: number | null
+          is_active?: boolean
+          order_position?: number
+          planner_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          advantage?: number | null
+          created_at?: string
+          description?: string | null
+          final_value?: number | null
+          id?: string
+          initial_value?: number | null
+          is_active?: boolean
+          order_position?: number
+          planner_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      planner_feedbacks: {
+        Row: {
+          client_name: string
+          created_at: string
+          feedback_text: string | null
+          id: string
+          is_active: boolean
+          media_type: string | null
+          media_url: string | null
+          order_position: number
+          planner_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          is_active?: boolean
+          media_type?: string | null
+          media_url?: string | null
+          order_position?: number
+          planner_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          is_active?: boolean
+          media_type?: string | null
+          media_url?: string | null
+          order_position?: number
+          planner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       planner_goals: {
         Row: {
           created_at: string | null
@@ -2076,6 +2157,96 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      proposals: {
+        Row: {
+          base_value: number
+          complexity: number
+          contact_id: string
+          created_at: string
+          created_by: string
+          diagnostic_score: number | null
+          diagnostic_scores: Json | null
+          discount_applied: boolean
+          final_value: number
+          id: string
+          installment_value: number
+          installments: number
+          meetings: number
+          monthly_income: number
+          months_of_income: number
+          opportunity_id: string | null
+          presented_at: string | null
+          proposal_type: string
+          show_cases: boolean
+          show_feedbacks: boolean
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          base_value: number
+          complexity?: number
+          contact_id: string
+          created_at?: string
+          created_by: string
+          diagnostic_score?: number | null
+          diagnostic_scores?: Json | null
+          discount_applied?: boolean
+          final_value: number
+          id?: string
+          installment_value: number
+          installments: number
+          meetings: number
+          monthly_income: number
+          months_of_income: number
+          opportunity_id?: string | null
+          presented_at?: string | null
+          proposal_type?: string
+          show_cases?: boolean
+          show_feedbacks?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          base_value?: number
+          complexity?: number
+          contact_id?: string
+          created_at?: string
+          created_by?: string
+          diagnostic_score?: number | null
+          diagnostic_scores?: Json | null
+          discount_applied?: boolean
+          final_value?: number
+          id?: string
+          installment_value?: number
+          installments?: number
+          meetings?: number
+          monthly_income?: number
+          months_of_income?: number
+          opportunity_id?: string | null
+          presented_at?: string | null
+          proposal_type?: string
+          show_cases?: boolean
+          show_feedbacks?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       renewal_opportunities_created: {
         Row: {
