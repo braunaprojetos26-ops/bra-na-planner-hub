@@ -186,7 +186,7 @@ export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMe
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Portfolio Health Index</span>
+              <span className="text-sm text-muted-foreground">Health Score médio</span>
               <Target className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className="text-4xl font-bold mt-2">{summary.averageScore}</p>
