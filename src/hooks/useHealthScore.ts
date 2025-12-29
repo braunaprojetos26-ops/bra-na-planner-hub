@@ -33,6 +33,7 @@ export interface HealthScoreSummary {
 
 export interface UseHealthScoreFilters {
   ownerId?: string;
+  ownerIds?: string[];
   contactIds?: string[];
 }
 
@@ -40,11 +41,12 @@ export function useHealthScore(filters?: UseHealthScoreFilters) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['health-score', filters?.ownerId, filters?.contactIds],
+    queryKey: ['health-score', filters?.ownerId, filters?.ownerIds, filters?.contactIds],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('calculate-health-score', {
         body: {
           ownerId: filters?.ownerId,
+          ownerIds: filters?.ownerIds,
           contactIds: filters?.contactIds,
         },
       });

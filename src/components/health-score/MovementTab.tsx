@@ -11,7 +11,9 @@ import { useState, useMemo } from 'react';
 import { Sankey, Tooltip, Layer, Rectangle } from 'recharts';
 
 interface MovementTabProps {
-  ownerId?: string;
+  ownerIds?: string[];
+  startDate?: Date;
+  endDate?: Date;
 }
 
 interface Movement {
@@ -50,8 +52,9 @@ const SankeyNode = ({ x, y, width, height, index, payload }: any) => {
   );
 };
 
-export function MovementTab({ ownerId }: MovementTabProps) {
+export function MovementTab({ ownerIds, startDate, endDate }: MovementTabProps) {
   const [period, setPeriod] = useState<Period>('7d');
+  const hasCustomDateRange = startDate && endDate;
 
   const getPeriodDays = () => {
     switch (period) {
@@ -62,11 +65,17 @@ export function MovementTab({ ownerId }: MovementTabProps) {
     }
   };
 
+  const getDateRange = () => {
+    if (hasCustomDateRange) {
+      return { today: format(endDate, 'yyyy-MM-dd'), pastDate: format(startDate, 'yyyy-MM-dd') };
+    }
+    return { today: format(new Date(), 'yyyy-MM-dd'), pastDate: format(subDays(new Date(), getPeriodDays()), 'yyyy-MM-dd') };
+  };
+
   const { data: movements, isLoading } = useQuery({
-    queryKey: ['health-score-movements', ownerId, period],
+    queryKey: ['health-score-movements', ownerIds, period, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const pastDate = format(subDays(new Date(), getPeriodDays()), 'yyyy-MM-dd');
+      const { today, pastDate } = getDateRange();
 
       // Get today's snapshots
       let todayQuery = supabase
@@ -74,8 +83,8 @@ export function MovementTab({ ownerId }: MovementTabProps) {
         .select('contact_id, category, total_score')
         .eq('snapshot_date', today);
 
-      if (ownerId) {
-        todayQuery = todayQuery.eq('owner_id', ownerId);
+      if (ownerIds && ownerIds.length > 0) {
+        todayQuery = todayQuery.in('owner_id', ownerIds);
       }
 
       const { data: todayData, error: todayError } = await todayQuery;
@@ -87,8 +96,8 @@ export function MovementTab({ ownerId }: MovementTabProps) {
         .select('contact_id, category, total_score')
         .eq('snapshot_date', pastDate);
 
-      if (ownerId) {
-        pastQuery = pastQuery.eq('owner_id', ownerId);
+      if (ownerIds && ownerIds.length > 0) {
+        pastQuery = pastQuery.in('owner_id', ownerIds);
       }
 
       const { data: pastData, error: pastError } = await pastQuery;

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategoryCard } from '@/components/health-score/CategoryCard';
 import { ClientDrawer } from '@/components/health-score/ClientDrawer';
 import { ScoreDonutChart } from '@/components/health-score/ScoreDonutChart';
-import { FilterBar } from '@/components/health-score/FilterBar';
+import { FilterBar, HealthScoreFilters } from '@/components/health-score/FilterBar';
 import { PillarAnalysisTab } from '@/components/health-score/PillarAnalysisTab';
 import { TemporalEvolutionTab } from '@/components/health-score/TemporalEvolutionTab';
 import { MovementTab } from '@/components/health-score/MovementTab';
@@ -17,12 +17,12 @@ import { cn } from '@/lib/utils';
 
 export default function HealthScore() {
   const navigate = useNavigate();
-  const [selectedOwnerId, setSelectedOwnerId] = useState<string | undefined>();
+  const [filters, setFilters] = useState<HealthScoreFilters>({});
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const { data, isLoading, refetch, isFetching } = useHealthScore({
-    ownerId: selectedOwnerId,
+    ownerIds: filters.ownerIds,
   });
 
   const handleCategoryClick = (category: CategoryKey) => {
@@ -73,8 +73,8 @@ export default function HealthScore() {
 
       {/* Filters */}
       <FilterBar 
-        selectedOwnerId={selectedOwnerId}
-        onOwnerChange={setSelectedOwnerId}
+        filters={filters}
+        onFiltersChange={setFilters}
       />
 
       <Tabs defaultValue="dashboard" className="space-y-6">
@@ -177,11 +177,19 @@ export default function HealthScore() {
         </TabsContent>
 
         <TabsContent value="temporal">
-          <TemporalEvolutionTab ownerId={selectedOwnerId} />
+          <TemporalEvolutionTab 
+            ownerIds={filters.ownerIds}
+            startDate={filters.startDate}
+            endDate={filters.endDate}
+          />
         </TabsContent>
 
         <TabsContent value="movement">
-          <MovementTab ownerId={selectedOwnerId} />
+          <MovementTab 
+            ownerIds={filters.ownerIds}
+            startDate={filters.startDate}
+            endDate={filters.endDate}
+          />
         </TabsContent>
 
         <TabsContent value="portfolio">

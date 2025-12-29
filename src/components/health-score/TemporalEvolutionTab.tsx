@@ -10,15 +10,23 @@ import { CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
 import { TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
 
 interface TemporalEvolutionTabProps {
-  ownerId?: string;
+  ownerIds?: string[];
+  startDate?: Date;
+  endDate?: Date;
 }
 
 type Period = '7d' | '30d' | '90d' | '6m' | '1y';
 
-export function TemporalEvolutionTab({ ownerId }: TemporalEvolutionTabProps) {
+export function TemporalEvolutionTab({ ownerIds, startDate, endDate }: TemporalEvolutionTabProps) {
+  const hasCustomDateRange = startDate && endDate;
   const [period, setPeriod] = useState<Period>('30d');
 
   const getDateRange = () => {
+    // Use custom date range from filters if available
+    if (hasCustomDateRange) {
+      return { start: startDate, end: endDate };
+    }
+    
     const end = new Date();
     let start: Date;
     
@@ -35,7 +43,7 @@ export function TemporalEvolutionTab({ ownerId }: TemporalEvolutionTabProps) {
   };
 
   const { data: snapshots, isLoading } = useQuery({
-    queryKey: ['health-score-snapshots', ownerId, period],
+    queryKey: ['health-score-snapshots', ownerIds, period, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       const { start, end } = getDateRange();
       
@@ -46,8 +54,8 @@ export function TemporalEvolutionTab({ ownerId }: TemporalEvolutionTabProps) {
         .lte('snapshot_date', format(end, 'yyyy-MM-dd'))
         .order('snapshot_date', { ascending: true });
 
-      if (ownerId) {
-        query = query.eq('owner_id', ownerId);
+      if (ownerIds && ownerIds.length > 0) {
+        query = query.in('owner_id', ownerIds);
       }
 
       const { data, error } = await query;
