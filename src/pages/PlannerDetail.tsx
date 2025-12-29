@@ -17,6 +17,8 @@ import { BehavioralProfileUpload } from '@/components/team-management/Behavioral
 import { BehavioralProfileView } from '@/components/team-management/BehavioralProfileView';
 import { GoalsSection } from '@/components/team-management/GoalsSection';
 import { MeetingsSection } from '@/components/team-management/MeetingsSection';
+import { PlannerFeedbacksManager } from '@/components/team-management/PlannerFeedbacksManager';
+import { PlannerCasesManager } from '@/components/team-management/PlannerCasesManager';
 
 export default function PlannerDetail() {
   const { userId } = useParams<{ userId: string }>();
@@ -80,6 +82,7 @@ export default function PlannerDetail() {
           <TabsTrigger value="profile">Perfil Comportamental</TabsTrigger>
           <TabsTrigger value="meetings">Reuniões 1:1</TabsTrigger>
           <TabsTrigger value="goals">Sonhos e Objetivos</TabsTrigger>
+          <TabsTrigger value="proposals">Propostas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -134,6 +137,11 @@ export default function PlannerDetail() {
 
         <TabsContent value="goals">
           <GoalsSection userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="proposals" className="space-y-6">
+          <PlannerFeedbacksManager />
+          <PlannerCasesManager />
         </TabsContent>
       </Tabs>
     </div>
