@@ -86,14 +86,7 @@ export default function HealthScore() {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          {/* Portfolio Metrics integrated into Dashboard */}
-          <PortfolioMetricsTab 
-            results={data?.results || []}
-            summary={data?.summary}
-            isLoading={isLoading}
-          />
-
-          {/* Category Cards */}
+          {/* Category Cards at Top */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {(['otimo', 'estavel', 'atencao', 'critico'] as CategoryKey[]).map((category) => (
               <CategoryCard
@@ -107,6 +100,13 @@ export default function HealthScore() {
               />
             ))}
           </div>
+
+          {/* Portfolio Metrics below Category Cards */}
+          <PortfolioMetricsTab 
+            results={data?.results || []}
+            summary={data?.summary}
+            isLoading={isLoading}
+          />
         </TabsContent>
 
         <TabsContent value="analytics">
