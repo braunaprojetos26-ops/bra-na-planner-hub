@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Edit2, Trash2, FileText, BookOpen, GripVertical } from 'lucide-react';
 import { 
   useAllMeetingTemplates, 
   useCreateMeetingTemplate, 
   useUpdateMeetingTemplate, 
-  useDeleteMeetingTemplate 
+  useDeleteMeetingTemplate,
+  MeetingTopic,
 } from '@/hooks/useMeetingTemplates';
 import { 
   useAllLeadershipKnowledge, 
@@ -23,6 +25,7 @@ import {
   useDeleteLeadershipKnowledge,
   type KnowledgeCategory
 } from '@/hooks/useLeadershipKnowledge';
+import { TopicEditorSection } from './TopicEditorSection';
 import { toast } from 'sonner';
 
 export function TeamManagementTab() {
@@ -70,14 +73,18 @@ function MeetingTemplatesSection() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    templateContent: '',
+    topics: [] as MeetingTopic[],
     orderPosition: 0,
     isActive: true,
   });
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.templateContent) {
-      toast.error('Preencha nome e conteúdo do modelo');
+    if (!formData.name) {
+      toast.error('Preencha o nome do modelo');
+      return;
+    }
+    if (formData.topics.length === 0) {
+      toast.error('Adicione pelo menos um tópico ao roteiro');
       return;
     }
 
@@ -87,7 +94,7 @@ function MeetingTemplatesSection() {
           id: editingTemplate.id,
           name: formData.name,
           description: formData.description,
-          templateContent: formData.templateContent,
+          topics: formData.topics,
           orderPosition: formData.orderPosition,
           isActive: formData.isActive,
         });
@@ -96,7 +103,7 @@ function MeetingTemplatesSection() {
         await createTemplate.mutateAsync({
           name: formData.name,
           description: formData.description,
-          templateContent: formData.templateContent,
+          topics: formData.topics,
           orderPosition: formData.orderPosition,
         });
         toast.success('Modelo criado');
@@ -111,7 +118,7 @@ function MeetingTemplatesSection() {
     setFormData({
       name: '',
       description: '',
-      templateContent: '',
+      topics: [],
       orderPosition: templates?.length || 0,
       isActive: true,
     });
@@ -124,7 +131,7 @@ function MeetingTemplatesSection() {
     setFormData({
       name: template.name,
       description: template.description || '',
-      templateContent: template.templateContent,
+      topics: template.topics || [],
       orderPosition: template.orderPosition,
       isActive: template.isActive,
     });
@@ -150,7 +157,7 @@ function MeetingTemplatesSection() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">
-          Modelos de pauta para reuniões 1:1. A IA usará esses modelos para preparar as reuniões.
+          Modelos de roteiro para reuniões 1:1. Cada tópico será um item de checklist para o líder.
         </p>
         <Dialog open={isOpen} onOpenChange={(open) => {
           if (!open) resetForm();
@@ -162,72 +169,68 @@ function MeetingTemplatesSection() {
               Novo Modelo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>
                 {editingTemplate ? 'Editar Modelo' : 'Novo Modelo de Reunião'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <ScrollArea className="max-h-[70vh] pr-4">
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nome do Modelo</Label>
+                    <Input
+                      placeholder="Ex: Reunião Mensal de Resultados"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ordem</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={formData.orderPosition}
+                      onChange={(e) => setFormData({ ...formData, orderPosition: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label>Nome do Modelo</Label>
+                  <Label>Descrição (opcional)</Label>
                   <Input
-                    placeholder="Ex: Reunião Mensal de Resultados"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Breve descrição do objetivo deste modelo"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Ordem</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formData.orderPosition}
-                    onChange={(e) => setFormData({ ...formData, orderPosition: parseInt(e.target.value) || 0 })}
-                  />
+
+                <TopicEditorSection
+                  topics={formData.topics}
+                  onChange={(topics) => setFormData({ ...formData, topics })}
+                />
+
+                {editingTemplate && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.isActive}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                    />
+                    <Label>Modelo ativo</Label>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={resetForm}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSubmit}>
+                    {editingTemplate ? 'Salvar' : 'Criar Modelo'}
+                  </Button>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label>Descrição (opcional)</Label>
-                <Input
-                  placeholder="Breve descrição do objetivo deste modelo"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Conteúdo do Modelo</Label>
-                <Textarea
-                  placeholder={`# Pauta da Reunião\n\n## 1. Abertura\n- Check-in emocional\n- Como você está?\n\n## 2. Resultados\n- Métricas do período\n- Desafios encontrados\n\n## 3. Desenvolvimento\n- Pontos a desenvolver\n- Feedback\n\n## 4. Próximos Passos\n- Acordos\n- Compromissos`}
-                  className="min-h-[300px] font-mono text-sm"
-                  value={formData.templateContent}
-                  onChange={(e) => setFormData({ ...formData, templateContent: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use markdown para formatar. A IA vai personalizar este modelo com base no perfil do planejador.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                />
-                <Label>Modelo ativo</Label>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={resetForm}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSubmit}>
-                  {editingTemplate ? 'Salvar' : 'Criar Modelo'}
-                </Button>
-              </div>
-            </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
@@ -237,7 +240,7 @@ function MeetingTemplatesSection() {
           <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground">Nenhum modelo cadastrado</p>
           <p className="text-sm text-muted-foreground">
-            Crie modelos de reunião para padronizar as pautas 1:1
+            Crie modelos de reunião para padronizar os roteiros 1:1
           </p>
         </div>
       ) : (
@@ -248,10 +251,13 @@ function MeetingTemplatesSection() {
               className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/5 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{template.name}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {template.topics?.length || 0} tópicos
+                    </Badge>
                     {!template.isActive && (
                       <Badge variant="secondary">Inativo</Badge>
                     )}
@@ -491,30 +497,18 @@ function KnowledgeBaseSection() {
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{categoryLabels[item.category]}</Badge>
                   <span className="font-medium">{item.title}</span>
-                  {!item.isActive && (
-                    <Badge variant="secondary">Inativo</Badge>
-                  )}
+                  {!item.isActive && <Badge variant="secondary">Inativo</Badge>}
                 </div>
                 {item.source && (
                   <p className="text-sm text-muted-foreground">Fonte: {item.source}</p>
                 )}
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {item.content}
-                </p>
+                <p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEdit(item)}
-                >
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
                   <Edit2 className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(item.id)}
-                >
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>

@@ -13,18 +13,27 @@ export interface LeaderInputs {
   notes?: string;
 }
 
+export interface TopicResponse {
+  completed: boolean;
+  notes: string;
+}
+
+export type TopicResponses = Record<string, TopicResponse>;
+
 export interface OneOnOneMeeting {
   id: string;
   plannerId: string;
   leaderId: string;
   templateId: string | null;
   templateName?: string;
+  templateTopics?: Array<{ id: string; title: string; description: string; orderPosition: number }>;
   scheduledDate: string | null;
   completedAt: string | null;
   status: MeetingStatus;
   notes: string | null;
   aiPreparation: string | null;
   leaderInputs: LeaderInputs;
+  topicResponses: TopicResponses;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,7 +46,7 @@ export function useOneOnOneMeetings(plannerId: string) {
         .from('one_on_one_meetings')
         .select(`
           *,
-          template:leadership_meeting_templates(name)
+          template:leadership_meeting_templates(name, topics)
         `)
         .eq('planner_id', plannerId)
         .order('scheduled_date', { ascending: false });
@@ -50,12 +59,14 @@ export function useOneOnOneMeetings(plannerId: string) {
         leaderId: meeting.leader_id,
         templateId: meeting.template_id,
         templateName: meeting.template?.name,
+        templateTopics: (Array.isArray(meeting.template?.topics) ? meeting.template.topics : []) as OneOnOneMeeting['templateTopics'],
         scheduledDate: meeting.scheduled_date,
         completedAt: meeting.completed_at,
         status: meeting.status as MeetingStatus,
         notes: meeting.notes,
         aiPreparation: meeting.ai_preparation,
         leaderInputs: (meeting.leader_inputs as LeaderInputs) || {},
+        topicResponses: (typeof meeting.topic_responses === 'object' && meeting.topic_responses !== null && !Array.isArray(meeting.topic_responses) ? meeting.topic_responses : {}) as unknown as TopicResponses,
         createdAt: meeting.created_at,
         updatedAt: meeting.updated_at,
       })) as OneOnOneMeeting[];
@@ -111,6 +122,7 @@ export function useUpdateOneOnOneMeeting() {
       notes?: string;
       aiPreparation?: string;
       leaderInputs?: LeaderInputs;
+      topicResponses?: TopicResponses;
       completedAt?: string;
     }) => {
       const updateData: Record<string, unknown> = {};
@@ -120,6 +132,7 @@ export function useUpdateOneOnOneMeeting() {
       if (data.notes !== undefined) updateData.notes = data.notes;
       if (data.aiPreparation !== undefined) updateData.ai_preparation = data.aiPreparation;
       if (data.leaderInputs !== undefined) updateData.leader_inputs = data.leaderInputs as Json;
+      if (data.topicResponses !== undefined) updateData.topic_responses = data.topicResponses as unknown as Json;
       if (data.completedAt !== undefined) updateData.completed_at = data.completedAt;
 
       const { error } = await supabase

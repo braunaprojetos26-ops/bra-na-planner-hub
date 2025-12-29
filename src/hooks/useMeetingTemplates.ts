@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
+
+export interface MeetingTopic {
+  id: string;
+  title: string;
+  description: string;
+  orderPosition: number;
+}
 
 export interface MeetingTemplate {
   id: string;
@@ -9,6 +17,7 @@ export interface MeetingTemplate {
   description: string | null;
   orderPosition: number;
   templateContent: string;
+  topics: MeetingTopic[];
   isActive: boolean;
   createdBy: string | null;
   createdAt: string;
@@ -33,6 +42,7 @@ export function useMeetingTemplates() {
         description: template.description,
         orderPosition: template.order_position,
         templateContent: template.template_content,
+        topics: (Array.isArray(template.topics) ? template.topics : []) as unknown as MeetingTopic[],
         isActive: template.is_active,
         createdBy: template.created_by,
         createdAt: template.created_at,
@@ -59,6 +69,7 @@ export function useAllMeetingTemplates() {
         description: template.description,
         orderPosition: template.order_position,
         templateContent: template.template_content,
+        topics: (Array.isArray(template.topics) ? template.topics : []) as unknown as MeetingTopic[],
         isActive: template.is_active,
         createdBy: template.created_by,
         createdAt: template.created_at,
@@ -76,18 +87,22 @@ export function useCreateMeetingTemplate() {
     mutationFn: async (data: {
       name: string;
       description?: string;
-      templateContent: string;
+      templateContent?: string;
+      topics?: MeetingTopic[];
       orderPosition?: number;
     }) => {
+      const insertData = {
+        name: data.name,
+        description: data.description || null,
+        template_content: data.templateContent || '',
+        topics: (data.topics || []) as unknown as Json,
+        order_position: data.orderPosition || 0,
+        created_by: user!.id,
+      };
+
       const { error } = await supabase
         .from('leadership_meeting_templates')
-        .insert({
-          name: data.name,
-          description: data.description || null,
-          template_content: data.templateContent,
-          order_position: data.orderPosition || 0,
-          created_by: user!.id,
-        });
+        .insert(insertData);
       
       if (error) throw error;
     },
@@ -111,6 +126,7 @@ export function useUpdateMeetingTemplate() {
       name?: string;
       description?: string;
       templateContent?: string;
+      topics?: MeetingTopic[];
       orderPosition?: number;
       isActive?: boolean;
     }) => {
@@ -118,6 +134,7 @@ export function useUpdateMeetingTemplate() {
       if (data.name !== undefined) updateData.name = data.name;
       if (data.description !== undefined) updateData.description = data.description;
       if (data.templateContent !== undefined) updateData.template_content = data.templateContent;
+      if (data.topics !== undefined) updateData.topics = data.topics;
       if (data.orderPosition !== undefined) updateData.order_position = data.orderPosition;
       if (data.isActive !== undefined) updateData.is_active = data.isActive;
 
