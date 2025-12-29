@@ -19,14 +19,14 @@ import type { Opportunity } from '@/types/opportunities';
 import type { FunnelStage } from '@/types/contacts';
 
 const stageColors: Record<string, string> = {
-  slate: 'bg-slate-100 border-slate-300',
-  blue: 'bg-blue-50 border-blue-300',
-  cyan: 'bg-cyan-50 border-cyan-300',
-  green: 'bg-green-50 border-green-300',
-  yellow: 'bg-yellow-50 border-yellow-300',
-  orange: 'bg-orange-50 border-orange-300',
-  purple: 'bg-purple-50 border-purple-300',
-  gray: 'bg-gray-100 border-gray-300',
+  slate: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600',
+  blue: 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700',
+  cyan: 'bg-cyan-50 dark:bg-cyan-900/30 border-cyan-300 dark:border-cyan-700',
+  green: 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700',
+  yellow: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700',
+  orange: 'bg-orange-50 dark:bg-orange-900/30 border-orange-300 dark:border-orange-700',
+  purple: 'bg-purple-50 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700',
+  gray: 'bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600',
 };
 
 const stageHeaderColors: Record<string, string> = {
