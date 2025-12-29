@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, Calendar, CalendarCheck, DollarSign, Briefcase, Shield, TrendingUp, CreditCard } from 'lucide-react';
+import { Users, Calendar, CalendarCheck, DollarSign, Briefcase, Shield, TrendingUp, CreditCard, HeartPulse } from 'lucide-react';
 import type { ClientMetrics as ClientMetricsType } from '@/types/clients';
+import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
 
 interface ClientMetricsProps {
   metrics: ClientMetricsType | undefined;
@@ -17,6 +19,13 @@ function formatCurrency(value: number): string {
 }
 
 export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
+  const navigate = useNavigate();
+  const { data: healthData, isLoading: isHealthLoading } = useHealthScore();
+
+  const averageScore = healthData?.summary?.averageScore ?? 0;
+  const category = averageScore >= 75 ? 'otimo' : averageScore >= 50 ? 'estavel' : averageScore >= 30 ? 'atencao' : 'critico';
+  const categoryConfig = CATEGORY_CONFIG[category];
+
   const cards = [
     {
       title: 'Clientes Ativos',
@@ -92,6 +101,41 @@ export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
 
   return (
     <div className="space-y-4">
+      {/* Health Score Card */}
+      <Card 
+        className="cursor-pointer hover:shadow-md transition-shadow border-2"
+        style={{ borderColor: categoryConfig.color }}
+        onClick={() => navigate('/analytics/health-score')}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-lg ${categoryConfig.lightBg}`}>
+                <HeartPulse className={`h-6 w-6 ${categoryConfig.textColor}`} />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Health Score Médio da Carteira</p>
+                {isHealthLoading ? (
+                  <div className="h-8 w-24 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-3xl font-bold ${categoryConfig.textColor}`}>
+                      {Math.round(averageScore)}
+                    </span>
+                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${categoryConfig.lightBg} ${categoryConfig.textColor}`}>
+                      {categoryConfig.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="text-muted-foreground text-sm">
+              {healthData?.summary?.totalClients ?? 0} clientes →
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Cards de métricas gerais */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {cards.map((card) => (

@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, User, DollarSign, Calendar, Phone, Mail, ExternalLink } from 'lucide-react';
+import { ArrowLeft, User, DollarSign, Calendar, Phone, Mail, ExternalLink, HeartPulse, Star, Users, CreditCard, ShoppingBag, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { ClientMeetingsTimeline } from '@/components/clients/ClientMeetingsTimel
 import { ClientTasksSection } from '@/components/clients/ClientTasksSection';
 import { ClientMinutesSection } from '@/components/clients/ClientMinutesSection';
 import { useClientPlan } from '@/hooks/useClients';
+import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -23,6 +24,13 @@ export default function ClientDetail() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
   const { data: plan, isLoading } = useClientPlan(planId || '');
+  
+  // Fetch health score for this specific contact
+  const contactId = plan?.contact_id;
+  const { data: healthData, isLoading: isHealthLoading } = useHealthScore(
+    contactId ? { contactIds: [contactId] } : undefined
+  );
+  const clientHealth = healthData?.results?.[0];
 
   if (isLoading) {
     return (
@@ -122,6 +130,115 @@ export default function ClientDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Health Score Section */}
+      {contactId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <HeartPulse className="h-5 w-5" />
+              Health Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isHealthLoading ? (
+              <div className="h-32 bg-muted animate-pulse rounded" />
+            ) : clientHealth ? (
+              <div className="space-y-4">
+                {/* Overall Score */}
+                <div className="flex items-center gap-4">
+                  <div 
+                    className={`w-20 h-20 rounded-full flex items-center justify-center ${CATEGORY_CONFIG[clientHealth.category].lightBg}`}
+                  >
+                    <span className={`text-2xl font-bold ${CATEGORY_CONFIG[clientHealth.category].textColor}`}>
+                      {clientHealth.totalScore}
+                    </span>
+                  </div>
+                  <div>
+                    <span className={`text-lg font-semibold ${CATEGORY_CONFIG[clientHealth.category].textColor}`}>
+                      {CATEGORY_CONFIG[clientHealth.category].label}
+                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      Faixa: {CATEGORY_CONFIG[clientHealth.category].range} pontos
+                    </p>
+                  </div>
+                </div>
+
+                {/* Metrics Breakdown */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {/* NPS */}
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-xs font-medium">NPS</span>
+                    </div>
+                    <p className="text-lg font-bold">+{clientHealth.breakdown.nps.score} pts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientHealth.breakdown.nps.value !== null 
+                        ? `Nota: ${clientHealth.breakdown.nps.value}` 
+                        : 'Sem resposta'}
+                    </p>
+                  </div>
+
+                  {/* Indicações */}
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users className="h-4 w-4 text-blue-500" />
+                      <span className="text-xs font-medium">Indicações</span>
+                    </div>
+                    <p className="text-lg font-bold">+{clientHealth.breakdown.referrals.score} pts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientHealth.breakdown.referrals.count} indicaç{clientHealth.breakdown.referrals.count === 1 ? 'ão' : 'ões'}
+                    </p>
+                  </div>
+
+                  {/* Pagamento */}
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CreditCard className="h-4 w-4 text-green-500" />
+                      <span className="text-xs font-medium">Pagamento</span>
+                    </div>
+                    <p className="text-lg font-bold">+{clientHealth.breakdown.payment.score} pts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientHealth.breakdown.payment.status}
+                    </p>
+                  </div>
+
+                  {/* Cross-Sell */}
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingBag className="h-4 w-4 text-purple-500" />
+                      <span className="text-xs font-medium">Cross-Sell</span>
+                    </div>
+                    <p className="text-lg font-bold">+{clientHealth.breakdown.crossSell.score} pts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientHealth.breakdown.crossSell.extraProductsCount} produto{clientHealth.breakdown.crossSell.extraProductsCount === 1 ? '' : 's'} extra
+                    </p>
+                  </div>
+
+                  {/* Reuniões */}
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CalendarCheck className="h-4 w-4 text-orange-500" />
+                      <span className="text-xs font-medium">Reuniões</span>
+                    </div>
+                    <p className="text-lg font-bold">+{clientHealth.breakdown.meetings.score} pts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientHealth.breakdown.meetings.daysSinceLastMeeting !== null 
+                        ? `${clientHealth.breakdown.meetings.daysSinceLastMeeting} dias atrás`
+                        : 'Sem reuniões'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                Health Score não disponível para este cliente
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Meetings Timeline */}
       <Card>
