@@ -100,45 +100,71 @@ export default function Contacts() {
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
 
-    return contacts.filter(contact => {
-      const searchNormalized = normalizeString(searchTerm);
-      const searchClean = searchTerm.replace(/\D/g, '');
-      const matchesSearch = !searchTerm || 
+    const searchNormalized = normalizeString(searchTerm.trim());
+    const searchClean = searchTerm.replace(/\D/g, '');
+
+    const result = contacts.filter(contact => {
+      const matchesSearch = !searchTerm ||
         normalizeString(contact.full_name).includes(searchNormalized) ||
-        contact.phone.includes(searchTerm) ||
+        normalizeString(contact.owner?.full_name || '').includes(searchNormalized) ||
         normalizeString(contact.email || '').includes(searchNormalized) ||
+        normalizeString(contact.source_detail || '').includes(searchNormalized) ||
+        normalizeString(contact.campaign || '').includes(searchNormalized) ||
+        normalizeString(contact.client_code || '').includes(searchNormalized) ||
+        contact.phone.includes(searchTerm) ||
         contact.cpf?.replace(/\D/g, '').includes(searchClean) ||
         normalizeString(contact.rg || '').includes(searchNormalized);
 
       const matchesSource = filterSource === 'all' || contact.source === filterSource;
-      const matchesDirtyBase = filterDirtyBase === 'all' || 
+      const matchesDirtyBase = filterDirtyBase === 'all' ||
         (filterDirtyBase === 'yes' && contact.is_dirty_base) ||
         (filterDirtyBase === 'no' && !contact.is_dirty_base);
-      const matchesOwner = filterOwner === 'all' || 
+      const matchesOwner = filterOwner === 'all' ||
         (filterOwner === 'unassigned' && !contact.owner_id) ||
         contact.owner_id === filterOwner;
 
       const minIncome = filterIncomeMin ? parseFloat(filterIncomeMin) : null;
       const maxIncome = filterIncomeMax ? parseFloat(filterIncomeMax) : null;
-      const matchesIncome = 
+      const matchesIncome =
         (!minIncome && !maxIncome) ||
-        (contact.income !== null && 
+        (contact.income !== null &&
           (minIncome === null || contact.income >= minIncome) &&
           (maxIncome === null || contact.income <= maxIncome));
 
       const matchesReferredBy = filterReferredBy === 'all' || contact.referred_by === filterReferredBy;
-      const matchesQualification = filterQualification === 'all' || 
+      const matchesQualification = filterQualification === 'all' ||
         contact.qualification === parseInt(filterQualification);
       const matchesSourceDetail = filterSourceDetail === 'all' || contact.source_detail === filterSourceDetail;
       const matchesCampaign = filterCampaign === 'all' || contact.campaign === filterCampaign;
 
-      return matchesSearch && matchesSource && matchesDirtyBase && matchesOwner && 
-             matchesIncome && matchesReferredBy && matchesQualification && 
-             matchesSourceDetail && matchesCampaign;
+      return matchesSearch && matchesSource && matchesDirtyBase && matchesOwner &&
+        matchesIncome && matchesReferredBy && matchesQualification &&
+        matchesSourceDetail && matchesCampaign;
     });
-  }, [contacts, searchTerm, filterSource, filterDirtyBase, filterOwner, 
-      filterIncomeMin, filterIncomeMax, filterReferredBy, filterQualification, 
-      filterSourceDetail, filterCampaign]);
+
+    // Relevance ordering when searching
+    if (searchNormalized) {
+      const score = (c: typeof result[number]) => {
+        const name = normalizeString(c.full_name);
+        if (name === searchNormalized) return 0;
+        if (name.startsWith(searchNormalized)) return 1;
+        if (name.includes(searchNormalized)) return 2;
+        const owner = normalizeString(c.owner?.full_name || '');
+        if (owner === searchNormalized) return 3;
+        if (owner.startsWith(searchNormalized)) return 4;
+        if (owner.includes(searchNormalized)) return 5;
+        const sourceDetail = normalizeString(c.source_detail || '');
+        if (sourceDetail.includes(searchNormalized)) return 6;
+        return 7;
+      };
+
+      return [...result].sort((a, b) => score(a) - score(b));
+    }
+
+    return result;
+  }, [contacts, searchTerm, filterSource, filterDirtyBase, filterOwner,
+    filterIncomeMin, filterIncomeMax, filterReferredBy, filterQualification,
+    filterSourceDetail, filterCampaign]);
 
   const handleDeleteConfirm = async () => {
     if (contactToDelete) {
