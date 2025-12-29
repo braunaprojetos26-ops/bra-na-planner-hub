@@ -101,43 +101,42 @@ export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
 
   return (
     <div className="space-y-4">
-      {/* Health Score Card */}
-      <Card 
-        className="cursor-pointer hover:shadow-md transition-shadow border-2"
-        style={{ borderColor: categoryConfig.color }}
-        onClick={() => navigate('/analytics/health-score')}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+      {/* Row 1: Health Score + General Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Health Score Card */}
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow border-l-4"
+          style={{ borderLeftColor: categoryConfig.color }}
+          onClick={() => navigate('/analytics/health-score')}
+        >
+          <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${categoryConfig.lightBg}`}>
-                <HeartPulse className={`h-6 w-6 ${categoryConfig.textColor}`} />
+              <div className={`p-2 rounded-lg ${categoryConfig.lightBg}`}>
+                <HeartPulse className={`h-5 w-5 ${categoryConfig.textColor}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Health Score Médio da Carteira</p>
+                <p className="text-xs text-muted-foreground">Health Score</p>
                 {isHealthLoading ? (
-                  <div className="h-8 w-24 bg-muted animate-pulse rounded mt-1" />
+                  <div className="h-6 w-16 bg-muted animate-pulse rounded" />
                 ) : (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-3xl font-bold ${categoryConfig.textColor}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-xl font-bold ${categoryConfig.textColor}`}>
                       {Math.round(averageScore)}
                     </span>
-                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${categoryConfig.lightBg} ${categoryConfig.textColor}`}>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${categoryConfig.lightBg} ${categoryConfig.textColor}`}>
                       {categoryConfig.label}
                     </span>
                   </div>
                 )}
+                <p className="text-[10px] text-muted-foreground">
+                  {healthData?.summary?.totalClients ?? 0} clientes
+                </p>
               </div>
             </div>
-            <div className="text-muted-foreground text-sm">
-              {healthData?.summary?.totalClients ?? 0} clientes →
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Cards de métricas gerais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* General Metrics Cards */}
         {cards.map((card) => (
           <Card key={card.title}>
             <CardContent className="p-4">
@@ -164,7 +163,7 @@ export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
         ))}
       </div>
 
-      {/* Cards de métricas por produto */}
+      {/* Row 2: Product Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {productCards.map((card) => (
           <Card key={card.title}>
