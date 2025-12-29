@@ -44,10 +44,36 @@ serve(async (req) => {
   }
 });
 
+async function fetchPDFAsBase64(url: string): Promise<string> {
+  console.log('Downloading PDF from:', url);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  console.log('PDF converted to base64, length:', base64.length);
+  return base64;
+}
+
 async function extractProfileFromPDF(data: { pdfUrl: string; userId: string }) {
   const { pdfUrl, userId } = data;
 
   console.log('Extracting profile from PDF:', pdfUrl);
+
+  // Download PDF and convert to base64
+  let pdfBase64: string;
+  try {
+    pdfBase64 = await fetchPDFAsBase64(pdfUrl);
+  } catch (error) {
+    console.error('Error downloading PDF:', error);
+    throw new Error('Não foi possível baixar o PDF. Verifique se o arquivo foi enviado corretamente.');
+  }
 
   const systemPrompt = `Você é um especialista em análise de perfis comportamentais DISC/CAPE da plataforma Sólides.
   
@@ -92,7 +118,7 @@ Retorne um objeto JSON com a seguinte estrutura:
           role: "user", 
           content: [
             { type: "text", text: "Analise este relatório CAPE/Sólides e extraia todas as informações do perfil comportamental." },
-            { type: "image_url", image_url: { url: pdfUrl } }
+            { type: "image_url", image_url: { url: `data:application/pdf;base64,${pdfBase64}` } }
           ]
         }
       ],
@@ -115,7 +141,7 @@ Retorne um objeto JSON com a seguinte estrutura:
     }
     const errorText = await response.text();
     console.error("AI gateway error:", response.status, errorText);
-    throw new Error("AI gateway error");
+    throw new Error("AI gateway error: " + errorText);
   }
 
   const aiResponse = await response.json();
