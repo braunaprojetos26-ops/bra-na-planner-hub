@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { Heart, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +8,10 @@ import { CategoryCard } from '@/components/health-score/CategoryCard';
 import { ClientDrawer } from '@/components/health-score/ClientDrawer';
 import { ScoreDonutChart } from '@/components/health-score/ScoreDonutChart';
 import { FilterBar } from '@/components/health-score/FilterBar';
+import { PillarAnalysisTab } from '@/components/health-score/PillarAnalysisTab';
+import { TemporalEvolutionTab } from '@/components/health-score/TemporalEvolutionTab';
+import { MovementTab } from '@/components/health-score/MovementTab';
+import { PortfolioMetricsTab } from '@/components/health-score/PortfolioMetricsTab';
 import { useHealthScore, CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +31,6 @@ export default function HealthScore() {
   };
 
   const handleClientClick = (clientId: string) => {
-    // Navigate to client detail page
     navigate(`/clients/${clientId}`);
   };
 
@@ -35,7 +38,6 @@ export default function HealthScore() {
     client => selectedCategory ? client.category === selectedCategory : true
   ) || [];
 
-  // Calculate average scores for each category
   const getCategoryAverageScore = (category: CategoryKey) => {
     const clients = data?.results.filter(c => c.category === category) || [];
     if (clients.length === 0) return undefined;
@@ -76,12 +78,12 @@ export default function HealthScore() {
       />
 
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="analytics" disabled>Análise de Pilares</TabsTrigger>
-          <TabsTrigger value="temporal" disabled>Evolução Temporal</TabsTrigger>
-          <TabsTrigger value="movement" disabled>Movimentação</TabsTrigger>
-          <TabsTrigger value="portfolio" disabled>Métricas do Portfólio</TabsTrigger>
+          <TabsTrigger value="analytics">Análise de Pilares</TabsTrigger>
+          <TabsTrigger value="temporal">Evolução Temporal</TabsTrigger>
+          <TabsTrigger value="movement">Movimentação</TabsTrigger>
+          <TabsTrigger value="portfolio">Métricas do Portfólio</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -131,18 +133,63 @@ export default function HealthScore() {
               isLoading={isLoading}
             />
             
-            {/* Placeholder for future charts */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Tendência (em breve)</CardTitle>
+                <CardTitle className="text-base">Resumo Rápido</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
-                  Disponível na Fase 3
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Clientes saudáveis</span>
+                    <span className="font-medium">
+                      {data?.summary 
+                        ? data.summary.byCategory.otimo + data.summary.byCategory.estavel 
+                        : 0} ({data?.summary?.totalClients 
+                          ? Math.round(((data.summary.byCategory.otimo + data.summary.byCategory.estavel) / data.summary.totalClients) * 100) 
+                          : 0}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Precisam de atenção</span>
+                    <span className="font-medium">
+                      {data?.summary 
+                        ? data.summary.byCategory.atencao + data.summary.byCategory.critico 
+                        : 0} ({data?.summary?.totalClients 
+                          ? Math.round(((data.summary.byCategory.atencao + data.summary.byCategory.critico) / data.summary.totalClients) * 100) 
+                          : 0}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Score médio</span>
+                    <span className="font-medium">{data?.summary?.averageScore || 0}/100</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <PillarAnalysisTab 
+            results={data?.results || []} 
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="temporal">
+          <TemporalEvolutionTab ownerId={selectedOwnerId} />
+        </TabsContent>
+
+        <TabsContent value="movement">
+          <MovementTab ownerId={selectedOwnerId} />
+        </TabsContent>
+
+        <TabsContent value="portfolio">
+          <PortfolioMetricsTab 
+            results={data?.results || []}
+            summary={data?.summary}
+            isLoading={isLoading}
+          />
         </TabsContent>
       </Tabs>
 
