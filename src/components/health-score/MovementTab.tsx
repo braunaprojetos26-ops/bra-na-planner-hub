@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 import { CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
-import { ArrowUp, ArrowDown, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { ArrowUp, ArrowDown, TrendingUp, TrendingDown, Users, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import { Sankey, Tooltip, Layer, Rectangle } from 'recharts';
 
 interface MovementTabProps {
   ownerId?: string;
@@ -21,13 +24,49 @@ interface Movement {
   direction: 'up' | 'down';
 }
 
+type Period = '7d' | '30d' | '90d';
+
+// Custom node component for Sankey
+const SankeyNode = ({ x, y, width, height, index, payload }: any) => {
+  const category = payload.name.replace(' (anterior)', '').replace(' (atual)', '').toLowerCase();
+  const categoryKey = category === 'ótimo' ? 'otimo' 
+    : category === 'estável' ? 'estavel' 
+    : category === 'atenção' ? 'atencao' 
+    : 'critico';
+  
+  const config = CATEGORY_CONFIG[categoryKey as CategoryKey] || CATEGORY_CONFIG.estavel;
+  
+  return (
+    <Rectangle
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={config.color}
+      fillOpacity={0.9}
+      rx={4}
+      ry={4}
+    />
+  );
+};
+
 export function MovementTab({ ownerId }: MovementTabProps) {
+  const [period, setPeriod] = useState<Period>('7d');
+
+  const getPeriodDays = () => {
+    switch (period) {
+      case '7d': return 7;
+      case '30d': return 30;
+      case '90d': return 90;
+      default: return 7;
+    }
+  };
+
   const { data: movements, isLoading } = useQuery({
-    queryKey: ['health-score-movements', ownerId],
+    queryKey: ['health-score-movements', ownerId, period],
     queryFn: async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
-      const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
-      const weekAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+      const pastDate = format(subDays(new Date(), getPeriodDays()), 'yyyy-MM-dd');
 
       // Get today's snapshots
       let todayQuery = supabase
@@ -42,23 +81,23 @@ export function MovementTab({ ownerId }: MovementTabProps) {
       const { data: todayData, error: todayError } = await todayQuery;
       if (todayError) throw todayError;
 
-      // Get week ago snapshots
-      let weekQuery = supabase
+      // Get past date snapshots
+      let pastQuery = supabase
         .from('health_score_snapshots')
         .select('contact_id, category, total_score')
-        .eq('snapshot_date', weekAgo);
+        .eq('snapshot_date', pastDate);
 
       if (ownerId) {
-        weekQuery = weekQuery.eq('owner_id', ownerId);
+        pastQuery = pastQuery.eq('owner_id', ownerId);
       }
 
-      const { data: weekData, error: weekError } = await weekQuery;
-      if (weekError) throw weekError;
+      const { data: pastData, error: pastError } = await pastQuery;
+      if (pastError) throw pastError;
 
       // Get contact names
       const contactIds = [...new Set([
         ...(todayData?.map(d => d.contact_id) || []),
-        ...(weekData?.map(d => d.contact_id) || []),
+        ...(pastData?.map(d => d.contact_id) || []),
       ])];
 
       const { data: contacts } = await supabase
@@ -73,24 +112,24 @@ export function MovementTab({ ownerId }: MovementTabProps) {
       const categoryOrder: CategoryKey[] = ['critico', 'atencao', 'estavel', 'otimo'];
 
       todayData?.forEach((today) => {
-        const weekAgoData = weekData?.find(w => w.contact_id === today.contact_id);
-        if (!weekAgoData) return;
+        const pastDateData = pastData?.find(w => w.contact_id === today.contact_id);
+        if (!pastDateData) return;
 
         const todayCategory = today.category as CategoryKey;
-        const weekCategory = weekAgoData.category as CategoryKey;
+        const pastCategory = pastDateData.category as CategoryKey;
 
-        if (todayCategory !== weekCategory) {
+        if (todayCategory !== pastCategory) {
           const todayIndex = categoryOrder.indexOf(todayCategory);
-          const weekIndex = categoryOrder.indexOf(weekCategory);
+          const pastIndex = categoryOrder.indexOf(pastCategory);
 
           movements.push({
             contactId: today.contact_id,
             contactName: contactMap.get(today.contact_id) || 'Cliente',
-            previousCategory: weekCategory,
+            previousCategory: pastCategory,
             currentCategory: todayCategory,
-            previousScore: weekAgoData.total_score,
+            previousScore: pastDateData.total_score,
             currentScore: today.total_score,
-            direction: todayIndex > weekIndex ? 'up' : 'down',
+            direction: todayIndex > pastIndex ? 'up' : 'down',
           });
         }
       });
@@ -98,6 +137,36 @@ export function MovementTab({ ownerId }: MovementTabProps) {
       return movements;
     },
   });
+
+  // Build Sankey data
+  const sankeyData = useMemo(() => {
+    if (!movements || movements.length === 0) return null;
+
+    const categories: CategoryKey[] = ['otimo', 'estavel', 'atencao', 'critico'];
+    
+    // Create nodes: previous categories + current categories
+    const nodes = [
+      ...categories.map(c => ({ name: `${CATEGORY_CONFIG[c].label} (anterior)` })),
+      ...categories.map(c => ({ name: `${CATEGORY_CONFIG[c].label} (atual)` })),
+    ];
+
+    // Create links based on movements
+    const linkMap = new Map<string, number>();
+    
+    movements.forEach((m) => {
+      const sourceIndex = categories.indexOf(m.previousCategory);
+      const targetIndex = categories.indexOf(m.currentCategory) + 4; // +4 because current categories start at index 4
+      const key = `${sourceIndex}-${targetIndex}`;
+      linkMap.set(key, (linkMap.get(key) || 0) + 1);
+    });
+
+    const links = Array.from(linkMap.entries()).map(([key, value]) => {
+      const [source, target] = key.split('-').map(Number);
+      return { source, target, value };
+    });
+
+    return { nodes, links };
+  }, [movements]);
 
   if (isLoading) {
     return (
@@ -171,8 +240,28 @@ export function MovementTab({ ownerId }: MovementTabProps) {
     </div>
   );
 
+  const periodLabel = period === '7d' ? '7 dias' : period === '30d' ? '30 dias' : '90 dias';
+
   return (
     <div className="space-y-6">
+      {/* Period Selector */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Período de comparação:</span>
+        </div>
+        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7d">Últimos 7 dias</SelectItem>
+            <SelectItem value="30d">Últimos 30 dias</SelectItem>
+            <SelectItem value="90d">Últimos 90 dias</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -207,10 +296,56 @@ export function MovementTab({ ownerId }: MovementTabProps) {
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Período</span>
             </div>
-            <p className="text-lg font-medium mt-1">Últimos 7 dias</p>
+            <p className="text-lg font-medium mt-1">Últimos {periodLabel}</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Sankey Diagram */}
+      {sankeyData && sankeyData.links.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Fluxo de Movimentação</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80 w-full">
+              <Sankey
+                width={800}
+                height={300}
+                data={sankeyData}
+                node={<SankeyNode />}
+                nodePadding={50}
+                nodeWidth={20}
+                linkCurvature={0.5}
+                margin={{ top: 20, right: 200, bottom: 20, left: 20 }}
+                link={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.3 }}
+              >
+                <Tooltip 
+                  formatter={(value, name) => [`${value} cliente(s)`, 'Movimentação']}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+              </Sankey>
+            </div>
+            <div className="flex justify-center gap-6 mt-4">
+              {(['otimo', 'estavel', 'atencao', 'critico'] as CategoryKey[]).map((cat) => (
+                <div key={cat} className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: CATEGORY_CONFIG[cat].color }}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {CATEGORY_CONFIG[cat].label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Movement Lists */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
