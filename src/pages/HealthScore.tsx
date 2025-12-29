@@ -78,11 +78,31 @@ export default function HealthScore() {
       />
 
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="analytics">Análise de Pilares</TabsTrigger>
-          <TabsTrigger value="temporal">Evolução Temporal</TabsTrigger>
-          <TabsTrigger value="movement">Movimentação</TabsTrigger>
+        <TabsList className="bg-transparent p-0 h-auto gap-2">
+          <TabsTrigger 
+            value="dashboard"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted text-muted-foreground px-4 py-2 rounded-md"
+          >
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger 
+            value="analytics"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted text-muted-foreground px-4 py-2 rounded-md"
+          >
+            Análise de Pilares
+          </TabsTrigger>
+          <TabsTrigger 
+            value="temporal"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted text-muted-foreground px-4 py-2 rounded-md"
+          >
+            Evolução Temporal
+          </TabsTrigger>
+          <TabsTrigger 
+            value="movement"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted text-muted-foreground px-4 py-2 rounded-md"
+          >
+            Movimentação
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">

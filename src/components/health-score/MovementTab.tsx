@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, startOfYear } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
 import { 
   TrendingUp, 
@@ -12,11 +10,10 @@ import {
   ArrowRight, 
   Users, 
   AlertTriangle, 
-  Calendar,
-  Settings,
   Activity,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -353,75 +350,11 @@ export function MovementTab({ ownerIds, startDate, endDate }: MovementTabProps) 
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold">Movement Sankey Diagram</h2>
+        <h2 className="text-xl font-bold">Movimentação de Clientes</h2>
         <p className="text-sm text-muted-foreground">
-          Fluxo de clientes entre categorias de Health Score
+          Fluxo de clientes entre categorias de Health Score no período selecionado
         </p>
       </div>
-
-      {/* Period Selection Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Período de Análise
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Selecione o período para comparar mudanças de categoria dos clientes
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            {/* Date Range Display */}
-            <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">
-                {format(dateRange.start, 'dd/MM/yyyy')} - {format(dateRange.end, 'dd/MM/yyyy')}
-              </span>
-            </div>
-
-            {/* Period Preset Buttons */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant={period === '30d' && !hasCustomDateRange ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriod('30d')}
-                disabled={!!hasCustomDateRange}
-              >
-                30 dias
-              </Button>
-              <Button
-                variant={period === '60d' && !hasCustomDateRange ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriod('60d')}
-                disabled={!!hasCustomDateRange}
-              >
-                60 dias
-              </Button>
-              <Button
-                variant={period === '90d' && !hasCustomDateRange ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriod('90d')}
-                disabled={!!hasCustomDateRange}
-              >
-                90 dias
-              </Button>
-              <Button
-                variant={period === 'year' && !hasCustomDateRange ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPeriod('year')}
-                disabled={!!hasCustomDateRange}
-              >
-                Ano atual
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-sm text-muted-foreground mt-3">
-            Comparando estado dos clientes de {format(dateRange.start, 'dd/MM/yyyy', { locale: ptBR })} até {format(dateRange.end, 'dd/MM/yyyy', { locale: ptBR })}
-          </p>
-        </CardContent>
-      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -520,7 +453,7 @@ export function MovementTab({ ownerIds, startDate, endDate }: MovementTabProps) 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4" />
               Fluxo por Categoria
             </CardTitle>
           </CardHeader>
