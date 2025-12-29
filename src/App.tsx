@@ -22,6 +22,7 @@ import Tasks from "./pages/Tasks";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Analytics from "./pages/Analytics";
+import HealthScore from "./pages/HealthScore";
 import Wiki from "./pages/Wiki";
 import WikiCategory from "./pages/WikiCategory";
 import Team from "./pages/Team";
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/admin/diagnostic" element={<Navigate to="/admin/settings" replace state={{ tab: 'ai' }} />} />
               <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
               <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
+              <Route path="/analytics/health-score" element={<ProtectedPage><HealthScore /></ProtectedPage>} />
               <Route path="/analytics/opportunity-map" element={<ProtectedPage><OpportunityMap /></ProtectedPage>} />
               <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
               <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
