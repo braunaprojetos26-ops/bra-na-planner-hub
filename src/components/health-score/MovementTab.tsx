@@ -1,14 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
-import { format, subDays, subMonths } from 'date-fns';
-import { CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
-import { ArrowUp, ArrowDown, TrendingUp, TrendingDown, Users, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
-import { Sankey, Tooltip, Layer, Rectangle } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { format, subDays, startOfYear } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  ArrowRight, 
+  Users, 
+  AlertTriangle, 
+  Calendar,
+  Settings,
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 interface MovementTabProps {
   ownerIds?: string[];
@@ -19,179 +42,284 @@ interface MovementTabProps {
 interface Movement {
   contactId: string;
   contactName: string;
-  previousCategory: CategoryKey;
-  currentCategory: CategoryKey;
+  previousCategory: CategoryKey | 'novo';
+  currentCategory: CategoryKey | 'perdido';
   previousScore: number;
   currentScore: number;
-  direction: 'up' | 'down';
 }
 
-type Period = '7d' | '30d' | '90d';
+interface MovementSummary {
+  melhorando: number;
+  piorando: number;
+  estaveis: number;
+  novos: number;
+  perdidos: number;
+}
 
-// Custom node component for Sankey
-const SankeyNode = ({ x, y, width, height, index, payload }: any) => {
-  const category = payload.name.replace(' (anterior)', '').replace(' (atual)', '').toLowerCase();
-  const categoryKey = category === 'ótimo' ? 'otimo' 
-    : category === 'estável' ? 'estavel' 
-    : category === 'atenção' ? 'atencao' 
-    : 'critico';
-  
-  const config = CATEGORY_CONFIG[categoryKey as CategoryKey] || CATEGORY_CONFIG.estavel;
-  
-  return (
-    <Rectangle
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={config.color}
-      fillOpacity={0.9}
-      rx={4}
-      ry={4}
-    />
-  );
-};
+interface CategoryFlow {
+  from: CategoryKey | 'novo';
+  to: CategoryKey | 'perdido';
+  count: number;
+}
+
+type Period = '30d' | '60d' | '90d' | 'year';
 
 export function MovementTab({ ownerIds, startDate, endDate }: MovementTabProps) {
-  const [period, setPeriod] = useState<Period>('7d');
+  const [period, setPeriod] = useState<Period>('30d');
   const hasCustomDateRange = startDate && endDate;
-
-  const getPeriodDays = () => {
-    switch (period) {
-      case '7d': return 7;
-      case '30d': return 30;
-      case '90d': return 90;
-      default: return 7;
-    }
-  };
 
   const getDateRange = () => {
     if (hasCustomDateRange) {
-      return { today: format(endDate, 'yyyy-MM-dd'), pastDate: format(startDate, 'yyyy-MM-dd') };
+      return { 
+        end: endDate, 
+        start: startDate,
+        endStr: format(endDate, 'yyyy-MM-dd'),
+        startStr: format(startDate, 'yyyy-MM-dd')
+      };
     }
-    return { today: format(new Date(), 'yyyy-MM-dd'), pastDate: format(subDays(new Date(), getPeriodDays()), 'yyyy-MM-dd') };
+    
+    const end = new Date();
+    let start: Date;
+    
+    switch (period) {
+      case '30d': start = subDays(end, 30); break;
+      case '60d': start = subDays(end, 60); break;
+      case '90d': start = subDays(end, 90); break;
+      case 'year': start = startOfYear(end); break;
+      default: start = subDays(end, 30);
+    }
+    
+    return { 
+      end, 
+      start,
+      endStr: format(end, 'yyyy-MM-dd'),
+      startStr: format(start, 'yyyy-MM-dd')
+    };
   };
 
-  const { data: movements, isLoading } = useQuery({
+  const dateRange = getDateRange();
+
+  const { data, isLoading } = useQuery({
     queryKey: ['health-score-movements', ownerIds, period, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
-      const { today, pastDate } = getDateRange();
-
-      // Get today's snapshots
-      let todayQuery = supabase
+      // Get end date snapshots (current state)
+      let endQuery = supabase
         .from('health_score_snapshots')
-        .select('contact_id, category, total_score')
-        .eq('snapshot_date', today);
+        .select('contact_id, category, total_score, owner_id')
+        .eq('snapshot_date', dateRange.endStr);
 
       if (ownerIds && ownerIds.length > 0) {
-        todayQuery = todayQuery.in('owner_id', ownerIds);
+        endQuery = endQuery.in('owner_id', ownerIds);
       }
 
-      const { data: todayData, error: todayError } = await todayQuery;
-      if (todayError) throw todayError;
+      const { data: endData, error: endError } = await endQuery;
+      if (endError) throw endError;
 
-      // Get past date snapshots
-      let pastQuery = supabase
+      // Get start date snapshots (previous state)
+      let startQuery = supabase
         .from('health_score_snapshots')
-        .select('contact_id, category, total_score')
-        .eq('snapshot_date', pastDate);
+        .select('contact_id, category, total_score, owner_id')
+        .eq('snapshot_date', dateRange.startStr);
 
       if (ownerIds && ownerIds.length > 0) {
-        pastQuery = pastQuery.in('owner_id', ownerIds);
+        startQuery = startQuery.in('owner_id', ownerIds);
       }
 
-      const { data: pastData, error: pastError } = await pastQuery;
-      if (pastError) throw pastError;
+      const { data: startData, error: startError } = await startQuery;
+      if (startError) throw startError;
 
       // Get contact names
-      const contactIds = [...new Set([
-        ...(todayData?.map(d => d.contact_id) || []),
-        ...(pastData?.map(d => d.contact_id) || []),
+      const allContactIds = [...new Set([
+        ...(endData?.map(d => d.contact_id) || []),
+        ...(startData?.map(d => d.contact_id) || []),
       ])];
 
       const { data: contacts } = await supabase
         .from('contacts')
         .select('id, full_name')
-        .in('id', contactIds);
+        .in('id', allContactIds);
 
       const contactMap = new Map(contacts?.map(c => [c.id, c.full_name]) || []);
 
-      // Calculate movements
+      // Build maps for comparison
+      const startMap = new Map(startData?.map(s => [s.contact_id, s]) || []);
+      const endMap = new Map(endData?.map(e => [e.contact_id, e]) || []);
+
       const movements: Movement[] = [];
       const categoryOrder: CategoryKey[] = ['critico', 'atencao', 'estavel', 'otimo'];
+      const summary: MovementSummary = { melhorando: 0, piorando: 0, estaveis: 0, novos: 0, perdidos: 0 };
+      const flows: CategoryFlow[] = [];
 
-      todayData?.forEach((today) => {
-        const pastDateData = pastData?.find(w => w.contact_id === today.contact_id);
-        if (!pastDateData) return;
-
-        const todayCategory = today.category as CategoryKey;
-        const pastCategory = pastDateData.category as CategoryKey;
-
-        if (todayCategory !== pastCategory) {
-          const todayIndex = categoryOrder.indexOf(todayCategory);
-          const pastIndex = categoryOrder.indexOf(pastCategory);
-
+      // Process clients in end period
+      endData?.forEach((end) => {
+        const start = startMap.get(end.contact_id);
+        
+        if (!start) {
+          // New client
+          summary.novos++;
           movements.push({
-            contactId: today.contact_id,
-            contactName: contactMap.get(today.contact_id) || 'Cliente',
-            previousCategory: pastCategory,
-            currentCategory: todayCategory,
-            previousScore: pastDateData.total_score,
-            currentScore: today.total_score,
-            direction: todayIndex > pastIndex ? 'up' : 'down',
+            contactId: end.contact_id,
+            contactName: contactMap.get(end.contact_id) || 'Cliente',
+            previousCategory: 'novo',
+            currentCategory: end.category as CategoryKey,
+            previousScore: 0,
+            currentScore: end.total_score,
           });
+          flows.push({ from: 'novo', to: end.category as CategoryKey, count: 1 });
+        } else {
+          const startCategory = start.category as CategoryKey;
+          const endCategory = end.category as CategoryKey;
+          
+          if (startCategory === endCategory) {
+            summary.estaveis++;
+          } else {
+            const startIndex = categoryOrder.indexOf(startCategory);
+            const endIndex = categoryOrder.indexOf(endCategory);
+            
+            if (endIndex > startIndex) {
+              summary.melhorando++;
+            } else {
+              summary.piorando++;
+            }
+          }
+          
+          movements.push({
+            contactId: end.contact_id,
+            contactName: contactMap.get(end.contact_id) || 'Cliente',
+            previousCategory: startCategory,
+            currentCategory: endCategory,
+            previousScore: start.total_score,
+            currentScore: end.total_score,
+          });
+          flows.push({ from: startCategory, to: endCategory, count: 1 });
         }
       });
 
-      return movements;
+      // Process lost clients (in start but not in end)
+      startData?.forEach((start) => {
+        if (!endMap.has(start.contact_id)) {
+          summary.perdidos++;
+          movements.push({
+            contactId: start.contact_id,
+            contactName: contactMap.get(start.contact_id) || 'Cliente',
+            previousCategory: start.category as CategoryKey,
+            currentCategory: 'perdido',
+            previousScore: start.total_score,
+            currentScore: 0,
+          });
+          flows.push({ from: start.category as CategoryKey, to: 'perdido', count: 1 });
+        }
+      });
+
+      // Aggregate flows
+      const aggregatedFlows = flows.reduce((acc, flow) => {
+        const key = `${flow.from}-${flow.to}`;
+        if (!acc[key]) {
+          acc[key] = { from: flow.from, to: flow.to, count: 0 };
+        }
+        acc[key].count++;
+        return acc;
+      }, {} as Record<string, CategoryFlow>);
+
+      return {
+        movements,
+        summary,
+        flows: Object.values(aggregatedFlows).sort((a, b) => b.count - a.count),
+        startData: startData || [],
+        endData: endData || [],
+      };
     },
   });
 
-  // Build Sankey data
-  const sankeyData = useMemo(() => {
-    if (!movements || movements.length === 0) return null;
-
+  // Calculate category net changes
+  const netChanges = useMemo(() => {
+    if (!data) return [];
+    
     const categories: CategoryKey[] = ['otimo', 'estavel', 'atencao', 'critico'];
     
-    // Create nodes: previous categories + current categories
-    const nodes = [
-      ...categories.map(c => ({ name: `${CATEGORY_CONFIG[c].label} (anterior)` })),
-      ...categories.map(c => ({ name: `${CATEGORY_CONFIG[c].label} (atual)` })),
-    ];
+    return categories.map(cat => {
+      const startCount = data.startData.filter(s => s.category === cat).length;
+      const endCount = data.endData.filter(e => e.category === cat).length;
+      const netChange = endCount - startCount;
+      
+      return {
+        category: cat,
+        label: CATEGORY_CONFIG[cat].label,
+        color: CATEGORY_CONFIG[cat].color,
+        startCount,
+        endCount,
+        netChange,
+      };
+    });
+  }, [data]);
 
-    // Create links based on movements
-    const linkMap = new Map<string, number>();
+  // Prepare flow chart data (inflow vs outflow per category)
+  const flowChartData = useMemo(() => {
+    if (!data) return [];
     
-    movements.forEach((m) => {
-      const sourceIndex = categories.indexOf(m.previousCategory);
-      const targetIndex = categories.indexOf(m.currentCategory) + 4; // +4 because current categories start at index 4
-      const key = `${sourceIndex}-${targetIndex}`;
-      linkMap.set(key, (linkMap.get(key) || 0) + 1);
+    const categories: CategoryKey[] = ['otimo', 'estavel', 'atencao', 'critico'];
+    
+    return categories.map(cat => {
+      const inflow = data.movements.filter(m => 
+        m.currentCategory === cat && m.previousCategory !== cat
+      ).length;
+      
+      const outflow = data.movements.filter(m => 
+        m.previousCategory === cat && m.currentCategory !== cat
+      ).length;
+      
+      return {
+        name: CATEGORY_CONFIG[cat].label,
+        entrada: inflow,
+        saida: outflow,
+      };
     });
+  }, [data]);
 
-    const links = Array.from(linkMap.entries()).map(([key, value]) => {
-      const [source, target] = key.split('-').map(Number);
-      return { source, target, value };
-    });
+  // Prepare origin/destination pie data
+  const originPieData = useMemo(() => {
+    if (!data) return [];
+    
+    const categories: (CategoryKey | 'novo')[] = ['otimo', 'estavel', 'atencao', 'critico'];
+    
+    return categories.map(cat => {
+      const count = data.movements.filter(m => m.previousCategory === cat).length;
+      return {
+        name: cat === 'novo' ? 'Novo' : CATEGORY_CONFIG[cat as CategoryKey].label,
+        value: count,
+        color: cat === 'novo' ? 'hsl(var(--muted-foreground))' : CATEGORY_CONFIG[cat as CategoryKey].color,
+      };
+    }).filter(d => d.value > 0);
+  }, [data]);
 
-    return { nodes, links };
-  }, [movements]);
+  const destinationPieData = useMemo(() => {
+    if (!data) return [];
+    
+    const categories: (CategoryKey | 'perdido')[] = ['otimo', 'estavel', 'atencao', 'critico'];
+    
+    return categories.map(cat => {
+      const count = data.movements.filter(m => m.currentCategory === cat).length;
+      return {
+        name: cat === 'perdido' ? 'Perdido' : CATEGORY_CONFIG[cat as CategoryKey].label,
+        value: count,
+        color: cat === 'perdido' ? 'hsl(var(--destructive))' : CATEGORY_CONFIG[cat as CategoryKey].color,
+      };
+    }).filter(d => d.value > 0);
+  }, [data]);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
+        <Card className="animate-pulse">
+          <CardContent className="pt-6">
+            <div className="h-32 bg-muted rounded" />
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map(i => (
             <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-5 bg-muted rounded w-32" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[1, 2, 3].map((j) => (
-                    <div key={j} className="h-12 bg-muted rounded" />
-                  ))}
-                </div>
+              <CardContent className="pt-4">
+                <div className="h-16 bg-muted rounded" />
               </CardContent>
             </Card>
           ))}
@@ -200,212 +328,357 @@ export function MovementTab({ ownerIds, startDate, endDate }: MovementTabProps) 
     );
   }
 
-  const upMovements = movements?.filter(m => m.direction === 'up') || [];
-  const downMovements = movements?.filter(m => m.direction === 'down') || [];
+  const getCategoryDot = (category: CategoryKey | 'novo' | 'perdido') => {
+    if (category === 'novo') {
+      return <div className="w-3 h-3 rounded-full bg-muted-foreground" />;
+    }
+    if (category === 'perdido') {
+      return <div className="w-3 h-3 rounded-full bg-destructive" />;
+    }
+    return (
+      <div 
+        className="w-3 h-3 rounded-full"
+        style={{ backgroundColor: CATEGORY_CONFIG[category].color }}
+      />
+    );
+  };
 
-  const renderMovementCard = (movement: Movement) => (
-    <div 
-      key={movement.contactId}
-      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-    >
-      <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{movement.contactName}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <Badge 
-            variant="outline"
-            className="text-xs"
-            style={{ 
-              borderColor: CATEGORY_CONFIG[movement.previousCategory].color,
-              color: CATEGORY_CONFIG[movement.previousCategory].color,
-            }}
-          >
-            {CATEGORY_CONFIG[movement.previousCategory].label}
-          </Badge>
-          <span className="text-muted-foreground">→</span>
-          <Badge 
-            variant="outline"
-            className="text-xs"
-            style={{ 
-              borderColor: CATEGORY_CONFIG[movement.currentCategory].color,
-              color: CATEGORY_CONFIG[movement.currentCategory].color,
-            }}
-          >
-            {CATEGORY_CONFIG[movement.currentCategory].label}
-          </Badge>
-        </div>
-      </div>
-      <div className="text-right ml-4">
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-muted-foreground">{movement.previousScore}</span>
-          <span className="text-muted-foreground">→</span>
-          <span className={cn(
-            "text-sm font-medium",
-            movement.direction === 'up' ? 'text-green-600' : 'text-red-600'
-          )}>
-            {movement.currentScore}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const periodLabel = period === '7d' ? '7 dias' : period === '30d' ? '30 dias' : '90 dias';
+  const getCategoryLabel = (category: CategoryKey | 'novo' | 'perdido') => {
+    if (category === 'novo') return 'Novo';
+    if (category === 'perdido') return 'Perdido';
+    return CATEGORY_CONFIG[category].label;
+  };
 
   return (
     <div className="space-y-6">
-      {/* Period Selector */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Período de comparação:</span>
-        </div>
-        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Últimos 7 dias</SelectItem>
-            <SelectItem value="30d">Últimos 30 dias</SelectItem>
-            <SelectItem value="90d">Últimos 90 dias</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold">Movement Sankey Diagram</h2>
+        <p className="text-sm text-muted-foreground">
+          Fluxo de clientes entre categorias de Health Score
+        </p>
       </div>
+
+      {/* Period Selection Card */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Período de Análise
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Selecione o período para comparar mudanças de categoria dos clientes
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* Date Range Display */}
+            <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">
+                {format(dateRange.start, 'dd/MM/yyyy')} - {format(dateRange.end, 'dd/MM/yyyy')}
+              </span>
+            </div>
+
+            {/* Period Preset Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={period === '30d' && !hasCustomDateRange ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriod('30d')}
+                disabled={!!hasCustomDateRange}
+              >
+                30 dias
+              </Button>
+              <Button
+                variant={period === '60d' && !hasCustomDateRange ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriod('60d')}
+                disabled={!!hasCustomDateRange}
+              >
+                60 dias
+              </Button>
+              <Button
+                variant={period === '90d' && !hasCustomDateRange ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriod('90d')}
+                disabled={!!hasCustomDateRange}
+              >
+                90 dias
+              </Button>
+              <Button
+                variant={period === 'year' && !hasCustomDateRange ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPeriod('year')}
+                disabled={!!hasCustomDateRange}
+              >
+                Ano atual
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-sm text-muted-foreground mt-3">
+            Comparando estado dos clientes de {format(dateRange.start, 'dd/MM/yyyy', { locale: ptBR })} até {format(dateRange.end, 'dd/MM/yyyy', { locale: ptBR })}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <span className="text-sm text-muted-foreground">Subiram</span>
+            <div className="flex items-center gap-2 text-green-500">
+              <TrendingUp className="h-4 w-4" />
             </div>
-            <p className="text-2xl font-bold mt-1">{upMovements.length}</p>
+            <p className="text-3xl font-bold text-green-500 mt-1">{data?.summary.melhorando || 0}</p>
+            <p className="text-sm text-muted-foreground">Melhorando</p>
           </CardContent>
         </Card>
+        
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <span className="text-sm text-muted-foreground">Desceram</span>
+            <div className="flex items-center gap-2 text-red-500">
+              <TrendingDown className="h-4 w-4" />
             </div>
-            <p className="text-2xl font-bold mt-1">{downMovements.length}</p>
+            <p className="text-3xl font-bold text-red-500 mt-1">{data?.summary.piorando || 0}</p>
+            <p className="text-sm text-muted-foreground">Piorando</p>
           </CardContent>
         </Card>
+        
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Total</span>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <ArrowRight className="h-4 w-4" />
             </div>
-            <p className="text-2xl font-bold mt-1">{(movements?.length || 0)}</p>
+            <p className="text-3xl font-bold mt-1">{data?.summary.estaveis || 0}</p>
+            <p className="text-sm text-muted-foreground">Estáveis</p>
           </CardContent>
         </Card>
+        
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Período</span>
+            <div className="flex items-center gap-2 text-blue-500">
+              <Users className="h-4 w-4" />
             </div>
-            <p className="text-lg font-medium mt-1">Últimos {periodLabel}</p>
+            <p className="text-3xl font-bold text-blue-500 mt-1">{data?.summary.novos || 0}</p>
+            <p className="text-sm text-muted-foreground">Novos</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <p className="text-3xl font-bold text-red-400 mt-1">{data?.summary.perdidos || 0}</p>
+            <p className="text-sm text-muted-foreground">Perdidos</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Sankey Diagram */}
-      {sankeyData && sankeyData.links.length > 0 && (
+      {/* Flow List */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Fluxo de Movimentos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data?.flows.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhuma movimentação encontrada no período.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {data?.flows.slice(0, 10).map((flow, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {getCategoryDot(flow.from)}
+                    <span className="text-sm font-medium">{getCategoryLabel(flow.from)}</span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    {getCategoryDot(flow.to)}
+                    <span className="text-sm font-medium">{getCategoryLabel(flow.to)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold">{flow.count}</span>
+                    <span className="text-sm text-muted-foreground ml-1">clientes</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Flow by Category Bar Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Fluxo de Movimentação</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Fluxo por Categoria
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80 w-full">
-              <Sankey
-                width={800}
-                height={300}
-                data={sankeyData}
-                node={<SankeyNode />}
-                nodePadding={50}
-                nodeWidth={20}
-                linkCurvature={0.5}
-                margin={{ top: 20, right: 200, bottom: 20, left: 20 }}
-                link={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.3 }}
-              >
-                <Tooltip 
-                  formatter={(value, name) => [`${value} cliente(s)`, 'Movimentação']}
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-              </Sankey>
-            </div>
-            <div className="flex justify-center gap-6 mt-4">
-              {(['otimo', 'estavel', 'atencao', 'critico'] as CategoryKey[]).map((cat) => (
-                <div key={cat} className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: CATEGORY_CONFIG[cat].color }}
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={flowChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
                   />
-                  <span className="text-sm text-muted-foreground">
-                    {CATEGORY_CONFIG[cat].label}
-                  </span>
+                  <YAxis 
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="entrada" name="Entrada" fill="hsl(142, 76%, 36%)" />
+                  <Bar dataKey="saida" name="Saída" fill="hsl(0, 84%, 60%)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Net Change Card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Mudança Líquida
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {netChanges.map((item) => (
+                <div 
+                  key={item.category}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                >
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {item.netChange > 0 ? (
+                      <ArrowUpRight className="h-4 w-4 text-green-500" />
+                    ) : item.netChange < 0 ? (
+                      <ArrowDownRight className="h-4 w-4 text-red-500" />
+                    ) : null}
+                    <span className={cn(
+                      "font-bold",
+                      item.netChange > 0 ? "text-green-500" : 
+                      item.netChange < 0 ? "text-red-500" : 
+                      "text-muted-foreground"
+                    )}>
+                      {item.netChange > 0 ? '+' : ''}{item.netChange}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Movement Lists */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Up Movements */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ArrowUp className="h-4 w-4 text-green-600" />
-              Subiram de Categoria
-              <Badge variant="secondary" className="ml-auto">
-                {upMovements.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {upMovements.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum cliente subiu de categoria neste período.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {upMovements.map(renderMovementCard)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Down Movements */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ArrowDown className="h-4 w-4 text-red-600" />
-              Desceram de Categoria
-              <Badge variant="secondary" className="ml-auto">
-                {downMovements.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {downMovements.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum cliente desceu de categoria neste período.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {downMovements.map(renderMovementCard)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Distribution Pie Charts */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Distribuição de Movimentos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Origin Pie */}
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-4">
+                Movimentos por Categoria de Origem
+              </h4>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={originPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                      labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    >
+                      {originPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => [`${value} clientes`, 'Quantidade']}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Destination Pie */}
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-4">
+                Movimentos por Categoria de Destino
+              </h4>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={destinationPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                      labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    >
+                      {destinationPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => [`${value} clientes`, 'Quantidade']}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
