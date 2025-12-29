@@ -1163,6 +1163,7 @@ export type Database = {
           name: string
           order_position: number | null
           template_content: string
+          topics: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -1174,6 +1175,7 @@ export type Database = {
           name: string
           order_position?: number | null
           template_content: string
+          topics?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -1185,6 +1187,7 @@ export type Database = {
           name?: string
           order_position?: number | null
           template_content?: string
+          topics?: Json | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1487,6 +1490,7 @@ export type Database = {
           scheduled_date: string | null
           status: string | null
           template_id: string | null
+          topic_responses: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -1501,6 +1505,7 @@ export type Database = {
           scheduled_date?: string | null
           status?: string | null
           template_id?: string | null
+          topic_responses?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -1515,6 +1520,7 @@ export type Database = {
           scheduled_date?: string | null
           status?: string | null
           template_id?: string | null
+          topic_responses?: Json | null
           updated_at?: string | null
         }
         Relationships: [
