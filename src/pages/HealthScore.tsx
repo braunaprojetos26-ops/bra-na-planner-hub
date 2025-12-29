@@ -83,33 +83,15 @@ export default function HealthScore() {
           <TabsTrigger value="analytics">Análise de Pilares</TabsTrigger>
           <TabsTrigger value="temporal">Evolução Temporal</TabsTrigger>
           <TabsTrigger value="movement">Movimentação</TabsTrigger>
-          <TabsTrigger value="portfolio">Métricas do Portfólio</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          {/* Score Geral Card */}
-          <Card>
-            <CardContent className="py-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Score Médio da Carteira</p>
-                  <div className="flex items-baseline gap-3 mt-1">
-                    <span className="text-4xl font-bold">
-                      {isLoading ? '—' : data?.summary.averageScore || 0}
-                    </span>
-                    <span className="text-muted-foreground">/ 100</span>
-                  </div>
-                </div>
-                
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Total de Clientes</p>
-                  <p className="text-2xl font-semibold mt-1">
-                    {isLoading ? '—' : data?.summary.totalClients || 0}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Portfolio Metrics integrated into Dashboard */}
+          <PortfolioMetricsTab 
+            results={data?.results || []}
+            summary={data?.summary}
+            isLoading={isLoading}
+          />
 
           {/* Category Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -124,48 +106,6 @@ export default function HealthScore() {
                 isSelected={selectedCategory === category}
               />
             ))}
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ScoreDonutChart 
-              summary={data?.summary}
-              isLoading={isLoading}
-            />
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Resumo Rápido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Clientes saudáveis</span>
-                    <span className="font-medium">
-                      {data?.summary 
-                        ? data.summary.byCategory.otimo + data.summary.byCategory.estavel 
-                        : 0} ({data?.summary?.totalClients 
-                          ? Math.round(((data.summary.byCategory.otimo + data.summary.byCategory.estavel) / data.summary.totalClients) * 100) 
-                          : 0}%)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Precisam de atenção</span>
-                    <span className="font-medium">
-                      {data?.summary 
-                        ? data.summary.byCategory.atencao + data.summary.byCategory.critico 
-                        : 0} ({data?.summary?.totalClients 
-                          ? Math.round(((data.summary.byCategory.atencao + data.summary.byCategory.critico) / data.summary.totalClients) * 100) 
-                          : 0}%)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Score médio</span>
-                    <span className="font-medium">{data?.summary?.averageScore || 0}/100</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
 
@@ -189,14 +129,6 @@ export default function HealthScore() {
             ownerIds={filters.ownerIds}
             startDate={filters.startDate}
             endDate={filters.endDate}
-          />
-        </TabsContent>
-
-        <TabsContent value="portfolio">
-          <PortfolioMetricsTab 
-            results={data?.results || []}
-            summary={data?.summary}
-            isLoading={isLoading}
           />
         </TabsContent>
       </Tabs>

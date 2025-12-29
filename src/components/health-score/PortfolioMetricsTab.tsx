@@ -179,13 +179,6 @@ export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMe
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div>
-        <h2 className="text-xl font-bold">Portfolio Health Metrics</h2>
-        <p className="text-sm text-muted-foreground">
-          Métricas agregadas para avaliação da saúde geral da carteira
-        </p>
-      </div>
 
       {/* Top Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
