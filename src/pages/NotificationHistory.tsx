@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Check, ArrowLeft, Wallet } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Check, ArrowLeft, Wallet, HeartPulse } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,8 @@ export default function NotificationHistory() {
       navigate('/contracts');
     } else if (notification.type === 'ticket_update') {
       navigate('/tickets');
+    } else if (notification.type === 'health_score_drop') {
+      navigate('/analytics/health-score');
     } else {
       navigate('/tasks');
     }
@@ -40,6 +42,8 @@ export default function NotificationHistory() {
         return <FileText className="h-4 w-4" />;
       case 'payment':
         return <Wallet className="h-4 w-4" />;
+      case 'health_score_drop':
+        return <HeartPulse className="h-4 w-4" />;
       default:
         return <CalendarClock className="h-4 w-4" />;
     }
@@ -50,11 +54,13 @@ export default function NotificationHistory() {
       case 'task_overdue':
         return 'bg-destructive/10 text-destructive';
       case 'ticket_update':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
       case 'contract_update':
-        return 'bg-emerald-100 text-emerald-700';
+        return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400';
       case 'payment':
-        return 'bg-amber-100 text-amber-700';
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
+      case 'health_score_drop':
+        return 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400';
       default:
         return 'bg-primary/10 text-primary';
     }

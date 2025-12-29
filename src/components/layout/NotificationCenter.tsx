@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet, HeartPulse } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,12 +17,15 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const markRead = useMarkNotificationRead();
 
   const handleClick = async () => {
-    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment') && notification.link) {
+    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment' || notification.type === 'health_score_drop') && notification.link) {
       await markRead(notification.id);
       navigate(notification.link);
     } else if (notification.type === 'contract_update' || notification.type === 'payment') {
       await markRead(notification.id);
       navigate('/contracts');
+    } else if (notification.type === 'health_score_drop') {
+      await markRead(notification.id);
+      navigate('/analytics/health-score');
     } else {
       navigate('/tasks');
     }
@@ -33,6 +36,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const isTicket = notification.type === 'ticket_update';
   const isContract = notification.type === 'contract_update';
   const isPayment = notification.type === 'payment';
+  const isHealthScoreDrop = notification.type === 'health_score_drop';
 
   return (
     <button
@@ -46,14 +50,17 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
         className={cn(
           'p-2 rounded-full shrink-0',
           isOverdue ? 'bg-destructive/10 text-destructive' : 
-          isTicket ? 'bg-blue-100 text-blue-700' :
-          isContract ? 'bg-emerald-100 text-emerald-700' :
-          isPayment ? 'bg-amber-100 text-amber-700' :
+          isHealthScoreDrop ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400' :
+          isTicket ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+          isContract ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' :
+          isPayment ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
           'bg-primary/10 text-primary'
         )}
       >
         {isOverdue ? (
           <AlertTriangle className="h-4 w-4" />
+        ) : isHealthScoreDrop ? (
+          <HeartPulse className="h-4 w-4" />
         ) : isTicket ? (
           <MessageSquare className="h-4 w-4" />
         ) : isContract ? (
@@ -76,7 +83,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, dbUnreadCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, dbUnreadCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -131,7 +138,7 @@ export function NotificationCenter() {
           )}
           
           {/* DB notifications section */}
-          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0) && (
+          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0 || healthScoreDropCount > 0) && (
             <div className="flex gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
               {ticketCount > 0 && (
                 <span className="flex items-center gap-1 text-blue-600">
@@ -146,9 +153,15 @@ export function NotificationCenter() {
                 </span>
               )}
               {paymentCount > 0 && (
-                <span className="flex items-center gap-1 text-amber-600">
+                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                   <Wallet className="h-3 w-3" />
                   {paymentCount} pagamento{paymentCount > 1 ? 's' : ''}
+                </span>
+              )}
+              {healthScoreDropCount > 0 && (
+                <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                  <HeartPulse className="h-3 w-3" />
+                  {healthScoreDropCount} alerta{healthScoreDropCount > 1 ? 's' : ''} de saúde
                 </span>
               )}
             </div>

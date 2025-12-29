@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface Notification {
   id: string;
-  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment';
+  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop';
   title: string;
   description: string;
   createdAt: Date;
@@ -32,7 +32,7 @@ export function useNotifications() {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .in('type', ['ticket_update', 'contract_update', 'payment'])
+        .in('type', ['ticket_update', 'contract_update', 'payment', 'health_score_drop'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -106,9 +106,9 @@ export function useNotifications() {
       });
     }
 
-    // DB notifications (tickets and contracts)
+    // DB notifications (tickets, contracts, health score)
     dbNotifications.forEach((notif) => {
-      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment';
+      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop';
       notifs.push({
         id: `db-${notif.id}`,
         type: notifType,
@@ -133,6 +133,7 @@ export function useNotifications() {
   const ticketCount = notifications.filter((n) => n.type === 'ticket_update').length;
   const contractCount = notifications.filter((n) => n.type === 'contract_update').length;
   const paymentCount = notifications.filter((n) => n.type === 'payment').length;
+  const healthScoreDropCount = notifications.filter((n) => n.type === 'health_score_drop').length;
   
   // dbUnreadCount = only database notifications (tickets + contracts + payments) that can be marked as read
   const dbUnreadCount = dbNotifications.length;
@@ -144,6 +145,7 @@ export function useNotifications() {
     ticketCount,
     contractCount,
     paymentCount,
+    healthScoreDropCount,
     dbUnreadCount,
     totalCount: notifications.length,
     isLoading: tasksLoading || dbLoading,
