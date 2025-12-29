@@ -24,6 +24,15 @@ interface HealthScoreData {
   has_referrals: boolean;
 }
 
+// Category order from best to worst
+const categoryOrder = ['otimo', 'estavel', 'atencao', 'critico'];
+const categoryLabels: Record<string, string> = {
+  'otimo': 'Ótimo',
+  'estavel': 'Estável',
+  'atencao': 'Atenção',
+  'critico': 'Crítico'
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -79,6 +88,23 @@ serve(async (req) => {
     console.log(`[save-health-snapshots] Processing ${clientPlans.length} clients`);
 
     const contactIds = clientPlans.map(cp => cp.contact_id);
+
+    // Fetch previous day's snapshots for comparison
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const { data: previousSnapshots } = await supabase
+      .from('health_score_snapshots')
+      .select('contact_id, category, owner_id')
+      .eq('snapshot_date', yesterdayStr)
+      .in('contact_id', contactIds);
+
+    const previousCategoryMap = new Map<string, { category: string; owner_id: string | null }>(
+      previousSnapshots?.map(s => [s.contact_id, { category: s.category, owner_id: s.owner_id }]) || []
+    );
+
+    console.log(`[save-health-snapshots] Found ${previousSnapshots?.length || 0} previous snapshots for comparison`);
 
     // Fetch all required data in parallel
     const [npsResult, meetingsResult, contractsResult, referralsResult] = await Promise.all([
@@ -136,6 +162,14 @@ serve(async (req) => {
 
     const referrersSet = new Set(
       referralsResult.data?.map(r => r.referred_by).filter(Boolean) || []
+    );
+
+    // Build contact name map for notifications
+    const contactNameMap = new Map<string, string>(
+      clientPlans.map(cp => {
+        const contacts = cp.contacts as unknown as { full_name: string } | null;
+        return [cp.contact_id, contacts?.full_name || 'Cliente'];
+      })
     );
 
     // Calculate health scores
@@ -238,11 +272,61 @@ serve(async (req) => {
 
     console.log(`[save-health-snapshots] Successfully saved ${insertedCount} snapshots for ${today}`);
 
+    // Check for category drops and create notifications
+    const notifications: Array<{
+      user_id: string;
+      title: string;
+      message: string;
+      type: string;
+      link: string;
+    }> = [];
+
+    for (const snapshot of snapshots) {
+      const previousData = previousCategoryMap.get(snapshot.contact_id);
+      
+      if (previousData && previousData.owner_id) {
+        const prevIndex = categoryOrder.indexOf(previousData.category);
+        const newIndex = categoryOrder.indexOf(snapshot.category);
+        
+        // If worsened (higher index = worse)
+        if (newIndex > prevIndex) {
+          const contactName = contactNameMap.get(snapshot.contact_id) || 'Cliente';
+          const prevLabel = categoryLabels[previousData.category] || previousData.category;
+          const newLabel = categoryLabels[snapshot.category] || snapshot.category;
+          
+          notifications.push({
+            user_id: previousData.owner_id,
+            title: 'Health Score em queda',
+            message: `O cliente ${contactName} caiu de "${prevLabel}" para "${newLabel}"`,
+            type: 'health_score_drop',
+            link: `/clients/${snapshot.contact_id}`
+          });
+          
+          console.log(`[save-health-snapshots] Category drop detected for ${contactName}: ${prevLabel} → ${newLabel}`);
+        }
+      }
+    }
+
+    // Insert notifications
+    if (notifications.length > 0) {
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) {
+        console.error('[save-health-snapshots] Error inserting notifications:', notifError);
+        // Don't throw - snapshots were saved successfully
+      } else {
+        console.log(`[save-health-snapshots] Created ${notifications.length} notifications for category drops`);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         message: 'Snapshots saved successfully', 
         date: today,
-        count: insertedCount 
+        count: insertedCount,
+        notificationsCreated: notifications.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
