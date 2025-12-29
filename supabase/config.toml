@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.calculate-health-score]
 verify_jwt = false
+
+[functions.save-health-snapshots]
+verify_jwt = false
