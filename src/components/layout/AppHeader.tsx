@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { NotificationCenter } from './NotificationCenter';
+import { ThemeToggle } from './ThemeToggle';
 const roleLabels: Record<string, string> = {
   planejador: 'Planejador',
   lider: 'Líder Comercial',
@@ -42,6 +43,7 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
