@@ -46,9 +46,9 @@ export function OperationsEfficiencyCards({ metrics, isLoading }: OperationsEffi
   };
 
   const statusColors = {
-    good: 'text-green-600 bg-green-50 border-green-200',
-    warning: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-    bad: 'text-red-600 bg-red-50 border-red-200',
+    good: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700',
+    warning: 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700',
+    bad: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700',
     neutral: 'text-muted-foreground bg-muted/50 border-border',
   };
 
