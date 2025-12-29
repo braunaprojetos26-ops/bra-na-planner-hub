@@ -92,19 +92,23 @@ export default function Contacts() {
     return Array.from(uniqueSources).sort();
   }, [contacts]);
 
+  // Normalize string removing accents for search
+  const normalizeString = (str: string) => 
+    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
   // Filter contacts
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
 
     return contacts.filter(contact => {
-      const searchLower = searchTerm.toLowerCase();
+      const searchNormalized = normalizeString(searchTerm);
       const searchClean = searchTerm.replace(/\D/g, '');
       const matchesSearch = !searchTerm || 
-        contact.full_name.toLowerCase().includes(searchLower) ||
+        normalizeString(contact.full_name).includes(searchNormalized) ||
         contact.phone.includes(searchTerm) ||
-        contact.email?.toLowerCase().includes(searchLower) ||
+        normalizeString(contact.email || '').includes(searchNormalized) ||
         contact.cpf?.replace(/\D/g, '').includes(searchClean) ||
-        contact.rg?.toLowerCase().includes(searchLower);
+        normalizeString(contact.rg || '').includes(searchNormalized);
 
       const matchesSource = filterSource === 'all' || contact.source === filterSource;
       const matchesDirtyBase = filterDirtyBase === 'all' || 
