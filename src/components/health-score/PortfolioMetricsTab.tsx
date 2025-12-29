@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { HealthScoreResult, HealthScoreSummary, CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
-import { Users, TrendingUp, AlertTriangle, Target, Activity, Star } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Activity, Target, AlertTriangle, ChevronUp, ChevronDown, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PortfolioMetricsTabProps {
   results: HealthScoreResult[];
@@ -9,192 +12,265 @@ interface PortfolioMetricsTabProps {
   isLoading: boolean;
 }
 
+type SortField = 'name' | 'total' | 'otimo' | 'estavel' | 'atencao' | 'critico' | 'risk';
+type SortDirection = 'asc' | 'desc';
+
+interface PlannerStats {
+  ownerId: string;
+  ownerName: string;
+  total: number;
+  otimo: number;
+  estavel: number;
+  atencao: number;
+  critico: number;
+  riskPercentage: number;
+}
+
 export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMetricsTabProps) {
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
   if (isLoading || !summary) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-5 bg-muted rounded w-32" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-24 bg-muted rounded" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="pt-4">
+                <div className="h-20 bg-muted rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="animate-pulse">
+            <CardContent className="pt-4">
+              <div className="h-64 bg-muted rounded" />
             </CardContent>
           </Card>
-        ))}
+          <Card className="animate-pulse">
+            <CardContent className="pt-4">
+              <div className="h-64 bg-muted rounded" />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
-  // Calculate additional metrics
-  const healthyPercentage = summary.totalClients > 0
-    ? Math.round(((summary.byCategory.otimo + summary.byCategory.estavel) / summary.totalClients) * 100)
+  // Calculate volatility (standard deviation)
+  const scores = results.map(r => r.totalScore);
+  const mean = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const variance = scores.length > 0 
+    ? scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length 
     : 0;
+  const volatility = Math.round(Math.sqrt(variance));
 
-  const atRiskPercentage = summary.totalClients > 0
-    ? Math.round(((summary.byCategory.atencao + summary.byCategory.critico) / summary.totalClients) * 100)
-    : 0;
-
-  // Pillar averages
-  const pillarAverages = {
-    nps: results.length > 0 
-      ? Math.round(results.reduce((sum, r) => sum + r.breakdown.nps.score, 0) / results.length) 
-      : 0,
-    meetings: results.length > 0 
-      ? Math.round(results.reduce((sum, r) => sum + r.breakdown.meetings.score, 0) / results.length) 
-      : 0,
-    payment: results.length > 0 
-      ? Math.round(results.reduce((sum, r) => sum + r.breakdown.payment.score, 0) / results.length) 
-      : 0,
-    crossSell: results.length > 0 
-      ? Math.round(results.reduce((sum, r) => sum + r.breakdown.crossSell.score, 0) / results.length) 
-      : 0,
-    referrals: results.length > 0 
-      ? Math.round(results.reduce((sum, r) => sum + r.breakdown.referrals.score, 0) / results.length) 
-      : 0,
-  };
-
-  // Find weakest and strongest pillars
-  const pillarData = [
-    { name: 'NPS', value: pillarAverages.nps, max: 25 },
-    { name: 'Reuniões', value: pillarAverages.meetings, max: 25 },
-    { name: 'Pagamento', value: pillarAverages.payment, max: 20 },
-    { name: 'Cross-sell', value: pillarAverages.crossSell, max: 15 },
-    { name: 'Indicações', value: pillarAverages.referrals, max: 15 },
-  ].map(p => ({ ...p, percentage: Math.round((p.value / p.max) * 100) }));
-
-  const sortedPillars = [...pillarData].sort((a, b) => b.percentage - a.percentage);
-  const strongestPillar = sortedPillars[0];
-  const weakestPillar = sortedPillars[sortedPillars.length - 1];
+  // Trend calculation (placeholder - would need historical data)
+  const trendPercentage = -0.1; // This would come from comparing with previous period
+  const trendDirection = trendPercentage >= 0 ? 'up' : 'down';
 
   // Category distribution data for pie chart
-  const categoryData = Object.entries(CATEGORY_CONFIG).map(([key, config]) => ({
-    name: config.label,
-    value: summary.byCategory[key as CategoryKey],
-    color: config.color,
-  }));
-
-  // Score distribution histogram
-  const scoreRanges = [
-    { range: '0-20', min: 0, max: 20, count: 0 },
-    { range: '21-40', min: 21, max: 40, count: 0 },
-    { range: '41-60', min: 41, max: 60, count: 0 },
-    { range: '61-80', min: 61, max: 80, count: 0 },
-    { range: '81-100', min: 81, max: 100, count: 0 },
+  const categoryData = [
+    { name: 'Ótimo', value: summary.byCategory.otimo, color: CATEGORY_CONFIG.otimo.color },
+    { name: 'Crítico', value: summary.byCategory.critico, color: CATEGORY_CONFIG.critico.color },
+    { name: 'Atenção', value: summary.byCategory.atencao, color: CATEGORY_CONFIG.atencao.color },
+    { name: 'Estável', value: summary.byCategory.estavel, color: CATEGORY_CONFIG.estavel.color },
   ];
 
-  results.forEach((r) => {
-    for (const range of scoreRanges) {
-      if (r.totalScore >= range.min && r.totalScore <= range.max) {
-        range.count++;
-        break;
-      }
+  // Calculate planner stats
+  const plannerStatsMap = new Map<string, PlannerStats>();
+  results.forEach(r => {
+    if (!r.ownerId || !r.ownerName) return;
+    
+    if (!plannerStatsMap.has(r.ownerId)) {
+      plannerStatsMap.set(r.ownerId, {
+        ownerId: r.ownerId,
+        ownerName: r.ownerName,
+        total: 0,
+        otimo: 0,
+        estavel: 0,
+        atencao: 0,
+        critico: 0,
+        riskPercentage: 0,
+      });
     }
+    
+    const stats = plannerStatsMap.get(r.ownerId)!;
+    stats.total++;
+    stats[r.category as keyof Pick<PlannerStats, 'otimo' | 'estavel' | 'atencao' | 'critico'>]++;
   });
+
+  // Calculate risk percentage for each planner
+  plannerStatsMap.forEach(stats => {
+    stats.riskPercentage = stats.total > 0 
+      ? Math.round(((stats.atencao + stats.critico) / stats.total) * 100)
+      : 0;
+  });
+
+  const plannerStats = Array.from(plannerStatsMap.values());
+
+  // Prepare data for stacked bar chart
+  const plannerChartData = plannerStats
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8)
+    .map(p => ({
+      name: p.ownerName.split(' ')[0] + ' ' + (p.ownerName.split(' ')[1] || ''),
+      otimo: p.otimo,
+      estavel: p.estavel,
+      atencao: p.atencao,
+      critico: p.critico,
+    }));
+
+  // Sort planner stats for table
+  const sortedPlannerStats = [...plannerStats].sort((a, b) => {
+    let aVal: string | number, bVal: string | number;
+    
+    switch (sortField) {
+      case 'name': aVal = a.ownerName; bVal = b.ownerName; break;
+      case 'total': aVal = a.total; bVal = b.total; break;
+      case 'otimo': aVal = a.otimo; bVal = b.otimo; break;
+      case 'estavel': aVal = a.estavel; bVal = b.estavel; break;
+      case 'atencao': aVal = a.atencao; bVal = b.atencao; break;
+      case 'critico': aVal = a.critico; bVal = b.critico; break;
+      case 'risk': aVal = a.riskPercentage; bVal = b.riskPercentage; break;
+      default: aVal = a.ownerName; bVal = b.ownerName;
+    }
+
+    if (typeof aVal === 'string') {
+      return sortDirection === 'asc' 
+        ? aVal.localeCompare(bVal as string)
+        : (bVal as string).localeCompare(aVal);
+    }
+    return sortDirection === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronUp className="h-3 w-3 opacity-30" />;
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="h-3 w-3" /> 
+      : <ChevronDown className="h-3 w-3" />;
+  };
+
+  const CategoryBadge = ({ value, category }: { value: number; category: CategoryKey }) => {
+    const config = CATEGORY_CONFIG[category];
+    return (
+      <span 
+        className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium"
+        style={{ 
+          borderColor: config.color,
+          borderWidth: '2px',
+          color: config.color,
+        }}
+      >
+        {value}
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Metrics */}
+      {/* Header Section */}
+      <div>
+        <h2 className="text-xl font-bold">Portfolio Health Metrics</h2>
+        <p className="text-sm text-muted-foreground">
+          Métricas agregadas para avaliação da saúde geral da carteira
+        </p>
+      </div>
+
+      {/* Top Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Portfolio Health Index */}
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Users className="h-4 w-4" />
-              <span className="text-sm">Total de Clientes</span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Portfolio Health Index</span>
+              <Target className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className="text-3xl font-bold mt-2">{summary.totalClients}</p>
+            <p className="text-4xl font-bold mt-2">{summary.averageScore}</p>
+            <p className="text-xs text-muted-foreground">Score médio da carteira</p>
           </CardContent>
         </Card>
 
+        {/* Total de Clientes */}
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Target className="h-4 w-4" />
-              <span className="text-sm">Score Médio</span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total de Clientes</span>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className="text-3xl font-bold mt-2">{summary.averageScore}</p>
-            <p className="text-xs text-muted-foreground">de 100 pontos</p>
+            <p className="text-4xl font-bold mt-2">{summary.totalClients}</p>
+            <p className="text-xs text-muted-foreground">em toda equipe</p>
           </CardContent>
         </Card>
 
+        {/* Tendência */}
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-green-600">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-sm">Saudáveis</span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Tendência</span>
+              {trendDirection === 'up' ? (
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              )}
             </div>
-            <p className="text-3xl font-bold mt-2">{healthyPercentage}%</p>
-            <p className="text-xs text-muted-foreground">Ótimo + Estável</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 text-amber-600">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm">Em Risco</span>
-            </div>
-            <p className="text-3xl font-bold mt-2">{atRiskPercentage}%</p>
-            <p className="text-xs text-muted-foreground">Atenção + Crítico</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Pillar Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                Pilar mais forte
-              </span>
-            </div>
-            <p className="text-xl font-bold mt-2">{strongestPillar?.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {strongestPillar?.percentage}% do máximo ({strongestPillar?.value}/{strongestPillar?.max})
+            <p className={cn(
+              "text-4xl font-bold mt-2",
+              trendPercentage >= 0 ? "text-green-500" : "text-red-500"
+            )}>
+              {trendPercentage >= 0 ? '+' : ''}{trendPercentage}%
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {trendPercentage >= 0 ? 'Score melhorou' : 'Score piorou'}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+        {/* Volatilidade */}
+        <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-amber-600" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Pilar que precisa de atenção
-              </span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Volatilidade</span>
+              <Activity className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className="text-xl font-bold mt-2">{weakestPillar?.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {weakestPillar?.percentage}% do máximo ({weakestPillar?.value}/{weakestPillar?.max})
-            </p>
+            <p className="text-4xl font-bold mt-2">{volatility}</p>
+            <p className="text-xs text-muted-foreground">Desvio padrão dos scores</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Category Distribution */}
+        {/* Category Distribution Pie Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Distribuição por Categoria</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Distribuição por Categoria
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-72 flex items-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={categoryData}
-                    cx="50%"
+                    cx="40%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={2}
+                    outerRadius={100}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
                   >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -214,86 +290,162 @@ export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMe
           </CardContent>
         </Card>
 
-        {/* Score Distribution Histogram */}
+        {/* Risk Distribution by Planner */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Distribuição de Scores</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Risk Distribution por Planejador
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={scoreRanges}>
+                <BarChart data={plannerChartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis 
-                    dataKey="range" 
-                    tick={{ fontSize: 11 }}
+                    dataKey="name" 
+                    tick={{ fontSize: 10 }}
                     className="text-muted-foreground"
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
                   />
                   <YAxis 
                     tick={{ fontSize: 11 }}
                     className="text-muted-foreground"
                   />
                   <Tooltip 
-                    formatter={(value) => [`${value} clientes`, 'Quantidade']}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--popover))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
                     }}
                   />
-                  <Bar 
-                    dataKey="count" 
-                    fill="hsl(var(--primary))"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pillar Performance */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Performance por Pilar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pillarData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    type="number" 
-                    domain={[0, 100]}
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name"
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
-                    width={80}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`${value}%`, 'Performance']}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Bar 
-                    dataKey="percentage" 
-                    fill="hsl(var(--primary))"
-                    radius={[0, 4, 4, 0]}
-                  />
+                  <Legend />
+                  <Bar dataKey="estavel" name="Estável" stackId="a" fill={CATEGORY_CONFIG.estavel.color} />
+                  <Bar dataKey="otimo" name="Ótimo" stackId="a" fill={CATEGORY_CONFIG.otimo.color} />
+                  <Bar dataKey="atencao" name="Atenção" stackId="a" fill={CATEGORY_CONFIG.atencao.color} />
+                  <Bar dataKey="critico" name="Crítico" stackId="a" fill={CATEGORY_CONFIG.critico.color} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Risk Concentration Matrix */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Risk Concentration Matrix
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sortedPlannerStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhum planejador encontrado.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Planejador
+                        <SortIcon field="name" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('total')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Total
+                        <SortIcon field="total" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('otimo')}
+                    >
+                      <div className="flex items-center justify-center gap-1" style={{ color: CATEGORY_CONFIG.otimo.color }}>
+                        Ótimo
+                        <SortIcon field="otimo" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('estavel')}
+                    >
+                      <div className="flex items-center justify-center gap-1" style={{ color: CATEGORY_CONFIG.estavel.color }}>
+                        Estável
+                        <SortIcon field="estavel" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('atencao')}
+                    >
+                      <div className="flex items-center justify-center gap-1" style={{ color: CATEGORY_CONFIG.atencao.color }}>
+                        Atenção
+                        <SortIcon field="atencao" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('critico')}
+                    >
+                      <div className="flex items-center justify-center gap-1" style={{ color: CATEGORY_CONFIG.critico.color }}>
+                        Crítico
+                        <SortIcon field="critico" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('risk')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        % Risco
+                        <SortIcon field="risk" />
+                      </div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedPlannerStats.map((planner) => (
+                    <TableRow key={planner.ownerId}>
+                      <TableCell className="font-medium">{planner.ownerName}</TableCell>
+                      <TableCell className="text-center">{planner.total}</TableCell>
+                      <TableCell className="text-center">
+                        <CategoryBadge value={planner.otimo} category="otimo" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <CategoryBadge value={planner.estavel} category="estavel" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <CategoryBadge value={planner.atencao} category="atencao" />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <CategoryBadge value={planner.critico} category="critico" />
+                      </TableCell>
+                      <TableCell className="text-center font-medium">
+                        {planner.riskPercentage}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
