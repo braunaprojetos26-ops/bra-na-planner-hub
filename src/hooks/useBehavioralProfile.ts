@@ -82,14 +82,27 @@ export function useBehavioralProfile(userId: string) {
   });
 }
 
+// Sanitize filename to remove accents and special characters
+function sanitizeFileName(fileName: string): string {
+  // Remove accents/diacritics
+  const normalized = fileName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Replace spaces with hyphens
+  const withHyphens = normalized.replace(/\s+/g, '-');
+  // Remove characters that are not alphanumeric, dots, hyphens, or underscores
+  const cleaned = withHyphens.replace(/[^a-zA-Z0-9._-]/g, '');
+  // Ensure .pdf extension
+  return cleaned.toLowerCase().endsWith('.pdf') ? cleaned.toLowerCase() : cleaned.toLowerCase() + '.pdf';
+}
+
 export function useUploadBehavioralProfilePDF() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, file }: { userId: string; file: File }) => {
-      // Upload file to storage
-      const fileName = `${userId}/${Date.now()}-${file.name}`;
+      // Sanitize filename to prevent storage errors with accents/special characters
+      const sanitizedName = sanitizeFileName(file.name);
+      const fileName = `${userId}/${Date.now()}-${sanitizedName}`;
       const { error: uploadError } = await supabase.storage
         .from('behavioral-profiles')
         .upload(fileName, file);
