@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, eachDayOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
-import { TrendingUp, Calendar, Clock } from 'lucide-react';
+import { TrendingUp, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TemporalEvolutionTabProps {
@@ -236,47 +235,8 @@ export function TemporalEvolutionTab({ ownerIds, startDate, endDate }: TemporalE
       {/* Filters Section */}
       <Card>
         <CardContent className="pt-6">
-          {/* Period Preset Buttons */}
-          <div className="flex items-center gap-2 mb-4">
-            <Button
-              variant={period === '30d' && !hasCustomDateRange ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPeriod('30d')}
-              disabled={!!hasCustomDateRange}
-            >
-              Últimos 30 dias
-            </Button>
-            <Button
-              variant={period === '60d' && !hasCustomDateRange ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPeriod('60d')}
-              disabled={!!hasCustomDateRange}
-            >
-              Últimos 60 dias
-            </Button>
-            <Button
-              variant={period === '90d' && !hasCustomDateRange ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPeriod('90d')}
-              disabled={!!hasCustomDateRange}
-            >
-              Últimos 90 dias
-            </Button>
-          </div>
-
           {/* Filters Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {/* Period Display */}
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Período</label>
-              <div className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  {format(currentStart, 'dd/MM/yyyy')} - {format(currentEnd, 'dd/MM/yyyy')}
-                </span>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Chart Type */}
             <div>
               <label className="text-sm text-muted-foreground mb-1 block">Tipo de Gráfico</label>
@@ -304,17 +264,6 @@ export function TemporalEvolutionTab({ ownerIds, startDate, endDate }: TemporalE
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Owner Info */}
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Planejador:</span>{' '}
-            {ownerIds && ownerIds.length > 0 
-              ? `${ownerIds.length} selecionado(s)` 
-              : 'Todos os planejadores'}
-            <p className="text-xs mt-1">
-              Utilize os filtros gerais do topo do painel para segmentar por cargo.
-            </p>
           </div>
         </CardContent>
       </Card>
