@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   Map,
+  Heart,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -48,6 +49,7 @@ const mainNavItems = [
 
 const analyticsSubItems = [
   { title: 'Dashboard de Funis', url: '/analytics', icon: BarChart3 },
+  { title: 'Health Score', url: '/analytics/health-score', icon: Heart },
   { title: 'Mapa de Oportunidades', url: '/analytics/opportunity-map', icon: Map },
 ];
 

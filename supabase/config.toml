@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.ai-leadership-coach]
 verify_jwt = false
+
+[functions.calculate-health-score]
+verify_jwt = false

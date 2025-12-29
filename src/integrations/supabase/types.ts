@@ -993,6 +993,81 @@ export type Database = {
         }
         Relationships: []
       }
+      health_score_snapshots: {
+        Row: {
+          category: string
+          contact_id: string
+          created_at: string
+          cross_sell_score: number | null
+          days_since_last_meeting: number | null
+          extra_products_count: number | null
+          has_referrals: boolean | null
+          id: string
+          meetings_score: number | null
+          nps_score: number | null
+          nps_value: number | null
+          owner_id: string | null
+          payment_days_late: number | null
+          payment_score: number | null
+          referrals_score: number | null
+          snapshot_date: string
+          total_score: number
+        }
+        Insert: {
+          category: string
+          contact_id: string
+          created_at?: string
+          cross_sell_score?: number | null
+          days_since_last_meeting?: number | null
+          extra_products_count?: number | null
+          has_referrals?: boolean | null
+          id?: string
+          meetings_score?: number | null
+          nps_score?: number | null
+          nps_value?: number | null
+          owner_id?: string | null
+          payment_days_late?: number | null
+          payment_score?: number | null
+          referrals_score?: number | null
+          snapshot_date: string
+          total_score?: number
+        }
+        Update: {
+          category?: string
+          contact_id?: string
+          created_at?: string
+          cross_sell_score?: number | null
+          days_since_last_meeting?: number | null
+          extra_products_count?: number | null
+          has_referrals?: boolean | null
+          id?: string
+          meetings_score?: number | null
+          nps_score?: number | null
+          nps_value?: number | null
+          owner_id?: string | null
+          payment_days_late?: number | null
+          payment_score?: number | null
+          referrals_score?: number | null
+          snapshot_date?: string
+          total_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_score_snapshots_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_score_snapshots_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       institutional_presentations: {
         Row: {
           created_at: string
@@ -1312,6 +1387,92 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      nps_imports: {
+        Row: {
+          created_at: string
+          error_count: number
+          errors: Json | null
+          file_name: string
+          id: string
+          imported_by: string
+          success_count: number
+          total_records: number
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number
+          errors?: Json | null
+          file_name: string
+          id?: string
+          imported_by: string
+          success_count?: number
+          total_records?: number
+        }
+        Update: {
+          created_at?: string
+          error_count?: number
+          errors?: Json | null
+          file_name?: string
+          id?: string
+          imported_by?: string
+          success_count?: number
+          total_records?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nps_imports_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      nps_responses: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          import_batch_id: string | null
+          imported_by: string | null
+          nps_value: number
+          response_date: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          import_batch_id?: string | null
+          imported_by?: string | null
+          nps_value: number
+          response_date: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          import_batch_id?: string | null
+          imported_by?: string | null
+          nps_value?: number
+          response_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nps_responses_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nps_responses_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       one_on_one_meetings: {
         Row: {
