@@ -2178,6 +2178,7 @@ export type Database = {
           opportunity_id: string | null
           presented_at: string | null
           proposal_type: string
+          selected_topics: Json | null
           show_cases: boolean
           show_feedbacks: boolean
           status: string
@@ -2202,6 +2203,7 @@ export type Database = {
           opportunity_id?: string | null
           presented_at?: string | null
           proposal_type?: string
+          selected_topics?: Json | null
           show_cases?: boolean
           show_feedbacks?: boolean
           status?: string
@@ -2226,6 +2228,7 @@ export type Database = {
           opportunity_id?: string | null
           presented_at?: string | null
           proposal_type?: string
+          selected_topics?: Json | null
           show_cases?: boolean
           show_feedbacks?: boolean
           status?: string
