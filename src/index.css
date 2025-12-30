@@ -72,53 +72,68 @@
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 220 14% 96%;
+    /* Modern Dark Theme - Linear/Vercel style
+       Using dark slate instead of pure black for softer feel */
+    
+    /* Main background - Dark slate, not pure black (#0f172a equivalent) */
+    --background: 222 47% 8%;
+    /* Primary text - Soft white (#E2E8F0), not pure white */
+    --foreground: 215 20% 91%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 220 14% 96%;
+    /* Cards/Surfaces - Elevated look with visible distinction (#1e293b equivalent) */
+    --card: 217 33% 14%;
+    --card-foreground: 215 20% 91%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 220 14% 96%;
+    --popover: 217 33% 14%;
+    --popover-foreground: 215 20% 91%;
 
-    --primary: 221 83% 53%;
+    /* Primary - Slightly muted blue to reduce vibration */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 14%;
-    --secondary-foreground: 220 14% 96%;
+    /* Secondary - Subtle elevation */
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 215 20% 91%;
 
-    --muted: 222 47% 14%;
-    --muted-foreground: 220 14% 60%;
+    /* Muted - For less prominent elements */
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 14% 55%;
 
-    --accent: 173 58% 39%;
+    /* Accent - Teal slightly softened */
+    --accent: 173 50% 35%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 30%;
+    /* Destructive - Softened red */
+    --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 47% 18%;
-    --input: 222 47% 18%;
-    --ring: 221 83% 53%;
+    /* Borders - Subtle low contrast grey (#334155 equivalent) */
+    --border: 217 25% 22%;
+    --input: 217 25% 22%;
+    --ring: 217 91% 60%;
 
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 220 14% 80%;
-    --sidebar-primary: 221 83% 53%;
+    /* Sidebar - Slightly translucent feel, lighter than main bg */
+    --sidebar-background: 222 47% 10%;
+    --sidebar-foreground: 215 20% 85%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 47% 14%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 215 20% 91%;
+    --sidebar-border: 217 25% 20%;
+    --sidebar-ring: 217 91% 60%;
 
-    --success: 142 76% 36%;
+    /* Status colors - Slightly adjusted for dark backgrounds */
+    --success: 142 70% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 85% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
+    --info: 199 80% 50%;
     --info-foreground: 0 0% 100%;
 
-    --kanban-won: 142 76% 36%;
-    --kanban-lost: 0 84% 60%;
-    --kanban-open: 221 83% 53%;
+    /* Kanban specific */
+    --kanban-won: 142 70% 40%;
+    --kanban-lost: 0 70% 50%;
+    --kanban-open: 217 91% 60%;
   }
 }
 
