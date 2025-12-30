@@ -43,6 +43,7 @@ import {
 import { PontualProposalPresentation } from './PontualProposalPresentation';
 import { cn } from '@/lib/utils';
 import type { Proposal } from '@/hooks/useProposals';
+import type { Json } from '@/integrations/supabase/types';
 
 // Icon mapping
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -200,7 +201,7 @@ export function PontualProposalBuilder({ contactId, opportunityId, onBack }: Pon
       diagnostic_scores: diagnostic?.category_scores || {},
       show_feedbacks: showFeedbacks,
       show_cases: showCases,
-      selected_topics: selectedTopics,
+      selected_topics: selectedTopics as unknown as Json,
     };
 
     try {
