@@ -4,6 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Json } from '@/integrations/supabase/types';
 
+export interface SelectedTopic {
+  topic: string;
+  meetings: number;
+}
+
 export interface Proposal {
   id: string;
   contact_id: string;
@@ -23,6 +28,7 @@ export interface Proposal {
   diagnostic_scores: Json;
   show_feedbacks: boolean;
   show_cases: boolean;
+  selected_topics: Json;
   status: 'draft' | 'presented' | 'accepted' | 'rejected';
   presented_at: string | null;
   created_at: string;
@@ -46,6 +52,7 @@ export interface ProposalInsert {
   diagnostic_scores?: Json;
   show_feedbacks?: boolean;
   show_cases?: boolean;
+  selected_topics?: Json;
   status?: string;
 }
 

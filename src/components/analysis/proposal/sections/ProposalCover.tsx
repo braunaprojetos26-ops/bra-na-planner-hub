@@ -3,9 +3,10 @@ import braunaLogo from '@/assets/brauna-logo.png';
 interface ProposalCoverProps {
   clientName: string;
   plannerName: string;
+  subtitle?: string;
 }
 
-export function ProposalCover({ clientName, plannerName }: ProposalCoverProps) {
+export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Personalizada' }: ProposalCoverProps) {
   const currentDate = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
@@ -40,7 +41,7 @@ export function ProposalCover({ clientName, plannerName }: ProposalCoverProps) {
         {/* Title */}
         <div className="space-y-2">
           <p className="text-amber-400 text-sm tracking-[0.3em] uppercase font-light">
-            Proposta Personalizada
+            {subtitle}
           </p>
           <div className="w-24 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
         </div>
