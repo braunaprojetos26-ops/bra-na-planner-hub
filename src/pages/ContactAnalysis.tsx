@@ -15,6 +15,8 @@ import { DataCollectionForm } from '@/components/analysis/data-collection/DataCo
 import { DiagnosticView } from '@/components/analysis/diagnostic/DiagnosticView';
 import { ContractingForm } from '@/components/analysis/contracting/ContractingForm';
 import { ProposalBuilder } from '@/components/analysis/proposal/ProposalBuilder';
+import { ProposalTypeSelector } from '@/components/analysis/proposal/ProposalTypeSelector';
+import { PontualProposalBuilder } from '@/components/analysis/proposal/PontualProposalBuilder';
 
 const STEPS = [
   { label: 'Quem Sou Eu', shortLabel: 'Quem Sou' },
@@ -32,6 +34,7 @@ export default function ContactAnalysis() {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [showEditor, setShowEditor] = useState(false);
+  const [proposalType, setProposalType] = useState<'selecting' | 'completo' | 'pontual'>('selecting');
 
   const { data: contact, isLoading: contactLoading } = useContact(contactId || '');
   const { data: plannerProfile } = useMyPlannerProfile();
@@ -113,11 +116,37 @@ export default function ContactAnalysis() {
         return <InstitutionalPresentationView />;
 
       case 4:
+        if (proposalType === 'selecting') {
+          return (
+            <ProposalTypeSelector 
+              onSelect={(type) => setProposalType(type)} 
+            />
+          );
+        }
+        if (proposalType === 'pontual') {
+          return (
+            <PontualProposalBuilder
+              contactId={contactId!}
+              opportunityId={opportunityId}
+              onBack={() => setProposalType('selecting')}
+            />
+          );
+        }
         return (
-          <ProposalBuilder 
-            contactId={contactId!} 
-            opportunityId={opportunityId}
-          />
+          <div className="space-y-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setProposalType('selecting')}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar para seleção
+            </Button>
+            <ProposalBuilder 
+              contactId={contactId!} 
+              opportunityId={opportunityId}
+            />
+          </div>
         );
 
       case 5:
