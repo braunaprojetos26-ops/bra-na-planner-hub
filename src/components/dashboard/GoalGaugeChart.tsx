@@ -33,18 +33,18 @@ export function GoalGaugeChart({ current, goal, label = 'Meta' }: GoalGaugeChart
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-full h-[180px]">
-        <ResponsiveContainer width="100%" height="100%">
+    <div className="flex items-center gap-4">
+      <div className="relative w-24 h-16 flex-shrink-0">
+        <ResponsiveContainer width="100%" height={60}>
           <PieChart>
             <Pie
               data={data}
               cx="50%"
-              cy="85%"
+              cy="100%"
               startAngle={180}
               endAngle={0}
-              innerRadius={80}
-              outerRadius={100}
+              innerRadius={35}
+              outerRadius={48}
               paddingAngle={0}
               dataKey="value"
               stroke="none"
@@ -56,23 +56,24 @@ export function GoalGaugeChart({ current, goal, label = 'Meta' }: GoalGaugeChart
         </ResponsiveContainer>
         
         {/* Center text */}
-        <div className="absolute inset-0 flex flex-col items-center justify-end pb-4">
-          <span className="text-3xl font-bold text-foreground">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center">
+          <span className="text-lg font-bold text-foreground leading-none">
             {percentage.toFixed(0)}%
           </span>
-          <span className="text-sm text-muted-foreground">{label}</span>
         </div>
       </div>
       
-      {/* Values below */}
-      <div className="flex justify-between w-full mt-2 px-4">
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Atual</p>
-          <p className="text-sm font-semibold">{formatCurrency(current)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Meta</p>
-          <p className="text-sm font-semibold">{formatCurrency(goal)}</p>
+      {/* Values */}
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between gap-4 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">Atual</p>
+            <p className="font-semibold truncate">{formatCurrency(current)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Meta</p>
+            <p className="font-semibold truncate">{formatCurrency(goal)}</p>
+          </div>
         </div>
       </div>
     </div>
