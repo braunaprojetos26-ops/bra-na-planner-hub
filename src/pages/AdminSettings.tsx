@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
-import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart } from 'lucide-react';
+import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { UsersTab, PipelinesTab, AITab, TeamManagementTab, HealthScoreTab } from '@/components/admin/tabs';
+import { UsersTab, PipelinesTab, AITab, TeamManagementTab, HealthScoreTab, GoalsTab } from '@/components/admin/tabs';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
@@ -59,6 +59,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
             <Heart className="h-4 w-4 hidden sm:inline" />
             Health Score
           </TabsTrigger>
+          <TabsTrigger value="goals" className="flex-1 gap-2">
+            <Target className="h-4 w-4 hidden sm:inline" />
+            Metas
+          </TabsTrigger>
           <TabsTrigger value="ai" className="flex-1 gap-2">
             <Sparkles className="h-4 w-4 hidden sm:inline" />
             IA
@@ -87,6 +91,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
 
         <TabsContent value="health-score">
           <HealthScoreTab />
+        </TabsContent>
+
+        <TabsContent value="goals">
+          <GoalsTab />
         </TabsContent>
 
         <TabsContent value="ai">
