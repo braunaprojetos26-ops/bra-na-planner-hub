@@ -1,5 +1,5 @@
 // Pricing logic for Planejamento Completo
-// Based on the provided code from the user
+// Based on the user's pricing spreadsheet
 
 export interface PricingInput {
   monthlyIncome: number;
@@ -16,44 +16,36 @@ export interface InstallmentRow {
 }
 
 export interface PricingResult {
-  baseValue: number; // Value for 1x payment
+  baseValue: number; // Value before discount
   finalValue: number; // After discount if applied
   installmentValue: number; // For selected installments
   installmentTable: InstallmentRow[];
+  totalPercentage: number; // Sum of meeting + complexity percentages
 }
 
-// Complexity multipliers
-const COMPLEXITY_MULTIPLIERS: Record<number, number> = {
-  1: 0.8,
-  2: 0.9,
-  3: 1.0,
-  4: 1.1,
-  5: 1.2,
+// Percentages by number of meetings
+const MEETING_PERCENTAGES: Record<number, number> = {
+  4: 0.016,   // 1.60%
+  6: 0.019,   // 1.90%
+  9: 0.022,   // 2.20%
+  12: 0.025,  // 2.50%
 };
 
-// Meeting multipliers (adjustment based on number of meetings)
-const MEETING_MULTIPLIERS: Record<number, number> = {
-  4: 0.85,
-  6: 1.0,
-  9: 1.25,
-  12: 1.5,
+// Percentages by complexity
+const COMPLEXITY_PERCENTAGES: Record<number, number> = {
+  1: 0.016,   // 1.60%
+  2: 0.019,   // 1.90%
+  3: 0.022,   // 2.20%
+  4: 0.025,   // 2.50%
+  5: 0.028,   // 2.80%
 };
 
-// Installment fee multipliers (increases total for more installments)
-const INSTALLMENT_FEES: Record<number, number> = {
-  1: 1.0,
-  2: 1.02,
-  3: 1.04,
-  4: 1.06,
-  5: 1.08,
-  6: 1.10,
-  7: 1.12,
-  8: 1.14,
-  9: 1.16,
-  10: 1.18,
-  11: 1.20,
-  12: 1.22,
-};
+// Minimums
+const MIN_MONTHLY = 250;      // R$250 minimum per installment
+const MIN_ABSOLUTE = 3000;    // R$3,000 absolute minimum
+
+// Monthly interest rate for installments (compound)
+const MONTHLY_INTEREST_RATE = 0.005; // 0.5% per month
 
 export function calculateProposalPricing(
   input: PricingInput,
@@ -61,29 +53,46 @@ export function calculateProposalPricing(
 ): PricingResult {
   const { monthlyIncome, monthsOfIncome, complexity, meetings, discountApplied } = input;
 
-  // Base calculation: monthly income * months * complexity factor * meeting factor
-  const complexityMultiplier = COMPLEXITY_MULTIPLIERS[complexity] || 1.0;
-  const meetingMultiplier = MEETING_MULTIPLIERS[meetings] || 1.0;
+  // 1. Calculate annual income
+  const annualIncome = monthlyIncome * monthsOfIncome;
 
-  const baseValue = monthlyIncome * monthsOfIncome * complexityMultiplier * meetingMultiplier;
+  // 2. Sum percentages (meetings + complexity)
+  const meetingPercentage = MEETING_PERCENTAGES[meetings] || 0.016;
+  const complexityPercentage = COMPLEXITY_PERCENTAGES[complexity] || 0.016;
+  const totalPercentage = meetingPercentage + complexityPercentage;
 
-  // Apply discount if selected
+  // 3. Calculate base value
+  let baseValue = annualIncome * totalPercentage;
+
+  // 4. Apply minimums
+  // Minimum by installments: R$250 × number of selected installments
+  const minByInstallments = MIN_MONTHLY * selectedInstallments;
+  // Absolute minimum: R$3,000
+  baseValue = Math.max(baseValue, minByInstallments, MIN_ABSOLUTE);
+
+  // 5. Apply discount if selected (10%)
   const finalValue = discountApplied ? baseValue * 0.9 : baseValue;
 
-  // Calculate installment table
+  // 6. Calculate installment table with compound interest
   const installmentTable: InstallmentRow[] = [];
   for (let n = 1; n <= 12; n++) {
-    const fee = INSTALLMENT_FEES[n] || 1.0;
-    const total = finalValue * fee;
-    const installmentValue = total / n;
+    // Compound interest: value × (1 + rate)^(installments - 1)
+    const totalWithInterest = finalValue * Math.pow(1 + MONTHLY_INTEREST_RATE, n - 1);
+    let installmentValue = totalWithInterest / n;
+
+    // Ensure minimum installment value of R$250
+    if (installmentValue < MIN_MONTHLY) {
+      installmentValue = MIN_MONTHLY;
+    }
+
     installmentTable.push({
       installments: n,
       installmentValue: Math.round(installmentValue * 100) / 100,
-      total: Math.round(total * 100) / 100,
+      total: Math.round(installmentValue * n * 100) / 100,
     });
   }
 
-  // Get selected installment value
+  // 7. Get selected installment value
   const selectedRow = installmentTable.find(r => r.installments === selectedInstallments);
   const installmentValue = selectedRow?.installmentValue || finalValue;
 
@@ -92,6 +101,7 @@ export function calculateProposalPricing(
     finalValue: Math.round(finalValue * 100) / 100,
     installmentValue: Math.round(installmentValue * 100) / 100,
     installmentTable,
+    totalPercentage,
   };
 }
 

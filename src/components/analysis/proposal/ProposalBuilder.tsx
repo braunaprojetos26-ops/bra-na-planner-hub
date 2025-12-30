@@ -232,7 +232,7 @@ export function ProposalBuilder({ contactId, opportunityId }: ProposalBuilderPro
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[0.5, 1, 1.5, 2, 2.5, 3].map((val) => (
+                  {Array.from({ length: 15 }, (_, i) => i + 1).map((val) => (
                     <SelectItem key={val} value={String(val)}>
                       {val} {val === 1 ? 'mês' : 'meses'}
                     </SelectItem>
