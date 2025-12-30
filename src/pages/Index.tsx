@@ -153,8 +153,8 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Comparatives Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Comparatives and Goal Section */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">vs Mês Anterior</CardTitle>
@@ -200,8 +200,8 @@ export default function Index() {
         </Card>
 
         {monthlyGoal > 0 && (
-          <Card className="row-span-2">
-            <CardHeader className="pb-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Meta de Faturamento</CardTitle>
             </CardHeader>
             <CardContent>
