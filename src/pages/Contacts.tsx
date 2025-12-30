@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Pencil, Eye, Trash2, Upload, CheckSquare, ListPlus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,8 +160,17 @@ export default function Contacts() {
 
   const handleDeleteConfirm = async () => {
     if (contactToDelete) {
-      await deleteContact.mutateAsync(contactToDelete.id);
-      setContactToDelete(null);
+      try {
+        await deleteContact.mutateAsync(contactToDelete.id);
+        setContactToDelete(null);
+      } catch (error: any) {
+        if (error?.message?.includes('contracts_contact_id_fkey')) {
+          toast.error('Este contato possui contratos registrados e não pode ser excluído.');
+        } else {
+          toast.error('Erro ao excluir contato.');
+        }
+        setContactToDelete(null);
+      }
     }
   };
 
