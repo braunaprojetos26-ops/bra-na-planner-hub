@@ -1,4 +1,4 @@
-import { TrendingUp, Shield, Wallet, Target, PiggyBank, BarChart3 } from 'lucide-react';
+import { TrendingUp, Shield, Wallet, Target, PiggyBank, BarChart3, CreditCard } from 'lucide-react';
 
 interface DiagnosticSectionProps {
   overallScore: number;
@@ -6,12 +6,14 @@ interface DiagnosticSectionProps {
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  protection: { label: 'Proteção', icon: <Shield className="w-5 h-5" />, color: 'from-blue-500 to-blue-600' },
-  cash_flow: { label: 'Fluxo de Caixa', icon: <Wallet className="w-5 h-5" />, color: 'from-green-500 to-green-600' },
-  investments: { label: 'Investimentos', icon: <TrendingUp className="w-5 h-5" />, color: 'from-purple-500 to-purple-600' },
-  goals: { label: 'Objetivos', icon: <Target className="w-5 h-5" />, color: 'from-orange-500 to-orange-600' },
-  retirement: { label: 'Aposentadoria', icon: <PiggyBank className="w-5 h-5" />, color: 'from-amber-500 to-amber-600' },
-  patrimony: { label: 'Patrimônio', icon: <BarChart3 className="w-5 h-5" />, color: 'from-indigo-500 to-indigo-600' },
+  gestao_gastos: { label: 'Gestão de Gastos', icon: <Wallet className="w-5 h-5" />, color: 'from-green-500 to-green-600' },
+  poupanca_minima_sudavel: { label: 'Poupança Mínima Saudável', icon: <PiggyBank className="w-5 h-5" />, color: 'from-amber-500 to-amber-600' },
+  reserva_emergencia: { label: 'Reserva de Emergência', icon: <Shield className="w-5 h-5" />, color: 'from-blue-500 to-blue-600' },
+  investimentos: { label: 'Investimentos', icon: <TrendingUp className="w-5 h-5" />, color: 'from-purple-500 to-purple-600' },
+  protecao_da_renda: { label: 'Proteção da Renda', icon: <Shield className="w-5 h-5" />, color: 'from-cyan-500 to-cyan-600' },
+  protecao_patrimonial: { label: 'Proteção Patrimonial', icon: <Shield className="w-5 h-5" />, color: 'from-indigo-500 to-indigo-600' },
+  milhas_beneficios: { label: 'Milhas e Benefícios', icon: <CreditCard className="w-5 h-5" />, color: 'from-orange-500 to-orange-600' },
+  planejamento_aposentadoria: { label: 'Independência Financeira', icon: <Target className="w-5 h-5" />, color: 'from-emerald-500 to-emerald-600' },
 };
 
 function getScoreColor(score: number): string {
