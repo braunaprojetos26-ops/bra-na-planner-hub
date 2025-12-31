@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HierarchyTree } from '@/components/structure/HierarchyTree';
 import { EditUserModal } from '@/components/structure/EditUserModal';
+import { PendingUsersSection } from '@/components/admin/PendingUsersSection';
 import { useHierarchy, HierarchyUser, useCanManageStructure } from '@/hooks/useHierarchy';
 
 export function UsersTab() {
@@ -18,6 +19,9 @@ export function UsersTab() {
 
   return (
     <div className="space-y-6">
+      {/* Seção de usuários pendentes - só aparece se houver pendentes */}
+      {canManage && <PendingUsersSection />}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Árvore Hierárquica</CardTitle>
