@@ -262,9 +262,6 @@ export function PontualProposalPresentation({
                     <span>•</span>
                     <span>Cartão de Crédito (1 a 6x)</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    * Fatura avulsa – não disponível pagamento recorrente
-                  </p>
                 </div>
               </CardContent>
             </Card>
