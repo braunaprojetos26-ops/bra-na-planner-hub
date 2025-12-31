@@ -9,6 +9,7 @@ const DELIVERABLES = [
       'Diagnóstico completo da situação financeira',
       'Identificação de gaps e oportunidades',
       'Definição de prioridades estratégicas',
+      'Alinhamento do método para alcançar objetivos',
     ],
   },
   {
@@ -16,10 +17,11 @@ const DELIVERABLES = [
     title: 'Implementação',
     icon: <TrendingUp className="w-6 h-6" />,
     items: [
-      'Plano de ação detalhado',
-      'Reorganização de investimentos',
+      'Implementação do Plano de ação definido',
+      'Definição de metas e marcos intermediários',
+      'Organização financeira completa',
       'Estruturação de proteção patrimonial',
-      'Otimização tributária',
+      'Alinhamento de investimentos aos objetivos',
     ],
   },
   {
