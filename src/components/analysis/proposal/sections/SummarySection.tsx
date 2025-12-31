@@ -1,17 +1,10 @@
 import { CheckCircle, Star } from 'lucide-react';
 
 interface SummarySectionProps {
-  proposalType: string;
   meetings: number;
 }
 
-const PROPOSAL_TYPE_LABELS: Record<string, string> = {
-  planejamento_completo: 'Planejamento Completo',
-  planejamento_pontual: 'Planejamento Pontual',
-};
-
-export function SummarySection({ proposalType, meetings }: SummarySectionProps) {
-  const typeLabel = PROPOSAL_TYPE_LABELS[proposalType] || proposalType;
+export function SummarySection({ meetings }: SummarySectionProps) {
 
   return (
     <section className="space-y-8">
@@ -32,8 +25,7 @@ export function SummarySection({ proposalType, meetings }: SummarySectionProps) 
           {/* Left - Details */}
           <div className="space-y-6">
             <div>
-              <p className="text-slate-400 text-sm mb-1">Tipo de Planejamento</p>
-              <p className="text-xl font-medium text-amber-400">{typeLabel}</p>
+              <p className="text-xl font-medium text-amber-400">Planejamento Completo</p>
             </div>
 
             <div>
@@ -45,9 +37,9 @@ export function SummarySection({ proposalType, meetings }: SummarySectionProps) 
               <p className="text-slate-400 text-sm">Inclui:</p>
               <ul className="space-y-2">
                 {[
-                  'Diagnóstico financeiro completo',
-                  'Plano de investimentos',
-                  'Análise de proteção',
+                  'Diagnóstico Financeiro Completo',
+                  'Definição de plano de implementação',
+                  'Acompanhamento personalizado e próximo',
                   'Suporte contínuo',
                 ].map((item, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm">
@@ -67,7 +59,7 @@ export function SummarySection({ proposalType, meetings }: SummarySectionProps) 
               ))}
             </div>
             <p className="text-slate-300 text-sm max-w-xs">
-              Mais de 500 clientes satisfeitos com nosso planejamento financeiro
+              Mais de 2.000 clientes satisfeitos com nosso planejamento financeiro
             </p>
           </div>
         </div>

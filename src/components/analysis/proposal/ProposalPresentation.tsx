@@ -122,7 +122,6 @@ const { user, profile } = useAuth();
 
           {/* Summary */}
           <SummarySection
-            proposalType={proposal.proposal_type}
             meetings={proposal.meetings}
           />
 
