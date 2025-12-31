@@ -11,10 +11,21 @@ import { Badge } from '@/components/ui/badge';
 interface DynamicFieldProps {
   field: DataCollectionField;
   value: unknown;
+  data?: Record<string, unknown>;
   onChange: (value: unknown) => void;
 }
 
-export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
+// Helper to get nested value from data object
+const getNestedValue = (obj: Record<string, unknown>, path: string): unknown => {
+  return path.split('.').reduce((acc: unknown, part) => {
+    if (acc && typeof acc === 'object') {
+      return (acc as Record<string, unknown>)[part];
+    }
+    return undefined;
+  }, obj);
+};
+
+export function DynamicField({ field, value, data, onChange }: DynamicFieldProps) {
   const renderField = () => {
     switch (field.field_type) {
       case 'text':
@@ -135,6 +146,23 @@ export function DynamicField({ field, value, onChange }: DynamicFieldProps) {
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
           />
+        );
+
+      case 'computed':
+        // Campo calculado - soma os valores dos campos fonte
+        const sourceFields = (field.options?.sourceFields as string[]) || [];
+        const computedValue = sourceFields.reduce((sum: number, sourcePath: string) => {
+          const sourceValue = data ? getNestedValue(data, sourcePath) : 0;
+          return sum + (typeof sourceValue === 'number' ? sourceValue : 0);
+        }, 0);
+        
+        return (
+          <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border-2 border-primary/30">
+            <span className="text-lg font-bold text-primary">R$</span>
+            <span className="text-xl font-bold text-primary">
+              {computedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
         );
 
       case 'list':

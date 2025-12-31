@@ -8,7 +8,8 @@ export type FieldType =
   | 'boolean' 
   | 'date' 
   | 'list' 
-  | 'textarea';
+  | 'textarea'
+  | 'computed';
 
 // Schema definition types
 export interface DataCollectionSchema {
