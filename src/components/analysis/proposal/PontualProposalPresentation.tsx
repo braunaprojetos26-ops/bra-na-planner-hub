@@ -33,7 +33,16 @@ export function PontualProposalPresentation({
   selectedTopics,
   onBack,
 }: PontualProposalPresentationProps) {
-  const { user } = useAuth();
+const { user, profile } = useAuth();
+
+  // Format planner name: first name + last name
+  const formatPlannerName = (fullName: string | undefined): string => {
+    if (!fullName) return 'Planejador';
+    const parts = fullName.trim().split(' ').filter(Boolean);
+    if (parts.length === 0) return 'Planejador';
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1]}`;
+  };
   const { markAsPresented } = useProposalMutations();
   const { data: feedbacks } = useMyFeedbacks();
   const { data: cases } = useMyCases();
@@ -87,7 +96,7 @@ export function PontualProposalPresentation({
         {/* Cover */}
         <ProposalCover
           clientName={contact?.full_name || 'Cliente'}
-          plannerName={user?.email?.split('@')[0] || 'Planejador'}
+          plannerName={formatPlannerName(profile?.full_name)}
           subtitle="Planejamento Pontual"
         />
 
