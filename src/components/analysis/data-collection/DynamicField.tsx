@@ -4,9 +4,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { DataCollectionField } from '@/types/dataCollection';
 import { Badge } from '@/components/ui/badge';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 interface DynamicFieldProps {
   field: DataCollectionField;
@@ -23,6 +24,13 @@ const getNestedValue = (obj: Record<string, unknown>, path: string): unknown => 
     }
     return undefined;
   }, obj);
+};
+
+// Check if list is "simple" (only name + currency value)
+const isSimpleList = (itemSchema: Record<string, string>): boolean => {
+  const keys = Object.keys(itemSchema);
+  if (keys.length !== 2) return false;
+  return keys.includes('name') && (keys.includes('value_monthly_brl') || keys.includes('market_value_brl'));
 };
 
 export function DynamicField({ field, value, data, onChange }: DynamicFieldProps) {
@@ -49,13 +57,10 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
 
       case 'currency':
         return (
-          <Input
-            type="number"
-            step="0.01"
-            value={(value as number) ?? ''}
-            onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+          <CurrencyInput
+            value={(value as number) ?? null}
+            onChange={onChange}
             placeholder="0,00"
-            className="text-right"
           />
         );
 
@@ -149,25 +154,43 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
         );
 
       case 'computed':
-        // Campo calculado - soma os valores dos campos fonte
-        const sourceFields = (field.options?.sourceFields as string[]) || [];
-        const computedValue = sourceFields.reduce((sum: number, sourcePath: string) => {
-          const sourceValue = data ? getNestedValue(data, sourcePath) : 0;
-          return sum + (typeof sourceValue === 'number' ? sourceValue : 0);
-        }, 0);
+        // Campo calculado - pode somar campos individuais ou valores de lista
+        const options = field.options || {};
+        let computedValue = 0;
+        
+        if (options.sourceType === 'list_sum') {
+          // Soma valores de uma lista
+          const listData = data ? getNestedValue(data, options.sourceField as string) : [];
+          if (Array.isArray(listData)) {
+            computedValue = listData.reduce((sum, item) => {
+              const itemValue = item[options.sumKey as string];
+              return sum + (typeof itemValue === 'number' ? itemValue : 0);
+            }, 0);
+          }
+        } else {
+          // Soma campos individuais (comportamento padrão)
+          const sourceFields = (options.sourceFields as string[]) || [];
+          computedValue = sourceFields.reduce((sum: number, sourcePath: string) => {
+            const sourceValue = data ? getNestedValue(data, sourcePath) : 0;
+            return sum + (typeof sourceValue === 'number' ? sourceValue : 0);
+          }, 0);
+        }
         
         return (
-          <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border-2 border-primary/30">
-            <span className="text-lg font-bold text-primary">R$</span>
-            <span className="text-xl font-bold text-primary">
-              {computedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+          <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border-2 border-primary/30">
+            <span className="text-sm font-medium text-primary">{field.label}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-primary">R$</span>
+              <span className="text-xl font-bold text-primary">
+                {computedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
         );
 
       case 'list':
         const items = (value as Record<string, unknown>[]) || [];
-        const itemSchema = field.options?.itemSchema || {};
+        const itemSchema = (field.options?.itemSchema || {}) as Record<string, string>;
         
         // Labels em português para todos os tipos de lista
         const fieldLabels: Record<string, string> = {
@@ -192,6 +215,56 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           // Fluxo de caixa
           value_monthly_brl: 'Valor Mensal (R$)'
         };
+        
+        // Verificar se é uma lista simples (nome + valor)
+        if (isSimpleList(itemSchema)) {
+          const valueKey = Object.keys(itemSchema).find(k => k !== 'name') as string;
+          
+          return (
+            <div className="space-y-1">
+              {items.map((item, index) => (
+                <div key={index} className="flex items-center gap-2 group">
+                  <Input
+                    placeholder="Nome"
+                    value={(item.name as string) ?? ''}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...item, name: e.target.value };
+                      onChange(newItems);
+                    }}
+                    className="flex-1 h-9"
+                  />
+                  <CurrencyInput
+                    value={(item[valueKey] as number) ?? null}
+                    onChange={(val) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...item, [valueKey]: val };
+                      onChange(newItems);
+                    }}
+                    className="w-36 h-9"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 opacity-50 hover:opacity-100 hover:text-destructive"
+                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-muted-foreground hover:text-foreground"
+                onClick={() => onChange([...items, {}])}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
+            </div>
+          );
+        }
         
         // Campos de patrimônio - todos usam o mesmo modelo
         const assetFields = ['cars', 'real_estate', 'businesses', 'company_shares', 'other_assets'];
@@ -232,7 +305,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
         const hasSecondaryField = orderedKeys.some(k => secondaryFields.includes(k));
         const hasConditionalFields = orderedKeys.some(k => conditionalFields.includes(k));
         
-        const renderListField = (key: string, item: Record<string, unknown>, index: number, items: Record<string, unknown>[]) => {
+        const renderListField = (key: string, item: Record<string, unknown>, index: number, listItems: Record<string, unknown>[]) => {
           const type = itemSchema[key];
           
           if (type === 'boolean') {
@@ -242,7 +315,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
                 <Switch
                   checked={Boolean(item[key])}
                   onCheckedChange={(checked) => {
-                    const newItems = [...items];
+                    const newItems = [...listItems];
                     newItems[index] = { ...item, [key]: checked };
                     onChange(newItems);
                   }}
@@ -259,7 +332,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
                 key={key}
                 value={(item[key] as string) || ''}
                 onValueChange={(val) => {
-                  const newItems = [...items];
+                  const newItems = [...listItems];
                   newItems[index] = { ...item, [key]: val };
                   onChange(newItems);
                 }}
@@ -276,24 +349,18 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
             );
           }
           
-          // Campo de moeda com prefixo R$
+          // Campo de moeda com CurrencyInput
           if (type === 'currency') {
             return (
-              <div key={key} className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder={fieldLabels[key] || key}
-                  value={(item[key] as number) ?? ''}
-                  onChange={(e) => {
-                    const newItems = [...items];
-                    newItems[index] = { ...item, [key]: e.target.value ? Number(e.target.value) : null };
-                    onChange(newItems);
-                  }}
-                  className="pl-10"
-                />
-              </div>
+              <CurrencyInput
+                key={key}
+                value={(item[key] as number) ?? null}
+                onChange={(val) => {
+                  const newItems = [...listItems];
+                  newItems[index] = { ...item, [key]: val };
+                  onChange(newItems);
+                }}
+              />
             );
           }
           
@@ -304,7 +371,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
               placeholder={fieldLabels[key] || key}
               value={(item[key] as string | number) ?? ''}
               onChange={(e) => {
-                const newItems = [...items];
+                const newItems = [...listItems];
                 const val = type === 'number' && e.target.value
                   ? Number(e.target.value)
                   : e.target.value;
@@ -328,7 +395,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
                     size="icon"
                     onClick={() => onChange(items.filter((_, i) => i !== index))}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
                 {/* Campos condicionais - só aparecem se não quitado */}
@@ -367,6 +434,11 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
         return <Input value={String(value || '')} onChange={(e) => onChange(e.target.value)} />;
     }
   };
+
+  // Para campos computed, não mostrar label duplicado
+  if (field.field_type === 'computed') {
+    return renderField();
+  }
 
   return (
     <div className="space-y-2">
