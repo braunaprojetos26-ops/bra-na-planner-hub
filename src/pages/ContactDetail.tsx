@@ -17,6 +17,7 @@ import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal
 import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
 import { ContactProposalsSection } from '@/components/contacts/ContactProposalsSection';
+import { WhatsAppHistorySection } from '@/components/contacts/WhatsAppHistorySection';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import { useActingUser } from '@/contexts/ActingUserContext';
@@ -385,6 +386,8 @@ export default function ContactDetail() {
       {/* Proposals Section */}
       {contactId && contact && <ContactProposalsSection contactId={contactId} contactName={contact.full_name} />}
 
+      {/* WhatsApp History Section */}
+      {contactId && <WhatsAppHistorySection contactId={contactId} />}
 
       {/* Contract Section - Placeholder */}
       <Card>
