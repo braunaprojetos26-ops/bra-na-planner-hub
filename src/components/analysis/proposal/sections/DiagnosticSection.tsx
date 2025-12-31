@@ -18,19 +18,19 @@ function normalizeScore(value: unknown): number {
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   gestao_gastos: { label: 'Gestão de Gastos', icon: <Wallet className="w-5 h-5" />, color: 'from-green-500 to-green-600' },
-  poupanca_minima_sudavel: { label: 'Poupança Mínima Saudável', icon: <PiggyBank className="w-5 h-5" />, color: 'from-amber-500 to-amber-600' },
+  poupanca_minima_sudavel: { label: 'Poupança Mínima Saudável', icon: <PiggyBank className="w-5 h-5" />, color: 'from-gold-400 to-gold-500' },
   reserva_emergencia: { label: 'Reserva de Emergência', icon: <Shield className="w-5 h-5" />, color: 'from-blue-500 to-blue-600' },
   investimentos: { label: 'Investimentos', icon: <TrendingUp className="w-5 h-5" />, color: 'from-purple-500 to-purple-600' },
   protecao_da_renda: { label: 'Proteção da Renda', icon: <Shield className="w-5 h-5" />, color: 'from-cyan-500 to-cyan-600' },
   protecao_patrimonial: { label: 'Proteção Patrimonial', icon: <Shield className="w-5 h-5" />, color: 'from-indigo-500 to-indigo-600' },
-  milhas_beneficios: { label: 'Milhas e Benefícios', icon: <CreditCard className="w-5 h-5" />, color: 'from-orange-500 to-orange-600' },
+  milhas_beneficios: { label: 'Milhas e Benefícios', icon: <CreditCard className="w-5 h-5" />, color: 'from-gold to-gold-500' },
   planejamento_aposentadoria: { label: 'Independência Financeira', icon: <Target className="w-5 h-5" />, color: 'from-emerald-500 to-emerald-600' },
 };
 
 function getScoreColor(score: number): string {
   if (score >= 80) return 'text-green-500';
-  if (score >= 60) return 'text-amber-500';
-  if (score >= 40) return 'text-orange-500';
+  if (score >= 60) return 'text-gold';
+  if (score >= 40) return 'text-gold-500';
   return 'text-red-500';
 }
 
@@ -48,20 +48,20 @@ export function DiagnosticSection({ overallScore, categoryScores }: DiagnosticSe
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Análise Exclusiva
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Seu Diagnóstico Financeiro
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Overall Score Card */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-8 text-white text-center relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gold rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
         </div>
         
         <div className="relative z-10 space-y-4">

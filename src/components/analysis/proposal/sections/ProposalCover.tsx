@@ -18,14 +18,14 @@ export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Pe
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 25% 25%, rgba(201, 169, 97, 0.3) 0%, transparent 50%),
-                           radial-gradient(circle at 75% 75%, rgba(201, 169, 97, 0.2) 0%, transparent 50%)`,
+          backgroundImage: `radial-gradient(circle at 25% 25%, rgba(211, 172, 110, 0.3) 0%, transparent 50%),
+                           radial-gradient(circle at 75% 75%, rgba(211, 172, 110, 0.2) 0%, transparent 50%)`,
         }} />
       </div>
 
       {/* Golden Line Decoration */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
 
       {/* Content */}
       <div className="relative z-10 text-center space-y-8 px-6">
@@ -40,10 +40,10 @@ export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Pe
 
         {/* Title */}
         <div className="space-y-2">
-          <p className="text-amber-400 text-sm tracking-[0.3em] uppercase font-light">
+          <p className="text-gold text-sm tracking-[0.3em] uppercase font-light">
             {subtitle}
           </p>
-          <div className="w-24 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+          <div className="w-24 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
         </div>
 
         {/* Client Name */}
@@ -54,16 +54,16 @@ export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Pe
         {/* Planner Info */}
         <div className="pt-12 space-y-2">
           <p className="text-sm text-slate-400">Elaborada por</p>
-          <p className="text-lg font-medium text-amber-400">{plannerName}</p>
+          <p className="text-lg font-medium text-gold">{plannerName}</p>
           <p className="text-xs text-slate-500">{currentDate}</p>
         </div>
       </div>
 
       {/* Corner Decorations */}
-      <div className="absolute top-8 left-8 w-16 h-16 border-l-2 border-t-2 border-amber-500/30" />
-      <div className="absolute top-8 right-8 w-16 h-16 border-r-2 border-t-2 border-amber-500/30" />
-      <div className="absolute bottom-8 left-8 w-16 h-16 border-l-2 border-b-2 border-amber-500/30" />
-      <div className="absolute bottom-8 right-8 w-16 h-16 border-r-2 border-b-2 border-amber-500/30" />
+      <div className="absolute top-8 left-8 w-16 h-16 border-l-2 border-t-2 border-gold/30" />
+      <div className="absolute top-8 right-8 w-16 h-16 border-r-2 border-t-2 border-gold/30" />
+      <div className="absolute bottom-8 left-8 w-16 h-16 border-l-2 border-b-2 border-gold/30" />
+      <div className="absolute bottom-8 right-8 w-16 h-16 border-r-2 border-b-2 border-gold/30" />
     </div>
   );
 }
