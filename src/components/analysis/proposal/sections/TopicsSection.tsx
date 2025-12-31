@@ -1,27 +1,27 @@
 import { 
-  Wallet, 
-  TrendingUp, 
-  Shield, 
   Home, 
   GraduationCap, 
   Plane, 
-  Car, 
-  Heart, 
+  TrendingUp, 
   Building2, 
-  Leaf 
+  Briefcase, 
+  Heart, 
+  Wallet, 
+  CreditCard, 
+  DollarSign 
 } from 'lucide-react';
 
 const TOPICS = [
-  { icon: <Wallet className="w-6 h-6" />, title: 'Fluxo de Caixa', description: 'Organização financeira mensal' },
-  { icon: <TrendingUp className="w-6 h-6" />, title: 'Investimentos', description: 'Estratégias personalizadas' },
-  { icon: <Shield className="w-6 h-6" />, title: 'Proteção', description: 'Seguros e previdência' },
-  { icon: <Home className="w-6 h-6" />, title: 'Imóveis', description: 'Compra, venda e financiamento' },
-  { icon: <GraduationCap className="w-6 h-6" />, title: 'Educação', description: 'Planejamento para filhos' },
-  { icon: <Plane className="w-6 h-6" />, title: 'Viagens', description: 'Realizando sonhos' },
-  { icon: <Car className="w-6 h-6" />, title: 'Veículos', description: 'Compra consciente' },
-  { icon: <Heart className="w-6 h-6" />, title: 'Aposentadoria', description: 'Independência financeira' },
-  { icon: <Building2 className="w-6 h-6" />, title: 'Sucessão', description: 'Planejamento patrimonial' },
-  { icon: <Leaf className="w-6 h-6" />, title: 'Sustentabilidade', description: 'Investimentos ESG' },
+  { icon: <Home className="w-6 h-6" />, title: 'Aquisição de Bens', description: 'Adquira bens usando melhores estratégias' },
+  { icon: <GraduationCap className="w-6 h-6" />, title: 'Preparação', description: 'Planejamento para filhos' },
+  { icon: <Plane className="w-6 h-6" />, title: 'Viagens', description: 'Planejamento personalizado' },
+  { icon: <TrendingUp className="w-6 h-6" />, title: 'Renda Variável', description: 'Investindo em ações' },
+  { icon: <Building2 className="w-6 h-6" />, title: 'Fundos Imobiliários', description: 'Invista no mercado imobiliário' },
+  { icon: <Briefcase className="w-6 h-6" />, title: 'Sua Empresa', description: 'Separação PF e PJ' },
+  { icon: <Heart className="w-6 h-6" />, title: 'Casamento', description: 'Preparação para casamentos' },
+  { icon: <Wallet className="w-6 h-6" />, title: 'Dia a Dia', description: 'Aprenda vantagens que economizam' },
+  { icon: <CreditCard className="w-6 h-6" />, title: 'Cartões', description: 'Benefícios que valem a pena' },
+  { icon: <DollarSign className="w-6 h-6" />, title: 'Câmbio', description: 'Estratégias cambiais' },
 ];
 
 export function TopicsSection() {
