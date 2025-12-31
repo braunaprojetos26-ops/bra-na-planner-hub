@@ -25,15 +25,17 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const { signIn, signUp, user } = useAuth();
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const { signIn, signUp, user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    // Only redirect if user exists AND is active
+    if (user && profile?.is_active) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, profile, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,13 +115,46 @@ export default function Auth() {
         });
       }
     } else {
-      toast({
-        title: 'Conta criada com sucesso!',
-        description: 'Você já pode acessar o sistema.',
-      });
-      navigate('/');
+      setSignupSuccess(true);
     }
   };
+
+  // Show pending approval message after successful signup
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-amber-500" />
+            </div>
+            <CardTitle className="text-xl">Conta Criada!</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Aguardando aprovação do administrador
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Seu cadastro foi recebido e está aguardando aprovação.
+              Você receberá acesso assim que um administrador aprovar sua conta.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSignupSuccess(false);
+                setEmail('');
+                setPassword('');
+                setFullName('');
+              }}
+              className="w-full"
+            >
+              Voltar para Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

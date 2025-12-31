@@ -11,6 +11,8 @@ interface Profile {
   email: string;
   is_active: boolean;
   position: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
