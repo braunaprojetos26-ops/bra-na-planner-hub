@@ -2,7 +2,18 @@ import { TrendingUp, Shield, Wallet, Target, PiggyBank, BarChart3, CreditCard } 
 
 interface DiagnosticSectionProps {
   overallScore: number;
-  categoryScores: Record<string, unknown>;
+  categoryScores: Record<string, number | { score?: number | string; insight?: string } | null>;
+}
+
+// Helper to extract numeric score from either a number or an object with score property
+function normalizeScore(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (value && typeof value === 'object' && 'score' in value) {
+    const score = (value as { score?: number | string }).score;
+    if (typeof score === 'number') return score;
+    if (typeof score === 'string') return parseFloat(score) || 0;
+  }
+  return 0;
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -78,7 +89,7 @@ export function DiagnosticSection({ overallScore, categoryScores }: DiagnosticSe
             icon: <BarChart3 className="w-5 h-5" />, 
             color: 'from-gray-500 to-gray-600' 
           };
-          const score = typeof value === 'number' ? value : 0;
+          const score = normalizeScore(value);
           
           return (
             <div 
