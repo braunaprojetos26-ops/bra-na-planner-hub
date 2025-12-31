@@ -87,7 +87,7 @@ export function PricingSection({
 
       {/* Note */}
       <p className="text-center text-sm text-muted-foreground max-w-md mx-auto">
-        Após a confirmação, você receberá um contrato digital para assinatura e poderá agendar sua primeira reunião.
+        Após a aceitação da proposta, você receberá um contrato digital para assinatura e enviaremos as pendências para montagem do seu planejamento.
       </p>
     </section>
   );
