@@ -29,13 +29,13 @@ export function TopicsSection() {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Personalize sua experiência
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Temas que Podemos Aprofundar
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Topics Grid */}
@@ -43,9 +43,9 @@ export function TopicsSection() {
         {TOPICS.map((topic, index) => (
           <div
             key={index}
-            className="group flex flex-col items-center text-center p-4 bg-card border rounded-xl hover:border-amber-500/50 hover:shadow-lg transition-all cursor-default"
+            className="group flex flex-col items-center text-center p-4 bg-card border rounded-xl hover:border-gold/50 hover:shadow-lg transition-all cursor-default"
           >
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-amber-600 mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-gold mb-3 group-hover:scale-110 transition-transform">
               {topic.icon}
             </div>
             <h3 className="font-medium text-sm text-foreground mb-1">{topic.title}</h3>

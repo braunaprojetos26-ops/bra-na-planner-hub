@@ -42,19 +42,19 @@ export function DeliverablesSection() {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           O que você vai receber
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Entregáveis do Planejamento
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Timeline */}
       <div className="relative">
         {/* Connection Line */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-amber-500 via-amber-400 to-amber-500 hidden md:block" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-gold via-gold-400 to-gold hidden md:block" />
 
         <div className="space-y-8">
           {DELIVERABLES.map((deliverable, index) => (
@@ -67,11 +67,11 @@ export function DeliverablesSection() {
               {/* Content Card */}
               <div className="flex-1 bg-card border rounded-xl p-6 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold to-gold-500 flex items-center justify-center text-white">
                     {deliverable.icon}
                   </div>
                   <div>
-                    <p className="text-xs text-amber-600 font-medium">{deliverable.phase}</p>
+                    <p className="text-xs text-gold font-medium">{deliverable.phase}</p>
                     <h3 className="text-lg font-semibold text-foreground">{deliverable.title}</h3>
                   </div>
                 </div>
@@ -86,7 +86,7 @@ export function DeliverablesSection() {
               </div>
 
               {/* Center Dot */}
-              <div className="hidden md:flex w-4 h-4 rounded-full bg-amber-500 border-4 border-background shadow-lg flex-shrink-0 z-10" />
+              <div className="hidden md:flex w-4 h-4 rounded-full bg-gold border-4 border-background shadow-lg flex-shrink-0 z-10" />
 
               {/* Spacer */}
               <div className="flex-1 hidden md:block" />

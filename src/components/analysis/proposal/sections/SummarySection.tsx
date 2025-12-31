@@ -10,13 +10,13 @@ export function SummarySection({ meetings }: SummarySectionProps) {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Sua Solução
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Resumo da Proposta
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Summary Card */}
@@ -25,7 +25,7 @@ export function SummarySection({ meetings }: SummarySectionProps) {
           {/* Left - Details */}
           <div className="space-y-6">
             <div>
-              <p className="text-xl font-medium text-amber-400">Planejamento Completo</p>
+              <p className="text-xl font-medium text-gold">Planejamento Completo</p>
             </div>
 
             <div>
@@ -55,7 +55,7 @@ export function SummarySection({ meetings }: SummarySectionProps) {
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
-                <Star key={star} className="w-6 h-6 fill-amber-400 text-amber-400" />
+                <Star key={star} className="w-6 h-6 fill-gold text-gold" />
               ))}
             </div>
             <p className="text-slate-300 text-sm max-w-xs">

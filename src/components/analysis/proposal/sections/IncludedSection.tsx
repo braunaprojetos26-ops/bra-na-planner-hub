@@ -19,13 +19,13 @@ export function IncludedSection({ meetings }: IncludedSectionProps) {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Tudo incluído
         </p>
         <h2 className="text-3xl font-light text-foreground">
           O que está Incluso
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Table */}
@@ -50,13 +50,13 @@ export function IncludedSection({ meetings }: IncludedSectionProps) {
                 </td>
               </tr>
             ))}
-            <tr className="border-t bg-amber-500/5">
+            <tr className="border-t bg-gold/5">
               <td className="p-4 font-medium text-foreground">Reuniões de acompanhamento</td>
-              <td className="p-4 text-center font-bold text-amber-600">{meetings}x</td>
+              <td className="p-4 text-center font-bold text-gold">{meetings}x</td>
             </tr>
-            <tr className="border-t bg-amber-500/5">
+            <tr className="border-t bg-gold/5">
               <td className="p-4 font-medium text-foreground">Reunião de fechamento anual</td>
-              <td className="p-4 text-center font-bold text-amber-600">1x</td>
+              <td className="p-4 text-center font-bold text-gold">1x</td>
             </tr>
           </tbody>
         </table>

@@ -18,18 +18,18 @@ export function PricingSection({
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Investimento
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Valores
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Pricing Card */}
       <div className="max-w-lg mx-auto">
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-1">
+        <div className="bg-gradient-to-br from-gold to-gold-500 rounded-2xl p-1">
           <div className="bg-card rounded-xl p-8 text-center space-y-6">
             {/* Main Price */}
             <div className="space-y-2">

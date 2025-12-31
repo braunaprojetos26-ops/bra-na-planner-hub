@@ -12,13 +12,13 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           O que dizem nossos clientes
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Feedbacks
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Feedbacks Grid */}
@@ -29,7 +29,7 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
             className="bg-card border rounded-xl p-6 space-y-4 relative"
           >
             {/* Quote Icon */}
-            <Quote className="w-8 h-8 text-amber-500/20 absolute top-4 right-4" />
+            <Quote className="w-8 h-8 text-gold/20 absolute top-4 right-4" />
 
             {/* Media */}
             {feedback.media_url && (
@@ -61,7 +61,7 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
 
             {/* Client Name */}
             <div className="flex items-center gap-3 pt-2 border-t">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white font-bold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-500 flex items-center justify-center text-white font-bold">
                 {feedback.client_name.charAt(0).toUpperCase()}
               </div>
               <div>

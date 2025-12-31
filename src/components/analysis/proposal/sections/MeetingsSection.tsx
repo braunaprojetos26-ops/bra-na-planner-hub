@@ -37,13 +37,13 @@ export function MeetingsSection({ meetings }: MeetingsSectionProps) {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Sua Jornada
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Pauta das Reuniões
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Meetings Grid */}
@@ -51,9 +51,9 @@ export function MeetingsSection({ meetings }: MeetingsSectionProps) {
         {topics.map((topic, index) => (
           <div
             key={index}
-            className="flex items-center gap-4 p-4 bg-card border rounded-xl hover:border-amber-500/50 transition-colors"
+            className="flex items-center gap-4 p-4 bg-card border rounded-xl hover:border-gold/50 transition-colors"
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {index + 1}
             </div>
             <div className="flex-1">
@@ -67,7 +67,7 @@ export function MeetingsSection({ meetings }: MeetingsSectionProps) {
 
       {/* Info Note */}
       <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-        <Calendar className="w-5 h-5 text-amber-600" />
+        <Calendar className="w-5 h-5 text-gold" />
         <p className="text-sm text-muted-foreground">
           A ordem das reuniões pode sofrer alterações de acordo com os objetivos financeiros e com a necessidade do planejamento.
         </p>

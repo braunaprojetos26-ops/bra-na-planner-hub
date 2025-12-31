@@ -13,13 +13,13 @@ export function CasesSection({ cases }: CasesSectionProps) {
     <section className="space-y-8">
       {/* Section Title */}
       <div className="text-center space-y-2">
-        <p className="text-amber-600 text-sm tracking-[0.2em] uppercase font-medium">
+        <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
           Resultados Reais
         </p>
         <h2 className="text-3xl font-light text-foreground">
           Cases de Sucesso
         </h2>
-        <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+        <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
       {/* Cases Grid */}
@@ -30,7 +30,7 @@ export function CasesSection({ cases }: CasesSectionProps) {
             className="bg-card border rounded-xl p-6 space-y-4 hover:shadow-lg transition-shadow"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-500 flex items-center justify-center text-white">
                 <TrendingUp className="w-5 h-5" />
               </div>
               <h3 className="font-semibold text-foreground">{caseItem.title}</h3>
