@@ -40,6 +40,7 @@ export function DynamicSection({ section, data, onChange }: DynamicSectionProps)
               key={field.id}
               field={field}
               value={getValueByPath(data, field.data_path)}
+              data={data}
               onChange={(value) => onChange(field.data_path, value)}
             />
           ))
