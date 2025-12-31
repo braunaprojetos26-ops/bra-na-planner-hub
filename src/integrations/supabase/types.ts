@@ -2516,6 +2516,41 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_messages: {
+        Row: {
+          contact_id: string
+          created_at: string
+          direction: string
+          id: string
+          message_text: string
+          message_timestamp: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          message_text: string
+          message_timestamp: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          message_text?: string
+          message_timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wiki_categories: {
         Row: {
           created_at: string
