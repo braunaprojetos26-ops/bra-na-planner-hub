@@ -187,11 +187,11 @@ const { user, profile } = useAuth();
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-success" />
-                          <span>{totalMeetings} reunião{totalMeetings > 1 ? 'ões' : ''} online de 1 hora</span>
+                          <span>{totalMeetings} reunião{totalMeetings > 1 ? 'ões' : ''} de 1 hora</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-success" />
-                          <span>Material de apoio personalizado</span>
+                          <span>Material de apoio</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-success" />
@@ -216,11 +216,10 @@ const { user, profile } = useAuth();
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Importante</h3>
                     <p className="text-muted-foreground">
-                      Este é um <strong>planejamento pontual</strong> focado em temas específicos. 
-                      Não inclui acompanhamento contínuo ou suporte após as {totalMeetings} reunião{totalMeetings > 1 ? 'ões' : ''} contratada{totalMeetings > 1 ? 's' : ''} {totalMeetings > 1 ? 'serem' : 'ser'} realizada{totalMeetings > 1 ? 's' : ''}.
+                      Este é um planejamento pontual focado em temas específicos. Não inclui acompanhamento contínuo ou suporte após as {totalMeetings} reuniões contratadas.
                     </p>
                     <p className="text-sm text-muted-foreground mt-2">
-                      Para um acompanhamento completo com suporte contínuo, considere nosso <strong>Planejamento Completo</strong>.
+                      Para um acompanhamento completo com suporte contínuo, considere nosso Planejamento Completo.
                     </p>
                   </div>
                 </div>
