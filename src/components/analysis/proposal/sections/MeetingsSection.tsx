@@ -4,50 +4,34 @@ interface MeetingsSectionProps {
   meetings: number;
 }
 
-const MEETING_TOPICS: Record<number, string[]> = {
-  4: [
-    'Diagnóstico e Prioridades',
-    'Fluxo de Caixa e Investimentos',
-    'Proteção e Sucessão',
-    'Revisão e Ajustes',
-  ],
-  6: [
-    'Diagnóstico Completo',
-    'Fluxo de Caixa',
-    'Investimentos',
-    'Proteção Patrimonial',
-    'Planejamento de Metas',
-    'Revisão Geral',
-  ],
-  9: [
-    'Diagnóstico Inicial',
-    'Análise de Fluxo de Caixa',
-    'Estruturação de Investimentos',
-    'Proteção Familiar',
-    'Planejamento Tributário',
-    'Metas de Curto Prazo',
-    'Metas de Médio Prazo',
-    'Sucessão Patrimonial',
-    'Revisão e Planejamento Futuro',
-  ],
-  12: [
-    'Diagnóstico Financeiro',
-    'Fluxo de Caixa Mensal',
-    'Reserva de Emergência',
-    'Investimentos em Renda Fixa',
-    'Investimentos em Renda Variável',
-    'Proteção Pessoal',
-    'Proteção Patrimonial',
-    'Planejamento Tributário',
-    'Metas de Curto Prazo',
-    'Metas de Longo Prazo',
-    'Aposentadoria',
-    'Revisão Anual',
-  ],
-};
+const MANDATORY_MEETINGS = [
+  'Planejamento Macro',
+  'Gestão Financeira e Fluxo de Caixa',
+  'Planejamento Patrimonial e Gestão de Riscos',
+  'Investimentos alinhados aos objetivos',
+  'Milhas e cartões de crédito',
+  'Planejamento de Independência Financeira',
+];
+
+function generateMeetingTopics(totalMeetings: number): string[] {
+  // Para contratos com até 6 reuniões, usar apenas as mandatórias necessárias
+  if (totalMeetings <= 6) {
+    return MANDATORY_MEETINGS.slice(0, totalMeetings);
+  }
+  
+  // Para 9 ou 12 reuniões, usar as 6 mandatórias + extras flexíveis
+  const topics = [...MANDATORY_MEETINGS];
+  const extraMeetings = totalMeetings - 6;
+  
+  for (let i = 0; i < extraMeetings; i++) {
+    topics.push('A definir conforme andamento do planejamento');
+  }
+  
+  return topics;
+}
 
 export function MeetingsSection({ meetings }: MeetingsSectionProps) {
-  const topics = MEETING_TOPICS[meetings] || MEETING_TOPICS[6];
+  const topics = generateMeetingTopics(meetings);
 
   return (
     <section className="space-y-8">
@@ -85,7 +69,7 @@ export function MeetingsSection({ meetings }: MeetingsSectionProps) {
       <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
         <Calendar className="w-5 h-5 text-amber-600" />
         <p className="text-sm text-muted-foreground">
-          As reuniões são agendadas conforme sua disponibilidade, com intervalos recomendados de 15 a 30 dias.
+          A ordem das reuniões pode sofrer alterações de acordo com os objetivos financeiros e com a necessidade do planejamento.
         </p>
       </div>
     </section>
