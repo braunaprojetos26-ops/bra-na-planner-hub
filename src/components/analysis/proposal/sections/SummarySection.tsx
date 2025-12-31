@@ -39,7 +39,7 @@ export function SummarySection({ meetings }: SummarySectionProps) {
                 {[
                   'Diagnóstico Financeiro Completo',
                   'Definição de plano de implementação',
-                  'Acompanhamento personalizado e próximo',
+                  'Acompanhamento Próximo',
                   'Suporte contínuo',
                 ].map((item, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm">
