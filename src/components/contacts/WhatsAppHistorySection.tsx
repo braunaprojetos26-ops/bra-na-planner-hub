@@ -1,16 +1,76 @@
+import { useEffect, useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useWhatsAppMessages } from '@/hooks/useWhatsAppMessages';
+import { supabase } from '@/integrations/supabase/client';
+
+interface WhatsAppMessage {
+  id: string;
+  contact_id: string;
+  message_text: string;
+  direction: 'entrada' | 'saida';
+  message_timestamp: string;
+  created_at: string;
+}
 
 interface WhatsAppHistorySectionProps {
   contactId: string;
 }
 
 export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProps) {
-  const { data: messages, isLoading } = useWhatsAppMessages(contactId);
+  const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch inicial + Realtime subscription
+  useEffect(() => {
+    const fetchMessages = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('whatsapp_messages')
+        .select('*')
+        .eq('contact_id', contactId)
+        .order('message_timestamp', { ascending: true }); // Antigas primeiro, novas embaixo
+
+      if (!error && data) {
+        setMessages(data as WhatsAppMessage[]);
+      }
+      setIsLoading(false);
+    };
+
+    fetchMessages();
+
+    // Configura Realtime para novas mensagens
+    const channel = supabase
+      .channel(`whatsapp-messages-${contactId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'whatsapp_messages',
+          filter: `contact_id=eq.${contactId}`
+        },
+        (payload) => {
+          const newMessage = payload.new as WhatsAppMessage;
+          setMessages((prev) => [...prev, newMessage]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [contactId]);
+
+  // Auto-scroll para a última mensagem
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const formatMessageTime = (timestamp: string) => {
     try {
@@ -31,7 +91,7 @@ export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProp
       <CardContent className="pb-3">
         {isLoading ? (
           <p className="text-xs text-muted-foreground">Carregando mensagens...</p>
-        ) : !messages?.length ? (
+        ) : !messages.length ? (
           <p className="text-xs text-muted-foreground">Nenhuma mensagem registrada</p>
         ) : (
           <ScrollArea className="h-[300px] pr-4">
@@ -55,6 +115,8 @@ export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProp
                   </div>
                 </div>
               ))}
+              {/* Elemento invisível para auto-scroll */}
+              <div ref={scrollRef} />
             </div>
           </ScrollArea>
         )}
