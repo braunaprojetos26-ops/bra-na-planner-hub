@@ -5,14 +5,13 @@ interface IncludedSectionProps {
 }
 
 const INCLUDED_ITEMS = [
-  { item: 'Diagnóstico financeiro completo', included: true },
-  { item: 'Análise de perfil de investidor', included: true },
-  { item: 'Plano de investimentos personalizado', included: true },
-  { item: 'Planejamento de aposentadoria', included: true },
-  { item: 'Análise de proteção patrimonial', included: true },
+  { item: 'Diagnóstico Financeiro Completo', included: true },
+  { item: 'Acompanhamento de especialistas financeiros', included: true },
+  { item: 'Tenha as áreas da Braúna a sua disposição', included: true },
+  { item: 'Suporte técnico sobre produtos financeiros e cotações', included: true },
+  { item: 'Ajuste e inclusão de novos objetivos', included: true },
   { item: 'Suporte via WhatsApp', included: true },
-  { item: 'Acesso ao portal do cliente', included: true },
-  { item: 'Relatórios trimestrais', included: true },
+  { item: 'Suporte via ligação', included: true },
 ];
 
 export function IncludedSection({ meetings }: IncludedSectionProps) {
@@ -54,6 +53,10 @@ export function IncludedSection({ meetings }: IncludedSectionProps) {
             <tr className="border-t bg-amber-500/5">
               <td className="p-4 font-medium text-foreground">Reuniões de acompanhamento</td>
               <td className="p-4 text-center font-bold text-amber-600">{meetings}x</td>
+            </tr>
+            <tr className="border-t bg-amber-500/5">
+              <td className="p-4 font-medium text-foreground">Reunião de fechamento anual</td>
+              <td className="p-4 text-center font-bold text-amber-600">1x</td>
             </tr>
           </tbody>
         </table>
