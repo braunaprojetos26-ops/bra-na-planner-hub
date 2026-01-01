@@ -50,11 +50,12 @@ interface PlannerRanking {
 }
 
 const PILLAR_CONFIG = {
-  nps: { label: 'NPS', maxScore: 25, color: 'hsl(var(--chart-1))' },
+  nps: { label: 'NPS', maxScore: 20, color: 'hsl(var(--chart-1))' },
   referrals: { label: 'Indicação', maxScore: 15, color: 'hsl(var(--chart-2))' },
-  payment: { label: 'Pagamentos', maxScore: 20, color: 'hsl(var(--chart-3))' },
+  payment: { label: 'Pagamentos', maxScore: 30, color: 'hsl(var(--chart-3))' },
   crossSell: { label: 'Cross Sell', maxScore: 15, color: 'hsl(var(--chart-4))' },
-  meetings: { label: 'Reuniões', maxScore: 25, color: 'hsl(var(--chart-5))' },
+  meetings: { label: 'Reuniões', maxScore: 20, color: 'hsl(var(--chart-5))' },
+  whatsapp: { label: 'WhatsApp', maxScore: 15, color: 'hsl(142 76% 36%)' },
 };
 
 const getPillarScore = (result: HealthScoreResult, pillarKey: string): number => {
@@ -64,6 +65,7 @@ const getPillarScore = (result: HealthScoreResult, pillarKey: string): number =>
     case 'payment': return result.breakdown.payment.score;
     case 'crossSell': return result.breakdown.crossSell.score;
     case 'meetings': return result.breakdown.meetings.score;
+    case 'whatsapp': return result.breakdown.whatsapp?.score ?? 0;
     default: return 0;
   }
 };

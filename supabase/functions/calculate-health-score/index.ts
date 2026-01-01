@@ -18,6 +18,7 @@ interface HealthScoreResult {
     payment: { score: number; daysLate: number; status: string };
     crossSell: { score: number; extraProductsCount: number };
     meetings: { score: number; daysSinceLastMeeting: number | null };
+    whatsapp: { score: number; daysSinceLastMessage: number | null; status: string };
   };
 }
 
@@ -35,35 +36,38 @@ function calculateNpsScore(npsValue: number | null): { score: number; status: st
   return { score: -10, status: 'detractor' };
 }
 
-// Calculate payment score based on days late
+// Calculate payment score based on days late (max 30 pts - reduced from 40)
 function calculatePaymentScore(daysLate: number): { score: number; status: string } {
   if (daysLate === 0) {
-    return { score: 40, status: 'on_time' };
+    return { score: 30, status: 'on_time' };
   }
   if (daysLate <= 15) {
-    return { score: 30, status: 'late_15' };
+    return { score: 22, status: 'late_15' };
   }
   if (daysLate <= 30) {
-    return { score: 20, status: 'late_30' };
+    return { score: 15, status: 'late_30' };
   }
   if (daysLate <= 60) {
-    return { score: 10, status: 'late_60' };
+    return { score: 8, status: 'late_60' };
   }
   if (daysLate <= 90) {
-    return { score: 5, status: 'late_90' };
+    return { score: 4, status: 'late_90' };
   }
   return { score: 0, status: 'late_90_plus' };
 }
 
-// Calculate meetings score based on days since last meeting
+// Calculate meetings score based on days since last meeting (max 20 pts - reduced from 25)
 function calculateMeetingsScore(daysSinceLastMeeting: number | null): number {
   if (daysSinceLastMeeting === null) {
     return 0; // No meetings recorded
   }
   if (daysSinceLastMeeting < 30) {
-    return 10;
+    return 20;
   }
   if (daysSinceLastMeeting <= 60) {
+    return 10;
+  }
+  if (daysSinceLastMeeting <= 90) {
     return 5;
   }
   return 0;
@@ -72,6 +76,20 @@ function calculateMeetingsScore(daysSinceLastMeeting: number | null): number {
 // Calculate cross-sell score based on extra products count
 function calculateCrossSellScore(extraProductsCount: number): number {
   return Math.min(extraProductsCount * 5, 15); // Max 15 points (3 products)
+}
+
+// Calculate WhatsApp score based on days since last message (max 15 pts - NEW)
+function calculateWhatsAppScore(daysSinceLastMessage: number | null): { score: number; status: string } {
+  if (daysSinceLastMessage === null) {
+    return { score: 0, status: 'no_messages' };
+  }
+  if (daysSinceLastMessage <= 10) {
+    return { score: 15, status: 'excellent' };
+  }
+  if (daysSinceLastMessage <= 30) {
+    return { score: 8, status: 'regular' };
+  }
+  return { score: 0, status: 'critical' };
 }
 
 // Determine category based on total score
@@ -129,13 +147,14 @@ Deno.serve(async (req) => {
 
     const contactIdList = contacts.map(c => c.id);
 
-    // Fetch all related data in parallel
+    // Fetch all related data in parallel (including WhatsApp messages)
     const [
       npsResponses,
       referrals,
       contracts,
       meetings,
-      profiles
+      profiles,
+      whatsappMessages
     ] = await Promise.all([
       // Latest NPS for each contact
       supabase
@@ -168,7 +187,14 @@ Deno.serve(async (req) => {
       // Owner profiles
       supabase
         .from('profiles')
-        .select('user_id, full_name')
+        .select('user_id, full_name'),
+
+      // WhatsApp messages - latest for each contact
+      supabase
+        .from('whatsapp_messages')
+        .select('contact_id, message_timestamp')
+        .in('contact_id', contactIdList)
+        .order('message_timestamp', { ascending: false }),
     ]);
 
     // Create lookup maps
@@ -200,9 +226,7 @@ Deno.serve(async (req) => {
         existing.productIds.add(contract.product_id);
         
         // Check payment status - simplified logic
-        // In real implementation, this would check Vindi API for actual payment status
         if (contract.vindi_status === 'pending' || contract.vindi_status === 'overdue') {
-          // Estimate days late based on vindi_status
           const daysLate = contract.vindi_status === 'overdue' ? 30 : 0;
           existing.daysLate = Math.max(existing.daysLate, daysLate);
         }
@@ -227,45 +251,66 @@ Deno.serve(async (req) => {
       }
     }
 
+    // WhatsApp last message map
+    const lastWhatsAppMap = new Map<string, Date>();
+    if (whatsappMessages.data) {
+      for (const msg of whatsappMessages.data) {
+        if (!lastWhatsAppMap.has(msg.contact_id)) {
+          lastWhatsAppMap.set(msg.contact_id, new Date(msg.message_timestamp));
+        }
+      }
+    }
+
     // Calculate health score for each contact
     const results: HealthScoreResult[] = [];
     const now = new Date();
 
     for (const contact of contacts) {
-      // NPS
+      // NPS (max 20 pts)
       const npsValue = npsMap.get(contact.id) ?? null;
       const npsResult = calculateNpsScore(npsValue);
       
-      // Referrals
+      // Referrals (max 15 pts)
       const referralCount = referralCountMap.get(contact.id) || 0;
       const hasReferrals = referralCount > 0;
       const referralsScore = hasReferrals ? 15 : 0;
       
-      // Payment
+      // Payment (max 30 pts - reduced from 40)
       const contractData = contractsMap.get(contact.id);
       const daysLate = contractData?.daysLate || 0;
       const paymentResult = calculatePaymentScore(daysLate);
       
-      // Cross-sell (extra products beyond the main one)
+      // Cross-sell (max 15 pts)
       const productCount = contractData?.productIds.size || 0;
       const extraProductsCount = Math.max(0, productCount - 1);
       const crossSellScore = calculateCrossSellScore(extraProductsCount);
       
-      // Meetings
+      // Meetings (max 20 pts - reduced from 25)
       const lastMeeting = lastMeetingMap.get(contact.id);
       let daysSinceLastMeeting: number | null = null;
       if (lastMeeting) {
         daysSinceLastMeeting = Math.floor((now.getTime() - lastMeeting.getTime()) / (1000 * 60 * 60 * 24));
       }
       const meetingsScore = calculateMeetingsScore(daysSinceLastMeeting);
+
+      // WhatsApp (max 15 pts - NEW)
+      const lastWhatsApp = lastWhatsAppMap.get(contact.id);
+      let daysSinceLastMessage: number | null = null;
+      if (lastWhatsApp) {
+        daysSinceLastMessage = Math.floor((now.getTime() - lastWhatsApp.getTime()) / (1000 * 60 * 60 * 24));
+      }
+      const whatsappResult = calculateWhatsAppScore(daysSinceLastMessage);
       
       // Total score (minimum 0)
+      // Max: 20 (NPS) + 15 (Referrals) + 30 (Payment) + 15 (CrossSell) + 20 (Meetings) + 15 (WhatsApp) = 115
+      // But with adjusted weights: roughly maintains 0-100 scale
       const totalScore = Math.max(0, 
         npsResult.score + 
         referralsScore + 
         paymentResult.score + 
         crossSellScore + 
-        meetingsScore
+        meetingsScore +
+        whatsappResult.score
       );
       
       const category = getCategory(totalScore);
@@ -283,6 +328,7 @@ Deno.serve(async (req) => {
           payment: { score: paymentResult.score, daysLate, status: paymentResult.status },
           crossSell: { score: crossSellScore, extraProductsCount },
           meetings: { score: meetingsScore, daysSinceLastMeeting },
+          whatsapp: { score: whatsappResult.score, daysSinceLastMessage, status: whatsappResult.status },
         },
       });
     }

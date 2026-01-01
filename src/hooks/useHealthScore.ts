@@ -8,6 +8,7 @@ export interface HealthScoreBreakdown {
   payment: { score: number; daysLate: number; status: string };
   crossSell: { score: number; extraProductsCount: number };
   meetings: { score: number; daysSinceLastMeeting: number | null };
+  whatsapp: { score: number; daysSinceLastMessage: number | null; status: string };
 }
 
 export interface HealthScoreResult {

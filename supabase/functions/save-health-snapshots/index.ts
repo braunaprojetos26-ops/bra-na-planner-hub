@@ -22,6 +22,8 @@ interface HealthScoreData {
   extra_products_count: number;
   referrals_score: number;
   has_referrals: boolean;
+  whatsapp_score: number;
+  days_since_last_whatsapp: number | null;
 }
 
 // Category order from best to worst
@@ -106,8 +108,8 @@ serve(async (req) => {
 
     console.log(`[save-health-snapshots] Found ${previousSnapshots?.length || 0} previous snapshots for comparison`);
 
-    // Fetch all required data in parallel
-    const [npsResult, meetingsResult, contractsResult, referralsResult] = await Promise.all([
+    // Fetch all required data in parallel (including WhatsApp messages)
+    const [npsResult, meetingsResult, contractsResult, referralsResult, whatsappResult] = await Promise.all([
       // Latest NPS for each contact
       supabase
         .from('nps_responses')
@@ -134,7 +136,14 @@ serve(async (req) => {
       supabase
         .from('contacts')
         .select('referred_by')
-        .not('referred_by', 'is', null)
+        .not('referred_by', 'is', null),
+
+      // WhatsApp messages - latest for each contact
+      supabase
+        .from('whatsapp_messages')
+        .select('contact_id, message_timestamp')
+        .in('contact_id', contactIds)
+        .order('message_timestamp', { ascending: false }),
     ]);
 
     // Build lookup maps
@@ -164,6 +173,13 @@ serve(async (req) => {
       referralsResult.data?.map(r => r.referred_by).filter(Boolean) || []
     );
 
+    const whatsappMap = new Map<string, Date>();
+    whatsappResult.data?.forEach(msg => {
+      if (!whatsappMap.has(msg.contact_id)) {
+        whatsappMap.set(msg.contact_id, new Date(msg.message_timestamp));
+      }
+    });
+
     // Build contact name map for notifications
     const contactNameMap = new Map<string, string>(
       clientPlans.map(cp => {
@@ -179,36 +195,36 @@ serve(async (req) => {
     for (const plan of clientPlans) {
       const contactId = plan.contact_id;
 
-      // NPS Score (25 points max)
+      // NPS Score (20 points max)
       const npsData = npsMap.get(contactId);
       let npsScore = 0;
       let npsValue: number | null = null;
       
       if (npsData) {
         npsValue = npsData.value;
-        if (npsValue >= 9) npsScore = 25;
-        else if (npsValue >= 7) npsScore = 15;
+        if (npsValue >= 9) npsScore = 20;
+        else if (npsValue >= 7) npsScore = 10;
         else if (npsValue >= 5) npsScore = 5;
         else npsScore = 0;
+      } else {
+        npsScore = 10; // Default for not responded
       }
 
-      // Meetings Score (25 points max)
+      // Meetings Score (20 points max - reduced from 25)
       const lastMeeting = meetingsMap.get(contactId);
       let meetingsScore = 0;
       let daysSinceLastMeeting: number | null = null;
 
       if (lastMeeting) {
         daysSinceLastMeeting = Math.floor((now.getTime() - lastMeeting.getTime()) / (1000 * 60 * 60 * 24));
-        if (daysSinceLastMeeting <= 30) meetingsScore = 25;
-        else if (daysSinceLastMeeting <= 60) meetingsScore = 20;
-        else if (daysSinceLastMeeting <= 90) meetingsScore = 15;
-        else if (daysSinceLastMeeting <= 180) meetingsScore = 10;
-        else if (daysSinceLastMeeting <= 365) meetingsScore = 5;
+        if (daysSinceLastMeeting < 30) meetingsScore = 20;
+        else if (daysSinceLastMeeting <= 60) meetingsScore = 10;
+        else if (daysSinceLastMeeting <= 90) meetingsScore = 5;
         else meetingsScore = 0;
       }
 
-      // Payment Score (20 points max) - simplified, assuming on time
-      const paymentScore = 20;
+      // Payment Score (30 points max - reduced from 40) - simplified, assuming on time
+      const paymentScore = 30;
       const paymentDaysLate = 0;
 
       // Cross-sell Score (15 points max)
@@ -223,8 +239,20 @@ serve(async (req) => {
       const hasReferrals = referrersSet.has(contactId);
       const referralsScore = hasReferrals ? 15 : 0;
 
+      // WhatsApp Score (15 points max - NEW)
+      const lastWhatsApp = whatsappMap.get(contactId);
+      let whatsappScore = 0;
+      let daysSinceLastWhatsapp: number | null = null;
+
+      if (lastWhatsApp) {
+        daysSinceLastWhatsapp = Math.floor((now.getTime() - lastWhatsApp.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceLastWhatsapp <= 10) whatsappScore = 15;
+        else if (daysSinceLastWhatsapp <= 30) whatsappScore = 8;
+        else whatsappScore = 0;
+      }
+
       // Total Score
-      const totalScore = npsScore + meetingsScore + paymentScore + crossSellScore + referralsScore;
+      const totalScore = npsScore + meetingsScore + paymentScore + crossSellScore + referralsScore + whatsappScore;
 
       // Category
       let category: string;
@@ -249,6 +277,8 @@ serve(async (req) => {
         extra_products_count: extraProductsCount,
         referrals_score: referralsScore,
         has_referrals: hasReferrals,
+        whatsapp_score: whatsappScore,
+        days_since_last_whatsapp: daysSinceLastWhatsapp,
       });
     }
 
