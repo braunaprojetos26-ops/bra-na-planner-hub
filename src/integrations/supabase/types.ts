@@ -1000,6 +1000,7 @@ export type Database = {
           created_at: string
           cross_sell_score: number | null
           days_since_last_meeting: number | null
+          days_since_last_whatsapp: number | null
           extra_products_count: number | null
           has_referrals: boolean | null
           id: string
@@ -1012,6 +1013,7 @@ export type Database = {
           referrals_score: number | null
           snapshot_date: string
           total_score: number
+          whatsapp_score: number | null
         }
         Insert: {
           category: string
@@ -1019,6 +1021,7 @@ export type Database = {
           created_at?: string
           cross_sell_score?: number | null
           days_since_last_meeting?: number | null
+          days_since_last_whatsapp?: number | null
           extra_products_count?: number | null
           has_referrals?: boolean | null
           id?: string
@@ -1031,6 +1034,7 @@ export type Database = {
           referrals_score?: number | null
           snapshot_date: string
           total_score?: number
+          whatsapp_score?: number | null
         }
         Update: {
           category?: string
@@ -1038,6 +1042,7 @@ export type Database = {
           created_at?: string
           cross_sell_score?: number | null
           days_since_last_meeting?: number | null
+          days_since_last_whatsapp?: number | null
           extra_products_count?: number | null
           has_referrals?: boolean | null
           id?: string
@@ -1050,6 +1055,7 @@ export type Database = {
           referrals_score?: number | null
           snapshot_date?: string
           total_score?: number
+          whatsapp_score?: number | null
         }
         Relationships: [
           {

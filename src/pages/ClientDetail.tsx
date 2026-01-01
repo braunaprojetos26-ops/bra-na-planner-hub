@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, User, DollarSign, Calendar, Phone, Mail, ExternalLink, HeartPulse, Star, Users, CreditCard, ShoppingBag, CalendarCheck } from 'lucide-react';
+import { ArrowLeft, User, DollarSign, Calendar, Phone, Mail, ExternalLink, HeartPulse, Star, Users, CreditCard, ShoppingBag, CalendarCheck, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -165,7 +165,7 @@ export default function ClientDetail() {
                 </div>
 
                 {/* Metrics Breakdown */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                   {/* NPS */}
                   <div className="p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2 mb-1">
@@ -227,6 +227,20 @@ export default function ClientDetail() {
                       {clientHealth.breakdown.meetings.daysSinceLastMeeting !== null 
                         ? `${clientHealth.breakdown.meetings.daysSinceLastMeeting} dias atrás`
                         : 'Sem reuniões'}
+                    </p>
+                  </div>
+
+                  {/* WhatsApp */}
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MessageCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-xs font-medium">WhatsApp</span>
+                    </div>
+                    <p className="text-lg font-bold">+{clientHealth.breakdown.whatsapp?.score ?? 0} pts</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientHealth.breakdown.whatsapp?.daysSinceLastMessage !== null 
+                        ? `${clientHealth.breakdown.whatsapp.daysSinceLastMessage} dias atrás`
+                        : 'Sem mensagens'}
                     </p>
                   </div>
                 </div>
