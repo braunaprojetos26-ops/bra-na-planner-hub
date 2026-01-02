@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router-dom';
-import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target, Globe } from 'lucide-react';
+import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target, Globe, ImageIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { UsersTab, PipelinesTab, AITab, TeamManagementTab, HealthScoreTab, GoalsTab, RemoteConfigTab } from '@/components/admin/tabs';
+import { UsersTab, PipelinesTab, AITab, TeamManagementTab, HealthScoreTab, GoalsTab, RemoteConfigTab, DashboardBannerTab } from '@/components/admin/tabs';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
@@ -71,6 +71,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
             <Globe className="h-4 w-4 hidden sm:inline" />
             Extensão
           </TabsTrigger>
+          <TabsTrigger value="dashboard-banner" className="flex-1 gap-2">
+            <ImageIcon className="h-4 w-4 hidden sm:inline" />
+            Banner
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -107,6 +111,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
 
         <TabsContent value="remote-config">
           <RemoteConfigTab />
+        </TabsContent>
+
+        <TabsContent value="dashboard-banner">
+          <DashboardBannerTab />
         </TabsContent>
       </Tabs>
     </div>
