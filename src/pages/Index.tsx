@@ -1,24 +1,67 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Kanban, TrendingUp, TrendingDown, Banknote, DollarSign, Award, ArrowUpRight, ArrowDownRight, Calendar, CalendarDays } from 'lucide-react';
+import { Users, Kanban, TrendingUp, TrendingDown, Banknote, DollarSign, Award, ArrowUpRight, ArrowDownRight, Calendar, CalendarDays, Target } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
 import { useOpportunities } from '@/hooks/useOpportunities';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
-import { useSystemSetting } from '@/hooks/useSystemSettings';
+import { usePlannerGoals, PeriodType } from '@/hooks/usePlannerGoals';
 import { GoalGaugeChart } from '@/components/dashboard/GoalGaugeChart';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { useMemo } from 'react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMemo, useState } from 'react';
 
-interface DashboardGoals {
-  monthlyRevenueGoal: number;
-}
+const getCurrentPeriodReference = (periodType: PeriodType): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  
+  switch (periodType) {
+    case 'mensal':
+      return `${year}-${String(month).padStart(2, '0')}`;
+    case 'trimestral':
+      const quarter = Math.ceil(month / 3);
+      return `${year}-Q${quarter}`;
+    case 'semestral':
+      const semester = month <= 6 ? 1 : 2;
+      return `${year}-S${semester}`;
+    case 'anual':
+      return `${year}`;
+  }
+};
+
+const getPeriodLabel = (periodType: PeriodType): string => {
+  const ref = getCurrentPeriodReference(periodType);
+  switch (periodType) {
+    case 'mensal':
+      return 'do mês';
+    case 'trimestral':
+      return `do ${ref.split('-')[1]}`;
+    case 'semestral':
+      return `do ${ref.split('-')[1] === 'S1' ? '1º' : '2º'} semestre`;
+    case 'anual':
+      return 'do ano';
+  }
+};
 
 export default function Index() {
+  const { user } = useAuth();
   const { data: contacts, isLoading: contactsLoading } = useContacts();
   const { data: opportunities, isLoading: opportunitiesLoading } = useOpportunities();
   const { data: dashboardMetrics, isLoading: metricsLoading } = useDashboardMetrics();
-  const { data: goalsSetting } = useSystemSetting('dashboard_goals');
+  const { data: plannerGoals } = usePlannerGoals(user?.id || '');
+  
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('anual');
 
-  const monthlyGoal = (goalsSetting?.value as unknown as DashboardGoals)?.monthlyRevenueGoal || 0;
+  const revenueGoal = useMemo(() => {
+    if (!plannerGoals) return null;
+    const currentRef = getCurrentPeriodReference(selectedPeriod);
+    return plannerGoals.find(g => 
+      g.category === 'numeric' && 
+      g.metricType === 'planejamento' &&
+      g.periodType === selectedPeriod &&
+      g.periodReference === currentRef
+    );
+  }, [plannerGoals, selectedPeriod]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -183,20 +226,38 @@ export default function Index() {
           </CardContent>
         </Card>
 
-        {monthlyGoal > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meta de Faturamento</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Meta de Faturamento</CardTitle>
+            <ToggleGroup 
+              type="single" 
+              value={selectedPeriod} 
+              onValueChange={(val) => val && setSelectedPeriod(val as PeriodType)}
+              className="gap-0.5"
+            >
+              <ToggleGroupItem value="mensal" className="h-6 px-2 text-xs">M</ToggleGroupItem>
+              <ToggleGroupItem value="trimestral" className="h-6 px-2 text-xs">T</ToggleGroupItem>
+              <ToggleGroupItem value="semestral" className="h-6 px-2 text-xs">S</ToggleGroupItem>
+              <ToggleGroupItem value="anual" className="h-6 px-2 text-xs">A</ToggleGroupItem>
+            </ToggleGroup>
+          </CardHeader>
+          <CardContent>
+            {revenueGoal ? (
               <GoalGaugeChart 
-                current={dashboardMetrics?.currentMonthRevenue || 0}
-                goal={monthlyGoal}
-                label="do mês"
+                current={revenueGoal.currentValue || 0}
+                goal={revenueGoal.targetValue || 0}
+                label={getPeriodLabel(selectedPeriod)}
               />
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="flex flex-col items-center justify-center py-4 text-center">
+                <Target className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Nenhum objetivo definido para este período
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Operational Metrics Section */}
