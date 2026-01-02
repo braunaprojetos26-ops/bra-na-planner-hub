@@ -1,4 +1,3 @@
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Kanban, TrendingUp, TrendingDown, Banknote, DollarSign, Award, ArrowUpRight, ArrowDownRight, Calendar, CalendarDays } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
@@ -6,6 +5,7 @@ import { useOpportunities } from '@/hooks/useOpportunities';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { useSystemSetting } from '@/hooks/useSystemSettings';
 import { GoalGaugeChart } from '@/components/dashboard/GoalGaugeChart';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { useMemo } from 'react';
 
 interface DashboardGoals {
@@ -13,21 +13,12 @@ interface DashboardGoals {
 }
 
 export default function Index() {
-  const { profile, role } = useAuth();
   const { data: contacts, isLoading: contactsLoading } = useContacts();
   const { data: opportunities, isLoading: opportunitiesLoading } = useOpportunities();
   const { data: dashboardMetrics, isLoading: metricsLoading } = useDashboardMetrics();
   const { data: goalsSetting } = useSystemSetting('dashboard_goals');
 
   const monthlyGoal = (goalsSetting?.value as unknown as DashboardGoals)?.monthlyRevenueGoal || 0;
-
-  const roleLabels: Record<string, string> = {
-    planejador: 'Planejador',
-    lider: 'Líder Comercial',
-    supervisor: 'Supervisor',
-    gerente: 'Gerente',
-    superadmin: 'Administrador',
-  };
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -83,14 +74,7 @@ export default function Index() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Bem-vindo, {profile?.full_name?.split(' ')[0] || 'Usuário'}!
-        </h1>
-        <p className="text-muted-foreground">
-          {role && roleLabels[role]} • Central do Planejador Financeiro
-        </p>
-      </div>
+      <DashboardHeader />
 
       {/* Financial Metrics Section */}
       <div className="space-y-3">

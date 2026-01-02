@@ -5,3 +5,4 @@ export { TeamManagementTab } from './TeamManagementTab';
 export { HealthScoreTab } from './HealthScoreTab';
 export { GoalsTab } from './GoalsTab';
 export { RemoteConfigTab } from './RemoteConfigTab';
+export { DashboardBannerTab } from './DashboardBannerTab';
