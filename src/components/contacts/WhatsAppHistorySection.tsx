@@ -22,7 +22,7 @@ interface WhatsAppHistorySectionProps {
 export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProps) {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Fetch inicial + Realtime subscription
   useEffect(() => {
@@ -65,10 +65,10 @@ export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProp
     };
   }, [contactId]);
 
-  // Auto-scroll para a última mensagem
+  // Auto-scroll para a última mensagem (apenas dentro do container)
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -94,7 +94,7 @@ export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProp
         ) : !messages.length ? (
           <p className="text-xs text-muted-foreground">Nenhuma mensagem registrada</p>
         ) : (
-          <ScrollArea className="h-[300px] pr-4">
+          <ScrollArea className="h-[300px] pr-4" ref={scrollAreaRef}>
             <div className="flex flex-col gap-2">
               {messages.map((message) => (
                 <div
@@ -115,8 +115,6 @@ export function WhatsAppHistorySection({ contactId }: WhatsAppHistorySectionProp
                   </div>
                 </div>
               ))}
-              {/* Elemento invisível para auto-scroll */}
-              <div ref={scrollRef} />
             </div>
           </ScrollArea>
         )}
