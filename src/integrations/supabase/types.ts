@@ -1943,37 +1943,55 @@ export type Database = {
       }
       planner_goals: {
         Row: {
+          category: string
           created_at: string | null
           created_by: string
+          current_value: number | null
           description: string | null
           goal_type: string
           id: string
+          metric_type: string | null
+          period_reference: string | null
+          period_type: string | null
           status: string | null
           target_date: string | null
+          target_value: number | null
           title: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          category?: string
           created_at?: string | null
           created_by: string
+          current_value?: number | null
           description?: string | null
           goal_type: string
           id?: string
+          metric_type?: string | null
+          period_reference?: string | null
+          period_type?: string | null
           status?: string | null
           target_date?: string | null
+          target_value?: number | null
           title: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          category?: string
           created_at?: string | null
           created_by?: string
+          current_value?: number | null
           description?: string | null
           goal_type?: string
           id?: string
+          metric_type?: string | null
+          period_reference?: string | null
+          period_type?: string | null
           status?: string | null
           target_date?: string | null
+          target_value?: number | null
           title?: string
           updated_at?: string | null
           user_id?: string

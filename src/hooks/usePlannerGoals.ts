@@ -5,6 +5,9 @@ import { toast } from 'sonner';
 
 export type GoalType = 'sonho_grande' | 'objetivo_curto_prazo' | 'objetivo_longo_prazo';
 export type GoalStatus = 'active' | 'achieved' | 'cancelled';
+export type GoalCategory = 'numeric' | 'development';
+export type MetricType = 'planejamento' | 'pa_seguros' | 'pbs' | 'captacao_investimentos';
+export type PeriodType = 'mensal' | 'trimestral' | 'semestral' | 'anual';
 
 export interface PlannerGoal {
   id: string;
@@ -17,6 +20,13 @@ export interface PlannerGoal {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // New fields for hybrid system
+  category: GoalCategory;
+  metricType: MetricType | null;
+  targetValue: number | null;
+  currentValue: number | null;
+  periodReference: string | null;
+  periodType: PeriodType | null;
 }
 
 export function usePlannerGoals(userId: string) {
@@ -42,6 +52,13 @@ export function usePlannerGoals(userId: string) {
         createdBy: goal.created_by,
         createdAt: goal.created_at,
         updatedAt: goal.updated_at,
+        // New fields
+        category: (goal.category || 'development') as GoalCategory,
+        metricType: goal.metric_type as MetricType | null,
+        targetValue: goal.target_value,
+        currentValue: goal.current_value,
+        periodReference: goal.period_reference,
+        periodType: goal.period_type as PeriodType | null,
       })) as PlannerGoal[];
     },
     enabled: !!userId,
@@ -59,6 +76,13 @@ export function useCreatePlannerGoal() {
       description?: string;
       goalType: GoalType;
       targetDate?: string;
+      // New fields
+      category?: GoalCategory;
+      metricType?: MetricType;
+      targetValue?: number;
+      currentValue?: number;
+      periodReference?: string;
+      periodType?: PeriodType;
     }) => {
       const { error } = await supabase
         .from('planner_goals')
@@ -69,6 +93,13 @@ export function useCreatePlannerGoal() {
           goal_type: data.goalType,
           target_date: data.targetDate || null,
           created_by: user!.id,
+          // New fields
+          category: data.category || 'development',
+          metric_type: data.metricType || null,
+          target_value: data.targetValue || null,
+          current_value: data.currentValue || 0,
+          period_reference: data.periodReference || null,
+          period_type: data.periodType || null,
         });
       
       if (error) throw error;
@@ -95,6 +126,9 @@ export function useUpdatePlannerGoal() {
       goalType?: GoalType;
       targetDate?: string | null;
       status?: GoalStatus;
+      // New fields
+      currentValue?: number;
+      targetValue?: number;
     }) => {
       const updateData: Record<string, unknown> = {};
       if (data.title !== undefined) updateData.title = data.title;
@@ -102,6 +136,8 @@ export function useUpdatePlannerGoal() {
       if (data.goalType !== undefined) updateData.goal_type = data.goalType;
       if (data.targetDate !== undefined) updateData.target_date = data.targetDate;
       if (data.status !== undefined) updateData.status = data.status;
+      if (data.currentValue !== undefined) updateData.current_value = data.currentValue;
+      if (data.targetValue !== undefined) updateData.target_value = data.targetValue;
 
       const { error } = await supabase
         .from('planner_goals')
