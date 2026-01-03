@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { HealthScoreResult, HealthScoreSummary, CATEGORY_CONFIG, CategoryKey } from '@/hooks/useHealthScore';
-import { Users, TrendingUp, TrendingDown, Activity, Target, AlertTriangle, ChevronUp, ChevronDown, Clock } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Activity, Target, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { HealthScoreRadarChart } from './HealthScoreRadarChart';
+import { HealthScoreTemporalBarChart } from './HealthScoreTemporalBarChart';
+import { HealthScorePillarHeatmap } from './HealthScorePillarHeatmap';
 import { cn } from '@/lib/utils';
 
 interface PortfolioMetricsTabProps {
   results: HealthScoreResult[];
   summary?: HealthScoreSummary;
   isLoading: boolean;
+  ownerIds?: string[];
+  contactIds?: string[];
 }
 
 type SortField = 'name' | 'total' | 'otimo' | 'estavel' | 'atencao' | 'critico' | 'risk';
@@ -26,7 +30,7 @@ interface PlannerStats {
   riskPercentage: number;
 }
 
-export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMetricsTabProps) {
+export function PortfolioMetricsTab({ results, summary, isLoading, ownerIds, contactIds }: PortfolioMetricsTabProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -70,13 +74,6 @@ export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMe
   const trendPercentage = -0.1; // This would come from comparing with previous period
   const trendDirection = trendPercentage >= 0 ? 'up' : 'down';
 
-  // Category distribution data for pie chart
-  const categoryData = [
-    { name: 'Ótimo', value: summary.byCategory.otimo, color: CATEGORY_CONFIG.otimo.color },
-    { name: 'Crítico', value: summary.byCategory.critico, color: CATEGORY_CONFIG.critico.color },
-    { name: 'Atenção', value: summary.byCategory.atencao, color: CATEGORY_CONFIG.atencao.color },
-    { name: 'Estável', value: summary.byCategory.estavel, color: CATEGORY_CONFIG.estavel.color },
-  ];
 
   // Calculate planner stats
   const plannerStatsMap = new Map<string, PlannerStats>();
@@ -110,17 +107,6 @@ export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMe
 
   const plannerStats = Array.from(plannerStatsMap.values());
 
-  // Prepare data for stacked bar chart
-  const plannerChartData = plannerStats
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 8)
-    .map(p => ({
-      name: p.ownerName.split(' ')[0] + ' ' + (p.ownerName.split(' ')[1] || ''),
-      otimo: p.otimo,
-      estavel: p.estavel,
-      atencao: p.atencao,
-      critico: p.critico,
-    }));
 
   // Sort planner stats for table
   const sortedPlannerStats = [...plannerStats].sort((a, b) => {
@@ -242,91 +228,14 @@ export function PortfolioMetricsTab({ results, summary, isLoading }: PortfolioMe
         </Card>
       </div>
 
-      {/* Charts Row */}
+      {/* New Charts Section: Radar + Temporal Bar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Category Distribution Pie Chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Distribuição por Categoria
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72 flex items-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="40%"
-                    cy="50%"
-                    outerRadius={100}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} clientes`, 'Quantidade']}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Risk Distribution by Planner */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Risk Distribution por Planejador
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={plannerChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fontSize: 10 }}
-                    className="text-muted-foreground"
-                    interval={0}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="estavel" name="Estável" stackId="a" fill={CATEGORY_CONFIG.estavel.color} />
-                  <Bar dataKey="otimo" name="Ótimo" stackId="a" fill={CATEGORY_CONFIG.otimo.color} />
-                  <Bar dataKey="atencao" name="Atenção" stackId="a" fill={CATEGORY_CONFIG.atencao.color} />
-                  <Bar dataKey="critico" name="Crítico" stackId="a" fill={CATEGORY_CONFIG.critico.color} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <HealthScoreRadarChart results={results} />
+        <HealthScoreTemporalBarChart ownerIds={ownerIds} contactIds={contactIds} />
       </div>
+
+      {/* Pillar Heatmap */}
+      <HealthScorePillarHeatmap ownerIds={ownerIds} contactIds={contactIds} />
 
       {/* Risk Concentration Matrix */}
       <Card>

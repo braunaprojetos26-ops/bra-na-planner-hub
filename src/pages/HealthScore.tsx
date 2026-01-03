@@ -126,6 +126,7 @@ export default function HealthScore() {
             results={data?.results || []}
             summary={data?.summary}
             isLoading={isLoading}
+            ownerIds={filters.ownerIds}
           />
         </TabsContent>
 
