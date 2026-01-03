@@ -365,7 +365,7 @@ export default function ContactDetail() {
                 <div 
                   key={opp.id} 
                   className="flex items-center justify-between p-2 bg-secondary/50 rounded-md hover:bg-secondary cursor-pointer transition-colors"
-                  onClick={() => navigate(`/opportunities/${opp.id}`)}
+                  onClick={() => navigate(`/pipeline/${opp.id}`)}
                 >
                   <div>
                     <p className="font-medium text-xs">{opp.current_funnel?.name}</p>
