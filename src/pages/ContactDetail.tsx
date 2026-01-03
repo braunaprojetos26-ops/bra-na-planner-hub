@@ -362,7 +362,11 @@ export default function ContactDetail() {
           ) : (
             <div className="space-y-1.5">
               {opportunities.map((opp) => (
-                <div key={opp.id} className="flex items-center justify-between p-2 bg-secondary/50 rounded-md">
+                <div 
+                  key={opp.id} 
+                  className="flex items-center justify-between p-2 bg-secondary/50 rounded-md hover:bg-secondary cursor-pointer transition-colors"
+                  onClick={() => navigate(`/opportunities/${opp.id}`)}
+                >
                   <div>
                     <p className="font-medium text-xs">{opp.current_funnel?.name}</p>
                     <p className="text-[11px] text-muted-foreground">{opp.current_stage?.name}</p>
