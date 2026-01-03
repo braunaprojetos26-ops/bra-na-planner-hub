@@ -198,7 +198,12 @@ export default function OpportunityDetail() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-accent">{opportunity.contact?.full_name}</h1>
+            <h1 
+              className="text-xl font-bold text-accent hover:underline cursor-pointer"
+              onClick={() => navigate(`/contacts/${opportunity.contact_id}`)}
+            >
+              {opportunity.contact?.full_name}
+            </h1>
             <p className="text-xs text-muted-foreground">
               {opportunity.current_funnel?.name}
             </p>
@@ -275,9 +280,19 @@ export default function OpportunityDetail() {
         {/* Contact Info Card */}
         <Card>
           <CardHeader className="pb-1 pt-3">
-            <CardTitle className="text-sm flex items-center gap-1.5">
-              <User className="w-3 h-3 text-accent" />
-              Informações do Contato
+            <CardTitle className="text-sm flex items-center gap-1.5 justify-between">
+              <span className="flex items-center gap-1.5">
+                <User className="w-3 h-3 text-accent" />
+                Informações do Contato
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-xs"
+                onClick={() => navigate(`/contacts/${opportunity.contact_id}`)}
+              >
+                Ver perfil completo
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-0 pb-3">
