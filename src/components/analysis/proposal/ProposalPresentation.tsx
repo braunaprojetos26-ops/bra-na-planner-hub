@@ -151,38 +151,44 @@ const { user, profile } = useAuth();
       {/* Print Styles */}
       <style>{`
         @media print {
-          /* Reset everything */
-          html, body { 
+          /* Preserve colors */
+          * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 210mm !important;
-            height: 297mm !important;
-          }
-          
-          /* Hide ALL elements outside proposal */
-          body > *:not(.proposal-content),
-          header, nav, aside, footer,
-          [class*="sidebar"],
-          [class*="Sidebar"] {
-            display: none !important;
-          }
-          
-          /* Make proposal content the root */
-          .proposal-content {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 210mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
           }
           
           /* A4 page setup */
           @page {
             size: A4;
             margin: 0;
+          }
+          
+          /* Reset body */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          /* Hide layout elements by specific selectors */
+          header,
+          nav,
+          aside,
+          [data-sidebar],
+          .print\\:hidden {
+            display: none !important;
+          }
+          
+          /* Remove padding from main */
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          
+          /* Remove card styles */
+          .min-h-\\[400px\\] {
+            min-height: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           
           /* Page wrapper */
@@ -214,36 +220,37 @@ const { user, profile } = useAuth();
           /* Content pages */
           .print-content-page {
             width: 210mm !important;
-            min-height: 297mm !important;
-            padding: 12mm 15mm !important;
+            min-height: 277mm !important;
+            padding: 10mm 15mm !important;
             box-sizing: border-box !important;
             background: white !important;
-            color: black !important;
+            color: #1a1a1a !important;
             font-size: 10pt !important;
           }
           
+          /* Typography scaling */
           .print-content-page h2 {
-            font-size: 16pt !important;
-            margin-bottom: 8pt !important;
+            font-size: 14pt !important;
+            margin-bottom: 6pt !important;
           }
           
           .print-content-page h3 {
-            font-size: 12pt !important;
+            font-size: 11pt !important;
           }
           
           .print-content-page p {
-            font-size: 10pt !important;
+            font-size: 9pt !important;
+            line-height: 1.4 !important;
           }
           
-          /* Reduce spacing in print */
+          /* Reduce spacing */
           .print-content-page > * {
-            margin-bottom: 12pt !important;
+            margin-bottom: 8pt !important;
           }
           
-          /* Ensure backgrounds print */
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+          /* Prevent section breaks */
+          section {
+            page-break-inside: avoid;
           }
         }
       `}</style>
