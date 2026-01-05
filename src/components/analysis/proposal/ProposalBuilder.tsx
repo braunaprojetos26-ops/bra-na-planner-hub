@@ -191,7 +191,7 @@ export function ProposalBuilder({ contactId, opportunityId }: ProposalBuilderPro
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Diagnóstico IA do Cliente</p>
-                  <p className="text-2xl font-bold">{Math.round(diagnostic.overall_score)}/100</p>
+                  <p className="text-2xl font-bold">{diagnostic.overall_score.toFixed(1)}/10</p>
                 </div>
               </div>
               <Badge variant="outline" className="text-accent border-accent">
