@@ -87,51 +87,54 @@ const { user, profile } = useAuth();
 
       {/* Proposal Content */}
       <div ref={contentRef} className="proposal-content">
-        {/* Page 1 - Cover (Full A4, no margins) */}
-        <div className="print-page print-cover">
-          <ProposalCover
-            clientName={contact?.full_name || 'Cliente'}
-            plannerName={formatPlannerName(profile?.full_name)}
-          />
-        </div>
-
-        {/* Page 2 - Entregáveis + O que está Incluso */}
-        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
-          <DeliverablesSection />
-          <IncludedSection meetings={proposal.meetings} />
-        </div>
-
-        {/* Page 3 - Jornada + Temas */}
-        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
-          <MeetingsSection meetings={proposal.meetings} />
-          <TopicsSection />
-        </div>
-
-        {/* Page 4 - Resumo + Investimento */}
-        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-          <SummarySection meetings={proposal.meetings} />
-          <PricingSection
-            finalValue={proposal.final_value}
-            installments={proposal.installments}
-            installmentValue={proposal.installment_value}
-            discountApplied={proposal.discount_applied}
-          />
-        </div>
-
-        {/* Page 5 - Cases & Feedbacks (Optional) */}
-        {((proposal.show_cases && cases && cases.length > 0) || 
-          (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
-          <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-            {proposal.show_cases && cases && cases.length > 0 && (
-              <CasesSection cases={cases} />
-            )}
-            {proposal.show_feedbacks && feedbacks && feedbacks.length > 0 && (
-              <FeedbacksSection feedbacks={feedbacks} />
-            )}
+        {/* Wrapper for printed pages only */}
+        <div className="proposal-pages">
+          {/* Page 1 - Cover (Full A4, no margins) */}
+          <div className="print-page print-cover">
+            <ProposalCover
+              clientName={contact?.full_name || 'Cliente'}
+              plannerName={formatPlannerName(profile?.full_name)}
+            />
           </div>
-        )}
 
-        {/* Footer - Screen only */}
+          {/* Page 2 - Entregáveis + O que está Incluso */}
+          <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
+            <DeliverablesSection />
+            <IncludedSection meetings={proposal.meetings} />
+          </div>
+
+          {/* Page 3 - Jornada + Temas */}
+          <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
+            <MeetingsSection meetings={proposal.meetings} />
+            <TopicsSection />
+          </div>
+
+          {/* Page 4 - Resumo + Investimento */}
+          <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
+            <SummarySection meetings={proposal.meetings} />
+            <PricingSection
+              finalValue={proposal.final_value}
+              installments={proposal.installments}
+              installmentValue={proposal.installment_value}
+              discountApplied={proposal.discount_applied}
+            />
+          </div>
+
+          {/* Page 5 - Cases & Feedbacks (Optional) */}
+          {((proposal.show_cases && cases && cases.length > 0) || 
+            (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+            <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
+              {proposal.show_cases && cases && cases.length > 0 && (
+                <CasesSection cases={cases} />
+              )}
+              {proposal.show_feedbacks && feedbacks && feedbacks.length > 0 && (
+                <FeedbacksSection feedbacks={feedbacks} />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer - Screen only (outside proposal-pages to not affect print pagination) */}
         <div className="bg-card border-t py-8 text-center print:hidden">
           <p className="text-muted-foreground text-sm">
             Braúna Planejamento Financeiro
@@ -149,6 +152,7 @@ const { user, profile } = useAuth();
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
           
           /* A4 page setup */
@@ -157,14 +161,16 @@ const { user, profile } = useAuth();
             margin: 0;
           }
           
-          /* Reset body */
+          /* Reset html/body */
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             width: 210mm !important;
+            height: auto !important;
+            background: white !important;
           }
           
-          /* Hide layout elements by specific selectors */
+          /* Hide layout elements */
           header,
           nav,
           aside,
@@ -179,40 +185,51 @@ const { user, profile } = useAuth();
             margin: 0 !important;
           }
           
-          /* Remove card styles */
-          .min-h-\\[400px\\] {
-            min-height: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
+          /* Proposal content container */
+          .proposal-content {
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
-          /* Page wrapper */
+          /* Pages wrapper */
+          .proposal-pages {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          /* Page wrapper - use break-after for better browser support */
           .print-page {
+            break-after: page;
             page-break-after: always;
             page-break-inside: avoid;
             width: 210mm !important;
           }
           
-          .print-page:last-child {
-            page-break-after: auto;
+          /* Last page should NOT force a page break after */
+          .proposal-pages > .print-page:last-child {
+            break-after: auto !important;
+            page-break-after: auto !important;
           }
           
           /* Cover page - exact A4, no overflow */
           .print-cover {
+            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
             max-height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
-            page-break-after: always !important;
           }
           
           .print-cover > * {
+            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
             max-height: 297mm !important;
             min-height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
             overflow: hidden !important;
           }
           
@@ -222,7 +239,6 @@ const { user, profile } = useAuth();
             min-height: 277mm !important;
             max-height: 297mm !important;
             padding: 8mm 12mm !important;
-            box-sizing: border-box !important;
             background: white !important;
             color: #1a1a1a !important;
             font-size: 9pt !important;
