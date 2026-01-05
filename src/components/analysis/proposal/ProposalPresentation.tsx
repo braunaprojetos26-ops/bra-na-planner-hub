@@ -197,47 +197,35 @@ const { user, profile } = useAuth();
             padding: 0 !important;
           }
           
-          /* Page wrapper - use break-after for better browser support */
+          /* Page wrapper - single break source, no page-break-inside avoid on A4-sized elements */
           .print-page {
             break-after: page;
-            page-break-after: always;
-            page-break-inside: avoid;
             width: 210mm !important;
           }
           
           /* Last page should NOT force a page break after */
           .proposal-pages > .print-page:last-child {
             break-after: auto !important;
-            page-break-after: auto !important;
           }
           
-          /* Cover page - exact A4, wrapper controls dimensions */
+          /* Cover page - exact A4, NO break rules here (handled by .print-page) */
           .print-cover {
-            display: flex !important;
-            align-items: stretch !important;
-            justify-content: stretch !important;
+            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
-            page-break-after: always !important;
-            break-after: page !important;
           }
           
-          /* Cover content fills wrapper and centers its own content */
+          /* Cover content fills wrapper completely */
           .print-cover > * {
+            display: block !important;
             width: 100% !important;
             height: 100% !important;
-            min-height: 0 !important;
-            max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
             box-sizing: border-box !important;
           }
           

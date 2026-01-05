@@ -15,17 +15,20 @@ export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Pe
 
   return (
     <div className="min-h-screen print:w-full print:h-full print:min-h-0 print:max-h-none print:m-0 print:p-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center text-white relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
+      {/* Background with internal bleed - extends beyond boundaries to cover print margins */}
+      <div className="absolute print:-inset-4 inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+      
+      {/* Background Pattern - also with bleed */}
+      <div className="absolute print:-inset-4 inset-0 opacity-10">
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 25% 25%, rgba(211, 172, 110, 0.3) 0%, transparent 50%),
                            radial-gradient(circle at 75% 75%, rgba(211, 172, 110, 0.2) 0%, transparent 50%)`,
         }} />
       </div>
 
-      {/* Golden Line Decoration */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+      {/* Golden Line Decoration - with bleed offset */}
+      <div className="absolute top-0 print:-top-4 left-0 print:-left-4 w-full print:w-[calc(100%+2rem)] h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+      <div className="absolute bottom-0 print:-bottom-4 left-0 print:-left-4 w-full print:w-[calc(100%+2rem)] h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
 
       {/* Content */}
       <div className="relative z-10 text-center space-y-8 px-6">
@@ -59,11 +62,11 @@ export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Pe
         </div>
       </div>
 
-      {/* Corner Decorations */}
-      <div className="absolute top-8 left-8 w-16 h-16 border-l-2 border-t-2 border-gold/30" />
-      <div className="absolute top-8 right-8 w-16 h-16 border-r-2 border-t-2 border-gold/30" />
-      <div className="absolute bottom-8 left-8 w-16 h-16 border-l-2 border-b-2 border-gold/30" />
-      <div className="absolute bottom-8 right-8 w-16 h-16 border-r-2 border-b-2 border-gold/30" />
+      {/* Corner Decorations - positioned from the visible area, not the bleed */}
+      <div className="absolute top-8 print:top-12 left-8 print:left-12 w-16 h-16 border-l-2 border-t-2 border-gold/30" />
+      <div className="absolute top-8 print:top-12 right-8 print:right-12 w-16 h-16 border-r-2 border-t-2 border-gold/30" />
+      <div className="absolute bottom-8 print:bottom-12 left-8 print:left-12 w-16 h-16 border-l-2 border-b-2 border-gold/30" />
+      <div className="absolute bottom-8 print:bottom-12 right-8 print:right-12 w-16 h-16 border-r-2 border-b-2 border-gold/30" />
     </div>
   );
 }
