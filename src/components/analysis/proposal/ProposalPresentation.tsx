@@ -10,6 +10,7 @@ import type { Proposal } from '@/hooks/useProposals';
 
 // Section components
 import { ProposalCover } from './sections/ProposalCover';
+import { ProposalCoverPrint } from './sections/ProposalCoverPrint';
 import { DiagnosticSection } from './sections/DiagnosticSection';
 import { DeliverablesSection } from './sections/DeliverablesSection';
 import { IncludedSection } from './sections/IncludedSection';
@@ -91,7 +92,15 @@ const { user, profile } = useAuth();
         <div className="proposal-pages">
           {/* Page 1 - Cover (Full A4, no margins) */}
           <div className="print-page print-cover">
-            <ProposalCover
+            {/* Screen version */}
+            <div className="print:hidden">
+              <ProposalCover
+                clientName={contact?.full_name || 'Cliente'}
+                plannerName={formatPlannerName(profile?.full_name)}
+              />
+            </div>
+            {/* Print version - deterministic grid layout */}
+            <ProposalCoverPrint
               clientName={contact?.full_name || 'Cliente'}
               plannerName={formatPlannerName(profile?.full_name)}
             />
@@ -208,25 +217,24 @@ const { user, profile } = useAuth();
             break-after: auto !important;
           }
           
-          /* Cover page - exact A4, NO break rules here (handled by .print-page) */
+          /* Cover page - exact A4 container */
           .print-cover {
-            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
+            position: relative !important;
           }
           
-          /* Cover content fills wrapper completely */
-          .print-cover > * {
-            display: block !important;
+          /* Print cover grid layout */
+          .print-cover .print\\:grid {
+            display: grid !important;
             width: 100% !important;
             height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            box-sizing: border-box !important;
+            position: absolute !important;
+            inset: 0 !important;
           }
           
           /* Content pages */
