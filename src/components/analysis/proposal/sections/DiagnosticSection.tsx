@@ -28,16 +28,16 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
 };
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return 'text-green-500';
-  if (score >= 60) return 'text-gold';
-  if (score >= 40) return 'text-gold-500';
+  if (score >= 8) return 'text-green-500';
+  if (score >= 6) return 'text-gold';
+  if (score >= 4) return 'text-gold-500';
   return 'text-red-500';
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 80) return 'Excelente';
-  if (score >= 60) return 'Bom';
-  if (score >= 40) return 'Regular';
+  if (score >= 8) return 'Excelente';
+  if (score >= 6) return 'Bom';
+  if (score >= 4) return 'Regular';
   return 'Precisa de Atenção';
 }
 
@@ -67,10 +67,10 @@ export function DiagnosticSection({ overallScore, categoryScores }: DiagnosticSe
         <div className="relative z-10 space-y-4">
           <p className="text-slate-400 text-sm">Pontuação Geral</p>
           <div className="flex items-center justify-center gap-4">
-            <span className={`text-7xl font-bold ${getScoreColor(roundedScore)}`}>
-              {roundedScore}
+            <span className={`text-7xl font-bold ${getScoreColor(overallScore)}`}>
+              {overallScore.toFixed(1)}
             </span>
-            <span className="text-3xl text-slate-500">/100</span>
+            <span className="text-3xl text-slate-500">/10</span>
           </div>
           <p className={`text-lg font-medium ${getScoreColor(roundedScore)}`}>
             {getScoreLabel(roundedScore)}
@@ -101,7 +101,7 @@ export function DiagnosticSection({ overallScore, categoryScores }: DiagnosticSe
               </div>
               <p className="text-sm font-medium text-foreground">{config.label}</p>
               <p className={`text-2xl font-bold ${getScoreColor(score)}`}>
-                {Math.round(score)}
+                {score.toFixed(1)}
               </p>
             </div>
           );
