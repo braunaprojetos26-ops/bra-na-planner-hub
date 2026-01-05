@@ -213,16 +213,9 @@ const { user, profile } = useAuth();
           
           /* Cover page - exact A4, no overflow */
           .print-cover {
-            display: block !important;
-            width: 210mm !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-          }
-          
-          .print-cover > * {
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
             display: block !important;
             width: 210mm !important;
             height: 297mm !important;
@@ -231,6 +224,22 @@ const { user, profile } = useAuth();
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
+            box-sizing: border-box !important;
+          }
+          
+          .print-cover > * {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
           }
           
           /* Content pages */
