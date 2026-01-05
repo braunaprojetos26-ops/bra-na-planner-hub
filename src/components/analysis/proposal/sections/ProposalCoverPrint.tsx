@@ -74,20 +74,20 @@ export function ProposalCoverPrint({
       <div style={{ position: 'absolute', bottom: '32px', right: '32px', width: '48px', height: '48px', borderRight: '2px solid rgba(211, 172, 110, 0.3)', borderBottom: '2px solid rgba(211, 172, 110, 0.3)' }} />
 
       {/* TOP BAND - Logo */}
-      <div 
+      <div
         style={{
           position: 'relative',
           zIndex: 10,
           display: 'flex',
           justifyContent: 'center',
-          paddingTop: '80px',
+          paddingTop: '18mm',
         }}
       >
-        <img 
-          src={braunaLogo} 
-          alt="Braúna" 
+        <img
+          src={braunaLogo}
+          alt="Braúna"
           style={{
-            height: '60px',
+            height: '54px',
             width: 'auto',
             filter: 'brightness(0) invert(1)',
           }}
@@ -95,7 +95,7 @@ export function ProposalCoverPrint({
       </div>
 
       {/* CENTER BAND - Title & Client */}
-      <div 
+      <div
         style={{
           position: 'relative',
           zIndex: 10,
@@ -104,39 +104,39 @@ export function ProposalCoverPrint({
           alignItems: 'center',
           justifyContent: 'center',
           textAlign: 'center',
-          padding: '0 24px',
+          padding: '0 16mm',
         }}
       >
         {/* Subtitle */}
-        <p 
+        <p
           style={{
             color: 'rgb(211, 172, 110)',
-            fontSize: '11pt',
-            letterSpacing: '0.3em',
+            fontSize: '9pt',
+            letterSpacing: '0.28em',
             textTransform: 'uppercase',
             fontWeight: 300,
-            marginBottom: '8px',
+            marginBottom: '6pt',
           }}
         >
           {subtitle}
         </p>
-        
+
         {/* Divider */}
-        <div 
+        <div
           style={{
-            width: '80px',
+            width: '70px',
             height: '1px',
             background: 'linear-gradient(to right, transparent, rgb(211, 172, 110), transparent)',
-            marginBottom: '24px',
-          }} 
+            marginBottom: '14pt',
+          }}
         />
-        
+
         {/* Client Name */}
-        <h1 
+        <h1
           style={{
-            fontSize: '28pt',
+            fontSize: '24pt',
             fontWeight: 300,
-            letterSpacing: '0.05em',
+            letterSpacing: '0.04em',
             margin: 0,
           }}
         >
@@ -145,7 +145,7 @@ export function ProposalCoverPrint({
       </div>
 
       {/* FOOTER BAND - Planner & Date */}
-      <div 
+      <div
         style={{
           position: 'relative',
           zIndex: 10,
@@ -153,29 +153,29 @@ export function ProposalCoverPrint({
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center',
-          paddingBottom: '80px',
+          paddingBottom: '18mm',
         }}
       >
-        <p 
+        <p
           style={{
-            fontSize: '9pt',
+            fontSize: '8pt',
             color: '#94a3b8',
-            marginBottom: '4px',
+            marginBottom: '3pt',
           }}
         >
           Elaborada por
         </p>
-        <p 
+        <p
           style={{
-            fontSize: '12pt',
+            fontSize: '10pt',
             fontWeight: 500,
             color: 'rgb(211, 172, 110)',
-            marginBottom: '4px',
+            marginBottom: '3pt',
           }}
         >
           {plannerName}
         </p>
-        <p 
+        <p
           style={{
             fontSize: '8pt',
             color: '#64748b',

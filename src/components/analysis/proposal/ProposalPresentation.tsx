@@ -226,15 +226,17 @@ const { user, profile } = useAuth();
             overflow: hidden !important;
             box-sizing: border-box !important;
             position: relative !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           
-          /* Print cover grid layout */
+          /* Print cover grid layout (keep it IN FLOW so pagination is reliable) */
           .print-cover .print\\:grid {
             display: grid !important;
             width: 100% !important;
             height: 100% !important;
-            position: absolute !important;
-            inset: 0 !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           
           /* Content pages */
