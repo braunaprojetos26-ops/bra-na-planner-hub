@@ -133,11 +133,12 @@ export default function ContactAnalysis() {
           );
         }
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 print:space-y-0">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setProposalType('selecting')}
+              className="print:hidden"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar para seleção
@@ -158,9 +159,9 @@ export default function ContactAnalysis() {
   };
 
   return (
-    <div className="p-4 space-y-4 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3">
+    <div className="p-4 space-y-4 max-w-6xl mx-auto print:p-0 print:max-w-none">
+      {/* Header - Hidden in print */}
+      <div className="flex items-center gap-3 print:hidden">
         <Button
           variant="ghost"
           size="icon"
@@ -174,22 +175,24 @@ export default function ContactAnalysis() {
         </div>
       </div>
 
-      {/* Step Indicator */}
-      <AnalysisStepIndicator
-        steps={STEPS}
-        currentStep={currentStep}
-        onStepClick={setCurrentStep}
-      />
+      {/* Step Indicator - Hidden in print */}
+      <div className="print:hidden">
+        <AnalysisStepIndicator
+          steps={STEPS}
+          currentStep={currentStep}
+          onStepClick={setCurrentStep}
+        />
+      </div>
 
       {/* Step Content */}
-      <Card className="min-h-[400px]">
-        <CardContent className="p-6">
+      <Card className="min-h-[400px] print:border-none print:shadow-none print:min-h-0">
+        <CardContent className="p-6 print:p-0">
           {renderStepContent()}
         </CardContent>
       </Card>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
+      {/* Navigation - Hidden in print */}
+      <div className="flex items-center justify-between print:hidden">
         <Button
           variant="outline"
           onClick={handlePrevious}

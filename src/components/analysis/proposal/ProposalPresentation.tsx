@@ -151,16 +151,32 @@ const { user, profile } = useAuth();
       {/* Print Styles */}
       <style>{`
         @media print {
-          body { 
+          /* Reset everything */
+          html, body { 
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
           }
           
+          /* Hide ALL elements outside proposal */
+          body > *:not(.proposal-content),
+          header, nav, aside, footer,
+          [class*="sidebar"],
+          [class*="Sidebar"] {
+            display: none !important;
+          }
+          
+          /* Make proposal content the root */
           .proposal-content {
-            margin: 0;
-            padding: 0;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
           /* A4 page setup */
@@ -173,6 +189,7 @@ const { user, profile } = useAuth();
           .print-page {
             page-break-after: always;
             page-break-inside: avoid;
+            width: 210mm !important;
           }
           
           .print-page:last-child {
@@ -181,25 +198,46 @@ const { user, profile } = useAuth();
           
           /* Cover page - full bleed */
           .print-cover {
-            width: 210mm;
-            height: 297mm;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+          }
+          
+          .print-cover > * {
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
           }
           
           /* Content pages */
           .print-content-page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 15mm 20mm !important;
-            box-sizing: border-box;
-            background: white;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            padding: 12mm 15mm !important;
+            box-sizing: border-box !important;
+            background: white !important;
+            color: black !important;
+            font-size: 10pt !important;
           }
           
-          /* Hide floating action bar */
-          .print\\:hidden {
-            display: none !important;
+          .print-content-page h2 {
+            font-size: 16pt !important;
+            margin-bottom: 8pt !important;
+          }
+          
+          .print-content-page h3 {
+            font-size: 12pt !important;
+          }
+          
+          .print-content-page p {
+            font-size: 10pt !important;
+          }
+          
+          /* Reduce spacing in print */
+          .print-content-page > * {
+            margin-bottom: 12pt !important;
           }
           
           /* Ensure backgrounds print */
