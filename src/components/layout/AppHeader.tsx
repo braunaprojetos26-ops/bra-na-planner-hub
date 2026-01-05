@@ -37,7 +37,7 @@ export function AppHeader() {
   const displayRole = role ? roleLabels[role] : 'Carregando...';
 
   return (
-    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 sticky top-0 z-10">
+    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 sticky top-0 z-10 print:hidden">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
       </div>
