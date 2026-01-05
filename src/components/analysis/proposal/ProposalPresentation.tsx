@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, CheckCircle } from 'lucide-react';
 import { useProposalMutations } from '@/hooks/useProposals';
@@ -47,6 +47,11 @@ const { user, profile } = useAuth();
   const { data: feedbacks } = useMyFeedbacks();
   const { data: cases } = useMyCases();
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Scroll para o topo quando o componente montar
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleMarkPresented = () => {
     markAsPresented.mutate(proposal.id);
