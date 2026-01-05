@@ -14,7 +14,7 @@ export function ProposalCover({ clientName, plannerName, subtitle = 'Proposta Pe
   });
 
   return (
-    <div className="min-h-screen print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] print:w-[210mm] print:overflow-hidden print:m-0 print:p-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center text-white relative overflow-hidden">
+    <div className="min-h-screen print:w-full print:h-full print:min-h-0 print:max-h-none print:m-0 print:p-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center text-white relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0" style={{
