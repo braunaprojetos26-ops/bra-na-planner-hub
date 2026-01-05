@@ -95,20 +95,14 @@ const { user, profile } = useAuth();
           />
         </div>
 
-        {/* Page 2 - Diagnóstico + Entregáveis */}
-        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-          {diagnostic && (
-            <DiagnosticSection
-              overallScore={diagnostic.overall_score}
-              categoryScores={diagnostic.category_scores}
-            />
-          )}
+        {/* Page 2 - Entregáveis + O que está Incluso */}
+        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
           <DeliverablesSection />
+          <IncludedSection meetings={proposal.meetings} />
         </div>
 
-        {/* Page 3 - Tudo Incluído + Jornada + Temas */}
-        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-          <IncludedSection meetings={proposal.meetings} />
+        {/* Page 3 - Jornada + Temas */}
+        <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
           <MeetingsSection meetings={proposal.meetings} />
           <TopicsSection />
         </div>
@@ -167,6 +161,7 @@ const { user, profile } = useAuth();
           html, body {
             margin: 0 !important;
             padding: 0 !important;
+            width: 210mm !important;
           }
           
           /* Hide layout elements by specific selectors */
@@ -202,50 +197,56 @@ const { user, profile } = useAuth();
             page-break-after: auto;
           }
           
-          /* Cover page - full bleed */
+          /* Cover page - exact A4, no overflow */
           .print-cover {
             width: 210mm !important;
             height: 297mm !important;
+            max-height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
+            page-break-after: always !important;
           }
           
           .print-cover > * {
             width: 210mm !important;
             height: 297mm !important;
+            max-height: 297mm !important;
             min-height: 297mm !important;
+            overflow: hidden !important;
           }
           
           /* Content pages */
           .print-content-page {
             width: 210mm !important;
             min-height: 277mm !important;
-            padding: 10mm 15mm !important;
+            max-height: 297mm !important;
+            padding: 8mm 12mm !important;
             box-sizing: border-box !important;
             background: white !important;
             color: #1a1a1a !important;
-            font-size: 10pt !important;
+            font-size: 9pt !important;
+            overflow: hidden !important;
           }
           
           /* Typography scaling */
           .print-content-page h2 {
-            font-size: 14pt !important;
-            margin-bottom: 6pt !important;
+            font-size: 12pt !important;
+            margin-bottom: 4pt !important;
           }
           
           .print-content-page h3 {
-            font-size: 11pt !important;
+            font-size: 10pt !important;
           }
           
           .print-content-page p {
-            font-size: 9pt !important;
-            line-height: 1.4 !important;
+            font-size: 8pt !important;
+            line-height: 1.3 !important;
           }
           
           /* Reduce spacing */
           .print-content-page > * {
-            margin-bottom: 8pt !important;
+            margin-bottom: 6pt !important;
           }
           
           /* Prevent section breaks */
