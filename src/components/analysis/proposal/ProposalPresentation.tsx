@@ -211,34 +211,33 @@ const { user, profile } = useAuth();
             page-break-after: auto !important;
           }
           
-          /* Cover page - exact A4, no overflow */
+          /* Cover page - exact A4, wrapper controls dimensions */
           .print-cover {
-            position: relative !important;
-            top: 0 !important;
-            left: 0 !important;
-            display: block !important;
+            display: flex !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
             width: 210mm !important;
             height: 297mm !important;
-            max-height: 297mm !important;
-            min-height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
+            page-break-after: always !important;
+            break-after: page !important;
           }
           
+          /* Cover content fills wrapper and centers its own content */
           .print-cover > * {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
-            width: 210mm !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
-            min-height: 297mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: hidden !important;
             box-sizing: border-box !important;
           }
           
