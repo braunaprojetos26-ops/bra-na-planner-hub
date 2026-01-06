@@ -33,6 +33,7 @@ import Tickets from "./pages/Tickets";
 import MeuFuturo from "./pages/MeuFuturo";
 import NotificationHistory from "./pages/NotificationHistory";
 import OpportunityMap from "./pages/OpportunityMap";
+import ProspectionAnalytics from "./pages/ProspectionAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
                 <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
                 <Route path="/analytics/health-score" element={<ProtectedPage><HealthScore /></ProtectedPage>} />
                 <Route path="/analytics/opportunity-map" element={<ProtectedPage><OpportunityMap /></ProtectedPage>} />
+                <Route path="/analytics/prospection" element={<ProtectedPage><ProspectionAnalytics /></ProtectedPage>} />
                 <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
                 <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
                 <Route path="/wiki/:categorySlug/:folderId" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />

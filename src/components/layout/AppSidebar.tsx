@@ -51,6 +51,7 @@ const analyticsSubItems = [
   { title: 'Dashboard de Funis', url: '/analytics', icon: BarChart3 },
   { title: 'Health Score', url: '/analytics/health-score', icon: Heart },
   { title: 'Mapa de Oportunidades', url: '/analytics/opportunity-map', icon: Map },
+  { title: 'Prospecção', url: '/analytics/prospection', icon: Users },
 ];
 
 const teamSubItems = [
