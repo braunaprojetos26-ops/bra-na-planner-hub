@@ -217,7 +217,7 @@ export function useChatAssistant() {
       const successMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `✅ **Ata salva com sucesso!**\n\nA ata foi salva no histórico de atas de **${contact?.full_name || 'contato'}**.\n\n[Ver contato →](/contacts/${contactId})`,
+        content: `✅ **Ata salva automaticamente!**\n\nA ata foi salva na seção "Atas de Reunião" de **${contact?.full_name || 'contato'}**.\n\n[Ver atas do contato →](/contacts/${contactId})`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev.filter(m => m.role !== 'confirmation'), successMessage]);
