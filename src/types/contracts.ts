@@ -84,6 +84,14 @@ export interface Contract {
     full_name: string;
     email: string;
   };
+  opportunity?: {
+    id: string;
+    current_stage_id: string;
+    current_stage?: {
+      id: string;
+      name: string;
+    };
+  } | null;
 }
 
 export interface ContractFormData {

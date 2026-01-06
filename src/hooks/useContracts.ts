@@ -22,7 +22,12 @@ export function useContracts(filters?: {
             *,
             category:product_categories(*)
           ),
-          contact:contacts(id, full_name, phone)
+          contact:contacts(id, full_name, phone),
+          opportunity:opportunities(
+            id,
+            current_stage_id,
+            current_stage:funnel_stages!opportunities_current_stage_id_fkey(id, name)
+          )
         `)
         .order('reported_at', { ascending: false });
 
