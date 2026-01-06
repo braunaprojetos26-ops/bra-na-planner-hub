@@ -680,6 +680,68 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", contractRequest.contactId)
       .single();
 
+    // Fetch product to get PB formula and variables
+    const { data: product } = await supabase
+      .from("products")
+      .select("pb_formula, pb_variables, pb_constants")
+      .eq("id", contractRequest.productId)
+      .single();
+
+    console.log("Product PB config:", JSON.stringify(product, null, 2));
+
+    // Build custom_data with required variables for PB calculation
+    const customData: Record<string, number> = {};
+    const pbVariables = (product?.pb_variables as string[]) || [];
+    
+    if (pbVariables.includes('valor_total')) {
+      customData.valor_total = contractRequest.planValue;
+    }
+    if (pbVariables.includes('valor_mensal')) {
+      customData.valor_mensal = contractRequest.planValue / (contractRequest.contractMonths || 12);
+    }
+    if (pbVariables.includes('numero_parcelas')) {
+      customData.numero_parcelas = contractRequest.installments || 1;
+    }
+    if (pbVariables.includes('numero_reunioes')) {
+      customData.numero_reunioes = contractRequest.meetingCount || 0;
+    }
+
+    console.log("Custom data for PB calc:", JSON.stringify(customData, null, 2));
+
+    // Calculate PBs using formula
+    function calculatePBs(formula: string | null, values: Record<string, number>): number {
+      if (!formula) return 0;
+      
+      let expression = formula;
+      for (const [key, value] of Object.entries(values)) {
+        expression = expression.replace(new RegExp(`\\{${key}\\}`, 'g'), value.toString());
+      }
+      
+      // Check if there are still unreplaced variables
+      if (/\{[^}]+\}/.test(expression)) {
+        console.warn("Formula has unreplaced variables:", expression);
+        return 0;
+      }
+      
+      try {
+        // Safe evaluation - only allow math operations
+        const sanitized = expression.replace(/[^0-9+\-*/().]/g, '');
+        const fn = new Function(`return (${sanitized})`);
+        const result = fn();
+        return typeof result === 'number' && !isNaN(result) ? result : 0;
+      } catch (e) {
+        console.error("Error evaluating PB formula:", e);
+        return 0;
+      }
+    }
+
+    // Merge custom_data with product constants for calculation
+    const pbConstants = (product?.pb_constants as Record<string, number>) || {};
+    const allValues = { ...customData, ...pbConstants };
+    const calculatedPbs = calculatePBs(product?.pb_formula || null, allValues);
+    
+    console.log("Calculated PBs:", calculatedPbs);
+
     // Calculate payment details for legacy fields
     let paymentType = "avista";
     let installments = null;
@@ -703,6 +765,7 @@ const handler = async (req: Request): Promise<Response> => {
       payment_type: paymentType,
       installments,
       installment_value: installmentValue,
+      custom_data: customData,
       start_date: contractRequest.startDate,
       end_date: contractRequest.endDate,
       meeting_count: contractRequest.meetingCount,
@@ -716,7 +779,7 @@ const handler = async (req: Request): Promise<Response> => {
       vindi_bill_id: vindiResult.billId || null,
       vindi_subscription_id: vindiResult.subscriptionId || null,
       vindi_status: (vindiResult.billId || vindiResult.subscriptionId) ? "pending" : "error",
-      calculated_pbs: 0, // PBs zerados - será calculado ao dar ganho
+      calculated_pbs: calculatedPbs,
       status: "pending",
     };
 
