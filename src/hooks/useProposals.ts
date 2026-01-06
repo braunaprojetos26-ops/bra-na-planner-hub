@@ -161,7 +161,17 @@ export function useProposalMutations() {
 
   const markAsPresented = useMutation({
     mutationFn: async (proposalId: string) => {
-      const { data: proposal, error } = await supabase
+      // 1. Buscar proposta com opportunity vinculada
+      const { data: proposal, error: fetchError } = await supabase
+        .from('proposals')
+        .select('*')
+        .eq('id', proposalId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Marcar proposta como presented
+      const { data: updatedProposal, error: updateError } = await supabase
         .from('proposals')
         .update({
           status: 'presented',
@@ -171,14 +181,56 @@ export function useProposalMutations() {
         .select()
         .single();
 
-      if (error) throw error;
-      return proposal as Proposal;
+      if (updateError) throw updateError;
+
+      // 3. Se tem opportunity vinculada, buscar e atualizar
+      const VENDA_PLANEJAMENTO_FUNNEL = '22222222-2222-2222-2222-222222222222';
+      const PROPOSTA_FEITA_STAGE = '98eda98c-27bf-421a-839b-539544b6d742';
+
+      if (proposal.opportunity_id) {
+        // Buscar opportunity
+        const { data: opportunity } = await supabase
+          .from('opportunities')
+          .select('current_funnel_id, current_stage_id')
+          .eq('id', proposal.opportunity_id)
+          .single();
+
+        // Se está no funil de planejamento, mover para "Proposta Feita"
+        if (opportunity?.current_funnel_id === VENDA_PLANEJAMENTO_FUNNEL) {
+          const fromStageId = opportunity.current_stage_id;
+
+          // Atualizar oportunidade
+          await supabase
+            .from('opportunities')
+            .update({
+              current_stage_id: PROPOSTA_FEITA_STAGE,
+              stage_entered_at: new Date().toISOString(),
+              proposal_value: proposal.final_value,
+            })
+            .eq('id', proposal.opportunity_id);
+
+          // Criar histórico
+          await supabase
+            .from('opportunity_history')
+            .insert({
+              opportunity_id: proposal.opportunity_id,
+              action: 'stage_change',
+              from_stage_id: fromStageId,
+              to_stage_id: PROPOSTA_FEITA_STAGE,
+              changed_by: user?.id,
+              notes: `Proposta apresentada: R$ ${proposal.final_value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            });
+        }
+      }
+
+      return updatedProposal as Proposal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       toast({
         title: 'Proposta apresentada',
-        description: 'A proposta foi marcada como apresentada.',
+        description: 'A proposta foi marcada como apresentada e a oportunidade foi atualizada.',
       });
     },
     onError: (error) => {
