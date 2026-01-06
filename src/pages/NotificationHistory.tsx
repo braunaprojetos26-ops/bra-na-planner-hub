@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Check, ArrowLeft, Wallet, HeartPulse } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Check, ArrowLeft, Wallet, HeartPulse, Cake } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +27,8 @@ export default function NotificationHistory() {
       navigate('/tickets');
     } else if (notification.type === 'health_score_drop') {
       navigate('/analytics/health-score');
+    } else if (notification.type === 'birthday') {
+      navigate('/contacts');
     } else {
       navigate('/tasks');
     }
@@ -44,6 +46,8 @@ export default function NotificationHistory() {
         return <Wallet className="h-4 w-4" />;
       case 'health_score_drop':
         return <HeartPulse className="h-4 w-4" />;
+      case 'birthday':
+        return <Cake className="h-4 w-4" />;
       default:
         return <CalendarClock className="h-4 w-4" />;
     }
@@ -61,6 +65,8 @@ export default function NotificationHistory() {
         return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
       case 'health_score_drop':
         return 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400';
+      case 'birthday':
+        return 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400';
       default:
         return 'bg-primary/10 text-primary';
     }
