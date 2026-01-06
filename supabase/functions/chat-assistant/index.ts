@@ -139,13 +139,10 @@ serve(async (req) => {
     if (type === "meeting") {
       systemPrompt += `\n\n📋 MODO GERAÇÃO DE ATA:\n${MEETING_MINUTES_TEMPLATE}
 
-⚠️ CÓDIGO DO CLIENTE (OBRIGATÓRIO SE ESTIVER NA TRANSCRIÇÃO):
-- Se você encontrar um código de cliente no formato CXX (ex: C23) na transcrição, inclua AO FINAL da sua resposta uma única linha neste formato:
-[CLIENTE_ID: Código: CXX | Confiança: alta/média/baixa]
-
-- NÃO peça o nome do cliente.
-- NÃO faça perguntas de esclarecimento.
-- Se NÃO encontrar um código CXX na transcrição, gere a ata normalmente e NÃO inclua a linha [CLIENTE_ID: ...].`;
+⚠️ IMPORTANTE:
+- Gere a ata diretamente, sem fazer perguntas.
+- NÃO peça nome/ID/código do cliente.
+- NÃO inclua linha de identificação do cliente (ex: [CLIENTE_ID: ...]).`; 
     }
 
     console.log("Processing chat request, type:", type);
