@@ -27,7 +27,7 @@ export default function ProspectionAnalytics() {
           <Users className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Análise de Prospecção</h1>
+          <h1 className="text-2xl font-bold">Lista de Prospecção</h1>
           <p className="text-muted-foreground">
             Acompanhe a efetividade da sua lista de prospecção
           </p>
