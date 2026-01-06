@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet, HeartPulse } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet, HeartPulse, Cake } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const markRead = useMarkNotificationRead();
 
   const handleClick = async () => {
-    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment' || notification.type === 'health_score_drop') && notification.link) {
+    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment' || notification.type === 'health_score_drop' || notification.type === 'birthday') && notification.link) {
       await markRead(notification.id);
       navigate(notification.link);
     } else if (notification.type === 'contract_update' || notification.type === 'payment') {
@@ -26,6 +26,9 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
     } else if (notification.type === 'health_score_drop') {
       await markRead(notification.id);
       navigate('/analytics/health-score');
+    } else if (notification.type === 'birthday') {
+      await markRead(notification.id);
+      navigate('/contacts');
     } else {
       navigate('/tasks');
     }
@@ -37,6 +40,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const isContract = notification.type === 'contract_update';
   const isPayment = notification.type === 'payment';
   const isHealthScoreDrop = notification.type === 'health_score_drop';
+  const isBirthday = notification.type === 'birthday';
 
   return (
     <button
@@ -51,6 +55,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           'p-2 rounded-full shrink-0',
           isOverdue ? 'bg-destructive/10 text-destructive' : 
           isHealthScoreDrop ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400' :
+          isBirthday ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400' :
           isTicket ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
           isContract ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' :
           isPayment ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
@@ -61,6 +66,8 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           <AlertTriangle className="h-4 w-4" />
         ) : isHealthScoreDrop ? (
           <HeartPulse className="h-4 w-4" />
+        ) : isBirthday ? (
+          <Cake className="h-4 w-4" />
         ) : isTicket ? (
           <MessageSquare className="h-4 w-4" />
         ) : isContract ? (
@@ -83,7 +90,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, dbUnreadCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, birthdayCount, dbUnreadCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -138,8 +145,14 @@ export function NotificationCenter() {
           )}
           
           {/* DB notifications section */}
-          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0 || healthScoreDropCount > 0) && (
+          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0 || healthScoreDropCount > 0 || birthdayCount > 0) && (
             <div className="flex gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+              {birthdayCount > 0 && (
+                <span className="flex items-center gap-1 text-pink-600 dark:text-pink-400">
+                  <Cake className="h-3 w-3" />
+                  {birthdayCount} aniversário{birthdayCount > 1 ? 's' : ''}
+                </span>
+              )}
               {ticketCount > 0 && (
                 <span className="flex items-center gap-1 text-blue-600">
                   <MessageSquare className="h-3 w-3" />
