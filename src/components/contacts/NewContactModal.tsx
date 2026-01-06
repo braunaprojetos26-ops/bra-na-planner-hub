@@ -58,7 +58,7 @@ interface NewContactModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const sources = ['Instagram', 'Facebook', 'Threads', 'WhatsApp', 'Indicação', 'Site', 'Outro'];
+const sources = ['Instagram', 'Facebook', 'Threads', 'WhatsApp', 'Indicação', 'Site', 'Contato Próprio/Mercado X', 'Outro'];
 
 const genderOptions = [
   { value: 'masculino', label: 'Masculino' },
