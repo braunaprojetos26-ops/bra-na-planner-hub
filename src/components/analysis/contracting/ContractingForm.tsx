@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { useContractIntegration, ContractIntegrationData, ContactData } from '@/hooks/useContractIntegration';
 import { useProducts } from '@/hooks/useProducts';
 import { useContact } from '@/hooks/useContacts';
+import { useContactProposals } from '@/hooks/useProposals';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep } from '@/lib/viaCep';
 
@@ -174,7 +175,13 @@ export function ContractingForm({ contactId, opportunityId }: ContractingFormPro
 
   const { data: contact } = useContact(contactId);
   const { data: products } = useProducts();
+  const { data: proposals } = useContactProposals(contactId);
   const contractIntegration = useContractIntegration();
+
+  // Find the most recent presented or accepted proposal
+  const presentedProposal = proposals?.find(p => 
+    p.status === 'presented' || p.status === 'accepted'
+  );
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -208,7 +215,7 @@ export function ContractingForm({ contactId, opportunityId }: ContractingFormPro
     },
   });
 
-  // Load contact data into form when contact is fetched
+  // Load contact data and proposal value into form
   useEffect(() => {
     if (contact) {
       form.reset({
@@ -229,18 +236,18 @@ export function ContractingForm({ contactId, opportunityId }: ContractingFormPro
         address_complement: contact.address_complement || '',
         city: (contact as any).city || '',
         state: (contact as any).state || '',
-        planType: 'novo_planejamento',
-        planValue: 0,
+        planType: presentedProposal?.proposal_type === 'pontual' ? 'planejamento_pontual' : 'novo_planejamento',
+        planValue: presentedProposal?.final_value || 0,
         billingType: 'fatura_avulsa',
         paymentMethodCode: 'pix',
-        installments: 1,
+        installments: presentedProposal?.installments || 1,
         billingDate: new Date(),
         startDate: new Date(),
         contractMonths: 12,
-        meetingCount: 12,
+        meetingCount: presentedProposal?.meetings || 12,
       });
     }
-  }, [contact, form]);
+  }, [contact, form, presentedProposal]);
 
   const watchBillingType = form.watch('billingType');
   const watchPaymentMethodCode = form.watch('paymentMethodCode');
