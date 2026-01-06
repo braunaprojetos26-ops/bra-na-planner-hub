@@ -178,10 +178,10 @@ export function ContractingForm({ contactId, opportunityId }: ContractingFormPro
   const { data: proposals } = useContactProposals(contactId);
   const contractIntegration = useContractIntegration();
 
-  // Find the most recent presented or accepted proposal
-  const presentedProposal = proposals?.find(p => 
-    p.status === 'presented' || p.status === 'accepted'
-  );
+  // Prefer a proposal already presented/accepted; fallback to the most recent one
+  const proposalForContract =
+    proposals?.find((p) => p.status === 'presented' || p.status === 'accepted') ??
+    proposals?.[0];
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -236,18 +236,20 @@ export function ContractingForm({ contactId, opportunityId }: ContractingFormPro
         address_complement: contact.address_complement || '',
         city: (contact as any).city || '',
         state: (contact as any).state || '',
-        planType: presentedProposal?.proposal_type === 'pontual' ? 'planejamento_pontual' : 'novo_planejamento',
-        planValue: presentedProposal?.final_value || 0,
+        planType: proposalForContract?.proposal_type?.toLowerCase?.().includes('pontual')
+          ? 'planejamento_pontual'
+          : 'novo_planejamento',
+        planValue: proposalForContract?.final_value || 0,
         billingType: 'fatura_avulsa',
         paymentMethodCode: 'pix',
-        installments: presentedProposal?.installments || 1,
+        installments: proposalForContract?.installments || 1,
         billingDate: new Date(),
         startDate: new Date(),
         contractMonths: 12,
-        meetingCount: presentedProposal?.meetings || 12,
+        meetingCount: proposalForContract?.meetings || 12,
       });
     }
-  }, [contact, form, presentedProposal]);
+  }, [contact, form, proposalForContract]);
 
   const watchBillingType = form.watch('billingType');
   const watchPaymentMethodCode = form.watch('paymentMethodCode');
