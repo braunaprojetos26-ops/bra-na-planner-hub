@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { useChatAssistant, ChatMessage } from '@/hooks/useChatAssistant';
 import { useContacts } from '@/hooks/useContacts';
 import { cn } from '@/lib/utils';
@@ -34,18 +35,20 @@ export function ChatAssistant() {
   const [chatMode, setChatMode] = useState<'question' | 'meeting'>('question');
   const [showContactSearch, setShowContactSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingMeetingContent, setPendingMeetingContent] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const { 
-    messages, 
-    isLoading, 
-    sendMessage, 
+  const {
+    messages,
+    isLoading,
+    sendMessage,
     saveToContactNotes,
     addConfirmationMessage,
     removeConfirmationMessages,
-    clearMessages 
+    clearMessages,
   } = useChatAssistant();
   const { data: contacts } = useContacts();
 
@@ -59,54 +62,54 @@ export function ChatAssistant() {
     if (!input.trim() || isLoading) return;
 
     const content = input;
-    setInput('');
-    
+
     // Extract client code from user input BEFORE sending to AI (e.g., "C23", "C-23", "C 23")
     const userInputCodeMatch = content.match(/\b[Cc][-\s]?(\d{1,3})\b/);
     const userInputClientCode = userInputCodeMatch ? `C${userInputCodeMatch[1]}` : undefined;
-    console.log('Client code from user input:', userInputClientCode);
-    
+
+    // In meeting mode, client code is mandatory
+    if (type === 'meeting' && !userInputClientCode) {
+      toast({
+        title: 'Código do cliente obrigatório',
+        description: 'Inclua o código do cliente no texto (ex: C23) para eu salvar a ata automaticamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setInput('');
     const response = await sendMessage(content, type);
-    
+
     if (type === 'meeting' && response) {
       let clientCode: string | undefined;
-      
-      // Try to extract client code from AI response first
-      // Format: [CLIENTE_ID: Nome | Código: CXX | Confiança: alta]
+
+      // Try to extract client code from AI response (best-effort)
       const aiCodeMatch = response.match(/Código:\s*([Cc]?\d{1,3})/i);
       if (aiCodeMatch) {
         clientCode = aiCodeMatch[1].toUpperCase();
         if (!clientCode.startsWith('C')) clientCode = 'C' + clientCode;
-        console.log('Client code from AI response:', clientCode);
       }
-      
-      // Fallback to user input code if AI didn't return one
+
+      // Fallback to user input code
       if (!clientCode && userInputClientCode) {
         clientCode = userInputClientCode.toUpperCase();
-        console.log('Using client code from user input:', clientCode);
       }
-      
+
       if (clientCode) {
-        console.log('Searching for contact with code:', clientCode, 'Total contacts:', contacts?.length);
-        
-        // Find contact by code (case-insensitive)
-        const foundContact = contacts?.find(c => 
-          c.client_code?.toUpperCase() === clientCode?.toUpperCase()
+        const foundContact = contacts?.find(
+          (c) => c.client_code?.toUpperCase() === clientCode?.toUpperCase()
         );
-        
+
         if (foundContact) {
-          console.log('Found contact:', { id: foundContact.id, name: foundContact.full_name, code: foundContact.client_code });
-          // Auto-save the meeting minutes
           await saveToContactNotes(foundContact.id, response);
-        } else {
-          console.log('Client code not found in database, showing manual search');
-          setShowContactSearch(true);
+          setPendingMeetingContent(null);
+          return;
         }
-      } else {
-        // No client code found - show manual search
-        console.log('No client code found, showing manual search');
-        setShowContactSearch(true);
       }
+
+      // If we got here: no match found in DB → ask user to select contact manually
+      setPendingMeetingContent(response);
+      setShowContactSearch(true);
     }
   };
 
@@ -122,18 +125,21 @@ export function ChatAssistant() {
     setShowContactSearch(true);
   };
 
-  const handleManualContactSelect = async (contactId: string, contactName: string) => {
+  const handleManualContactSelect = async (contactId: string) => {
     setShowContactSearch(false);
-    
-    // Find the last meeting content from messages
-    const lastAssistantMessage = [...messages].reverse().find(m => 
-      m.role === 'assistant' && (m.content.includes('Assuntos Discutidos') || m.content.includes('**Ata'))
-    );
-    
-    if (lastAssistantMessage) {
-      // Auto-save when manually selecting a contact
-      await saveToContactNotes(contactId, lastAssistantMessage.content);
-    }
+
+    const meetingContentToSave =
+      pendingMeetingContent ??
+      [...messages]
+        .reverse()
+        .find((m) => m.role === 'assistant')?.content ??
+      null;
+
+    if (!meetingContentToSave) return;
+
+    await saveToContactNotes(contactId, meetingContentToSave);
+    setPendingMeetingContent(null);
+    setSearchQuery('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -386,7 +392,7 @@ export function ChatAssistant() {
                           {filteredContacts?.map((contact) => (
                             <CommandItem
                               key={contact.id}
-                              onSelect={() => handleManualContactSelect(contact.id, contact.full_name)}
+                              onSelect={() => handleManualContactSelect(contact.id)}
                             >
                               {contact.full_name}
                               {contact.client_code && (
