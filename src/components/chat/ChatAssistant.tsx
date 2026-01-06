@@ -35,6 +35,11 @@ export function ChatAssistant() {
   const [chatMode, setChatMode] = useState<'question' | 'meeting'>('question');
   const [showContactSearch, setShowContactSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMeetingContact, setSelectedMeetingContact] = useState<{
+    id: string;
+    name: string;
+    code?: string;
+  } | null>(null);
   const [pendingMeetingContent, setPendingMeetingContent] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -61,55 +66,29 @@ export function ChatAssistant() {
   const handleSend = async (type: 'question' | 'meeting' = 'question') => {
     if (!input.trim() || isLoading) return;
 
-    const content = input;
-
-    // Extract client code from user input BEFORE sending to AI (e.g., "C23", "C-23", "C 23")
-    const userInputCodeMatch = content.match(/\b[Cc][-\s]?(\d{1,3})\b/);
-    const userInputClientCode = userInputCodeMatch ? `C${userInputCodeMatch[1]}` : undefined;
-
-    // In meeting mode, client code is mandatory
-    if (type === 'meeting' && !userInputClientCode) {
+    if (type === 'meeting' && !selectedMeetingContact) {
+      setShowContactSearch(true);
       toast({
-        title: 'Código do cliente obrigatório',
-        description: 'Inclua o código do cliente no texto (ex: C23) para eu salvar a ata automaticamente.',
+        title: 'Selecione um contato',
+        description: 'Escolha o contato antes de gerar a ata.',
         variant: 'destructive',
       });
       return;
     }
 
+    const content = input;
     setInput('');
+
     const response = await sendMessage(content, type);
 
-    if (type === 'meeting' && response) {
-      let clientCode: string | undefined;
-
-      // Try to extract client code from AI response (best-effort)
-      const aiCodeMatch = response.match(/Código:\s*([Cc]?\d{1,3})/i);
-      if (aiCodeMatch) {
-        clientCode = aiCodeMatch[1].toUpperCase();
-        if (!clientCode.startsWith('C')) clientCode = 'C' + clientCode;
-      }
-
-      // Fallback to user input code
-      if (!clientCode && userInputClientCode) {
-        clientCode = userInputClientCode.toUpperCase();
-      }
-
-      if (clientCode) {
-        const foundContact = contacts?.find(
-          (c) => c.client_code?.toUpperCase() === clientCode?.toUpperCase()
-        );
-
-        if (foundContact) {
-          await saveToContactNotes(foundContact.id, response);
-          setPendingMeetingContent(null);
-          return;
-        }
-      }
-
-      // If we got here: no match found in DB → ask user to select contact manually
+    if (type === 'meeting' && response && selectedMeetingContact) {
       setPendingMeetingContent(response);
-      setShowContactSearch(true);
+      addConfirmationMessage(
+        selectedMeetingContact.id,
+        selectedMeetingContact.name,
+        selectedMeetingContact.code,
+        response
+      );
     }
   };
 
@@ -125,21 +104,25 @@ export function ChatAssistant() {
     setShowContactSearch(true);
   };
 
-  const handleManualContactSelect = async (contactId: string) => {
+  const handleManualContactSelect = async (contact: { id: string; full_name: string; client_code?: string | null }) => {
     setShowContactSearch(false);
-
-    const meetingContentToSave =
-      pendingMeetingContent ??
-      [...messages]
-        .reverse()
-        .find((m) => m.role === 'assistant')?.content ??
-      null;
-
-    if (!meetingContentToSave) return;
-
-    await saveToContactNotes(contactId, meetingContentToSave);
-    setPendingMeetingContent(null);
+    setSelectedMeetingContact({
+      id: contact.id,
+      name: contact.full_name,
+      code: contact.client_code || undefined,
+    });
     setSearchQuery('');
+
+    // If there's already a generated meeting content pending, re-open confirmation for the newly selected contact
+    if (pendingMeetingContent) {
+      removeConfirmationMessages();
+      addConfirmationMessage(
+        contact.id,
+        contact.full_name,
+        contact.client_code || undefined,
+        pendingMeetingContent
+      );
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -247,7 +230,7 @@ export function ChatAssistant() {
           </DialogHeader>
 
           {/* Quick Actions */}
-          <div className="px-4 py-2 border-b flex gap-2">
+          <div className="px-4 py-2 border-b flex gap-2 items-center flex-wrap">
             <Button
               variant={chatMode === 'meeting' ? 'default' : 'outline'}
               size="sm"
@@ -266,6 +249,25 @@ export function ChatAssistant() {
               <FileText className="h-4 w-4 mr-1" />
               Gerar Ata
             </Button>
+
+            {chatMode === 'meeting' && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowContactSearch(true)}
+                  disabled={isLoading}
+                >
+                  Selecionar contato
+                </Button>
+                <Badge variant="secondary" className="text-xs">
+                  {selectedMeetingContact
+                    ? `${selectedMeetingContact.name}${selectedMeetingContact.code ? ` (${selectedMeetingContact.code})` : ''}`
+                    : 'Contato não selecionado'}
+                </Badge>
+              </>
+            )}
+
             <Button
               variant={chatMode === 'question' ? 'default' : 'outline'}
               size="sm"
@@ -279,11 +281,6 @@ export function ChatAssistant() {
               <HelpCircle className="h-4 w-4 mr-1" />
               Tirar Dúvida
             </Button>
-            {chatMode === 'meeting' && (
-              <Badge variant="secondary" className="text-xs">
-                Modo Ata ativo
-              </Badge>
-            )}
           </div>
 
           {/* Messages */}
@@ -368,11 +365,11 @@ export function ChatAssistant() {
             </div>
           </ScrollArea>
 
-          {/* Manual Contact Search */}
+          {/* Contact selector (used for meeting mode selection and "Escolher outro") */}
           {showContactSearch && (
             <div className="px-4 py-2 border-t bg-muted/50">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-muted-foreground">Selecionar contato manualmente:</span>
+                <span className="text-sm text-muted-foreground">Selecione o contato da ata:</span>
                 <Popover open={true} onOpenChange={setShowContactSearch}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8">
@@ -381,8 +378,8 @@ export function ChatAssistant() {
                   </PopoverTrigger>
                   <PopoverContent className="p-0 w-[300px]">
                     <Command>
-                      <CommandInput 
-                        placeholder="Buscar contato..." 
+                      <CommandInput
+                        placeholder="Buscar contato..."
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                       />
@@ -392,7 +389,7 @@ export function ChatAssistant() {
                           {filteredContacts?.map((contact) => (
                             <CommandItem
                               key={contact.id}
-                              onSelect={() => handleManualContactSelect(contact.id)}
+                              onSelect={() => handleManualContactSelect(contact)}
                             >
                               {contact.full_name}
                               {contact.client_code && (
