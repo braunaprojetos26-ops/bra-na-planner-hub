@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, ChevronDown, ChevronUp, Trash2, Eye, Calendar, User } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Trash2, Eye, Calendar, User, Plus } from 'lucide-react';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { NewMeetingMinuteModal } from '@/components/opportunities/NewMeetingMinuteModal';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ export function MeetingMinutesList({ contactId, contactName }: MeetingMinutesLis
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMinute, setSelectedMinute] = useState<MeetingMinute | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [showNewMinuteModal, setShowNewMinuteModal] = useState(false);
 
   const handleView = (minute: MeetingMinute) => {
     setSelectedMinute(minute);
@@ -87,15 +89,23 @@ export function MeetingMinutesList({ contactId, contactName }: MeetingMinutesLis
     <>
       <Card>
         <CardHeader className="pb-1 pt-3">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <FileText className="w-3 h-3 text-accent" />
-            Atas de Reunião
-            {minutes && minutes.length > 0 && (
-              <Badge variant="secondary" className="ml-2 text-[10px]">
-                {minutes.length}
-              </Badge>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              <FileText className="w-3 h-3 text-accent" />
+              Atas de Reunião
+              {minutes && minutes.length > 0 && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  {minutes.length}
+                </Badge>
+              )}
+            </CardTitle>
+            {!isReadOnly && (
+              <Button size="sm" className="h-7 text-xs" onClick={() => setShowNewMinuteModal(true)}>
+                <Plus className="w-3 h-3 mr-1" />
+                Adicionar Ata
+              </Button>
             )}
-          </CardTitle>
+          </div>
         </CardHeader>
         <CardContent className="pb-3">
           {!minutes?.length ? (
@@ -182,6 +192,14 @@ export function MeetingMinutesList({ contactId, contactName }: MeetingMinutesLis
           )}
         </DialogContent>
       </Dialog>
+
+      {/* New Meeting Minute Modal */}
+      <NewMeetingMinuteModal
+        open={showNewMinuteModal}
+        onOpenChange={setShowNewMinuteModal}
+        contactId={contactId}
+        contactName={contactName}
+      />
     </>
   );
 }
