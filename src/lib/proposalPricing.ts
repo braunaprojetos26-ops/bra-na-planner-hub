@@ -44,9 +44,6 @@ const COMPLEXITY_PERCENTAGES: Record<number, number> = {
 const MIN_MONTHLY = 250;      // R$250 minimum per installment
 const MIN_ABSOLUTE = 3000;    // R$3,000 absolute minimum
 
-// Monthly interest rate for installments (compound)
-const MONTHLY_INTEREST_RATE = 0.005; // 0.5% per month
-
 export function calculateProposalPricing(
   input: PricingInput,
   selectedInstallments: number = 1
@@ -73,12 +70,10 @@ export function calculateProposalPricing(
   // 5. Apply discount if selected (10%)
   const finalValue = discountApplied ? baseValue * 0.9 : baseValue;
 
-  // 6. Calculate installment table with compound interest
+  // 6. Calculate installment table (simple division, no interest)
   const installmentTable: InstallmentRow[] = [];
   for (let n = 1; n <= 12; n++) {
-    // Compound interest: value × (1 + rate)^(installments - 1)
-    const totalWithInterest = finalValue * Math.pow(1 + MONTHLY_INTEREST_RATE, n - 1);
-    let installmentValue = totalWithInterest / n;
+    let installmentValue = finalValue / n;
 
     // Ensure minimum installment value of R$250
     if (installmentValue < MIN_MONTHLY) {
@@ -88,7 +83,7 @@ export function calculateProposalPricing(
     installmentTable.push({
       installments: n,
       installmentValue: Math.round(installmentValue * 100) / 100,
-      total: Math.round(installmentValue * n * 100) / 100,
+      total: Math.round(finalValue * 100) / 100,
     });
   }
 
