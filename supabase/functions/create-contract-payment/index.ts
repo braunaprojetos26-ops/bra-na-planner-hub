@@ -814,12 +814,13 @@ const handler = async (req: Request): Promise<Response> => {
 
       const fromStageId = opportunity?.current_stage_id;
 
-      // Update opportunity stage
+      // Update opportunity stage and proposal value with contract value
       const { error: moveError } = await supabase
         .from("opportunities")
         .update({
           current_stage_id: STAGE_ASSINATURA_CONTRATO,
           stage_entered_at: new Date().toISOString(),
+          proposal_value: contractRequest.planValue,
         })
         .eq("id", contractRequest.opportunityId);
 
