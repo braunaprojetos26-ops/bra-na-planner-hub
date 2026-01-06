@@ -6,6 +6,7 @@ import { format, addMonths } from 'date-fns';
 import { CalendarIcon, FileText, CreditCard, CheckCircle2, Loader2, AlertCircle, User, MapPin, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -571,33 +572,15 @@ export function ContractingForm({ contactId, opportunityId }: ContractingFormPro
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Data de Nascimento *</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? format(field.value, "dd/MM/yyyy") : "Selecione"}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                            captionLayout="dropdown-buttons"
-                            fromYear={1920}
-                            toYear={new Date().getFullYear()}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <DateInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          fromYear={1920}
+                          toYear={new Date().getFullYear()}
+                          placeholder="DD/MM/AAAA"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
