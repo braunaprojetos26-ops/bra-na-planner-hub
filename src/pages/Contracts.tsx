@@ -42,7 +42,11 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
   return <Badge variant="outline">{status}</Badge>;
 }
 
-function getPaymentStatusBadge(vindiStatus?: string | null) {
+// ID da categoria "Planejamento Financeiro"
+const PLANEJAMENTO_CATEGORY_ID = 'd770d864-4679-4a6d-9620-6844db224dc3';
+const PAID_STAGE_KEYWORDS = ['paga', 'pago'];
+
+function getVindiStatusBadge(vindiStatus?: string | null) {
   if (!vindiStatus) {
     return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
   }
@@ -61,6 +65,35 @@ function getPaymentStatusBadge(vindiStatus?: string | null) {
     default:
       return <Badge variant="outline">{vindiStatus}</Badge>;
   }
+}
+
+function getPaymentStatusBadge(contract: {
+  vindi_status?: string | null;
+  opportunity_id?: string | null;
+  product?: { category_id?: string | null } | null;
+  opportunity?: { current_stage?: { name: string } | null } | null;
+}) {
+  const isPlanejamento = contract.product?.category_id === PLANEJAMENTO_CATEGORY_ID;
+  
+  // Para produtos de Planejamento Financeiro, usa status da Vindi
+  if (isPlanejamento) {
+    return getVindiStatusBadge(contract.vindi_status);
+  }
+  
+  // Para outros produtos, verifica a etapa do funil da oportunidade
+  const stageName = contract.opportunity?.current_stage?.name?.toLowerCase() || '';
+  const isPaid = PAID_STAGE_KEYWORDS.some(kw => stageName.includes(kw));
+  
+  if (isPaid) {
+    return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Pago</Badge>;
+  }
+  
+  // Se não tem oportunidade vinculada
+  if (!contract.opportunity_id) {
+    return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
+  }
+  
+  return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Aguardando</Badge>;
 }
 
 interface MetricsCardsProps {
@@ -117,12 +150,17 @@ interface ContractsTableProps {
     status: string;
     clicksign_status?: string | null;
     vindi_status?: string | null;
+    opportunity_id?: string | null;
     contact?: { full_name: string } | null;
     product?: { 
       name: string; 
       partner_name?: string | null;
       is_partner_product?: boolean;
+      category_id?: string | null;
       category?: { name: string } | null;
+    } | null;
+    opportunity?: {
+      current_stage?: { name: string } | null;
     } | null;
   }>;
   isLoading: boolean;
@@ -189,7 +227,7 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
               {format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR })}
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
-            <TableCell>{getPaymentStatusBadge(contract.vindi_status)}</TableCell>
+            <TableCell>{getPaymentStatusBadge(contract)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
