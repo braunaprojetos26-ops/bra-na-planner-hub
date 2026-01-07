@@ -41,10 +41,12 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateMeeting, useRescheduleMeeting } from '@/hooks/useMeetings';
 import { useContactOpportunities } from '@/hooks/useContactOpportunities';
+import { useCreatePreQualificationResponse } from '@/hooks/usePreQualification';
 import { MEETING_TYPES, type Meeting } from '@/types/meetings';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { PreQualificationLinkModal } from './PreQualificationLinkModal';
 
 const formSchema = z.object({
   meeting_type: z.string().min(1, 'Selecione o tipo de reunião'),
@@ -82,9 +84,13 @@ export function ScheduleMeetingModal({
   const { toast } = useToast();
   const createMeeting = useCreateMeeting();
   const rescheduleMeeting = useRescheduleMeeting();
+  const createPreQualResponse = useCreatePreQualificationResponse();
   const [participants, setParticipants] = useState<string[]>([]);
   const [newParticipant, setNewParticipant] = useState('');
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(initialOpportunityId || null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [preQualToken, setPreQualToken] = useState<string | null>(null);
+  const [scheduledMeetingDate, setScheduledMeetingDate] = useState<Date | null>(null);
   
   // Fetch opportunities for this contact (only if no initial opportunityId)
   const { data: opportunities } = useContactOpportunities(contactId);
@@ -221,7 +227,7 @@ export function ScheduleMeetingModal({
           description: `Reunião de ${data.meeting_type} reagendada para ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.`,
         });
       } else {
-        await createMeeting.mutateAsync({
+        const newMeeting = await createMeeting.mutateAsync({
           contactId,
           opportunityId: selectedOpportunityId,
           data: {
@@ -233,6 +239,23 @@ export function ScheduleMeetingModal({
             notes: data.notes,
           },
         });
+
+        // If it's an Análise meeting, create pre-qualification response with token
+        if (data.meeting_type === 'Análise' && newMeeting) {
+          try {
+            const response = await createPreQualResponse.mutateAsync({
+              contactId,
+              meetingId: newMeeting.id,
+            });
+            
+            // Show the link modal
+            setPreQualToken(response.token);
+            setScheduledMeetingDate(scheduledAt);
+            setShowLinkModal(true);
+          } catch (error) {
+            console.error('Error creating pre-qualification response:', error);
+          }
+        }
 
         toast({
           title: 'Reunião agendada!',
@@ -256,6 +279,7 @@ export function ScheduleMeetingModal({
   const isPending = createMeeting.isPending || rescheduleMeeting.isPending;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -549,5 +573,17 @@ export function ScheduleMeetingModal({
         </Form>
       </DialogContent>
     </Dialog>
+
+    {/* Pre-Qualification Link Modal */}
+    {preQualToken && scheduledMeetingDate && (
+      <PreQualificationLinkModal
+        open={showLinkModal}
+        onOpenChange={setShowLinkModal}
+        token={preQualToken}
+        contactName={contactName}
+        meetingDate={scheduledMeetingDate}
+      />
+    )}
+  </>
   );
 }
