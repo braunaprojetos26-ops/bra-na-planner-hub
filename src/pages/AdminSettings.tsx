@@ -35,52 +35,56 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="w-full flex justify-between">
-          <TabsTrigger value="users" className="flex-1 gap-2">
-            <Users className="h-4 w-4 hidden sm:inline" />
-            Usuários
-          </TabsTrigger>
-          <TabsTrigger value="pipelines" className="flex-1 gap-2">
-            <Kanban className="h-4 w-4 hidden sm:inline" />
-            Funis
-          </TabsTrigger>
-          <TabsTrigger value="products" className="flex-1 gap-2">
-            <Package className="h-4 w-4 hidden sm:inline" />
-            Produtos
-          </TabsTrigger>
-          <TabsTrigger value="data-collection" className="flex-1 gap-2">
-            <ClipboardList className="h-4 w-4 hidden sm:inline" />
-            Coleta de Dados
-          </TabsTrigger>
-          <TabsTrigger value="team-management" className="flex-1 gap-2">
-            <UsersRound className="h-4 w-4 hidden sm:inline" />
-            Gestão de Equipe
-          </TabsTrigger>
-          <TabsTrigger value="health-score" className="flex-1 gap-2">
-            <Heart className="h-4 w-4 hidden sm:inline" />
-            Health Score
-          </TabsTrigger>
-          <TabsTrigger value="goals" className="flex-1 gap-2">
-            <Target className="h-4 w-4 hidden sm:inline" />
-            Metas
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="flex-1 gap-2">
-            <Sparkles className="h-4 w-4 hidden sm:inline" />
-            IA
-          </TabsTrigger>
-          <TabsTrigger value="remote-config" className="flex-1 gap-2">
-            <Globe className="h-4 w-4 hidden sm:inline" />
-            Extensão
-          </TabsTrigger>
-          <TabsTrigger value="dashboard-banner" className="flex-1 gap-2">
-            <ImageIcon className="h-4 w-4 hidden sm:inline" />
-            Banner
-          </TabsTrigger>
-          <TabsTrigger value="pre-qualification" className="flex-1 gap-2">
-            <FileQuestion className="h-4 w-4 hidden sm:inline" />
-            Pré-Qual
-          </TabsTrigger>
-        </TabsList>
+        <div className="space-y-2">
+          <TabsList className="w-full flex justify-start gap-1">
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="h-4 w-4 hidden sm:inline" />
+              Usuários
+            </TabsTrigger>
+            <TabsTrigger value="pipelines" className="gap-2">
+              <Kanban className="h-4 w-4 hidden sm:inline" />
+              Funis
+            </TabsTrigger>
+            <TabsTrigger value="products" className="gap-2">
+              <Package className="h-4 w-4 hidden sm:inline" />
+              Produtos
+            </TabsTrigger>
+            <TabsTrigger value="data-collection" className="gap-2">
+              <ClipboardList className="h-4 w-4 hidden sm:inline" />
+              Coleta de Dados
+            </TabsTrigger>
+            <TabsTrigger value="team-management" className="gap-2">
+              <UsersRound className="h-4 w-4 hidden sm:inline" />
+              Gestão de Equipe
+            </TabsTrigger>
+            <TabsTrigger value="health-score" className="gap-2">
+              <Heart className="h-4 w-4 hidden sm:inline" />
+              Health Score
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full flex justify-start gap-1">
+            <TabsTrigger value="goals" className="gap-2">
+              <Target className="h-4 w-4 hidden sm:inline" />
+              Metas
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2">
+              <Sparkles className="h-4 w-4 hidden sm:inline" />
+              IA
+            </TabsTrigger>
+            <TabsTrigger value="remote-config" className="gap-2">
+              <Globe className="h-4 w-4 hidden sm:inline" />
+              Extensão
+            </TabsTrigger>
+            <TabsTrigger value="dashboard-banner" className="gap-2">
+              <ImageIcon className="h-4 w-4 hidden sm:inline" />
+              Banner
+            </TabsTrigger>
+            <TabsTrigger value="pre-qualification" className="gap-2">
+              <FileQuestion className="h-4 w-4 hidden sm:inline" />
+              Pré-Qual
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="users">
           <UsersTab />
