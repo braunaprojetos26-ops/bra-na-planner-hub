@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Clock, Users, UserCheck, MoreVertical, CheckCircle, XCircle, RefreshCw, Eye, ChevronUp, Briefcase } from 'lucide-react';
+import { PreQualificationBadge } from '@/components/opportunities/PreQualificationBadge';
 import { useActingUser } from '@/contexts/ActingUserContext';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -216,6 +217,7 @@ function MeetingCard({
               {meeting.opportunity.current_funnel?.name?.slice(0, 5).toUpperCase()}. - {meeting.opportunity.current_stage?.name}
             </Badge>
           )}
+          <PreQualificationBadge meetingId={meeting.id} meetingType={meeting.meeting_type} />
         </div>
         
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
