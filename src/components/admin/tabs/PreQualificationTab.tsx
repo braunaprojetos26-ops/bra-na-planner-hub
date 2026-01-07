@@ -26,6 +26,7 @@ const fieldTypeLabels: Record<string, string> = {
   text: 'Texto curto',
   textarea: 'Texto longo',
   select: 'Seleção',
+  multi_select: 'Seleção múltipla',
   number: 'Número',
   boolean: 'Sim/Não',
 };
@@ -95,7 +96,7 @@ function SortableQuestionRow({ question, onEdit, onDelete, onToggle }: QuestionR
 interface QuestionFormData {
   label: string;
   key: string;
-  field_type: 'text' | 'textarea' | 'select' | 'number' | 'boolean';
+  field_type: 'text' | 'textarea' | 'select' | 'multi_select' | 'number' | 'boolean';
   placeholder: string;
   is_required: boolean;
   options: string;
@@ -163,7 +164,7 @@ export function PreQualificationTab() {
       field_type: formData.field_type,
       placeholder: formData.placeholder || null,
       is_required: formData.is_required,
-      options: formData.field_type === 'select' && formData.options
+      options: (formData.field_type === 'select' || formData.field_type === 'multi_select') && formData.options
         ? { items: formData.options.split('\n').map((s) => s.trim()).filter(Boolean) }
         : {},
       is_active: true,
@@ -307,13 +308,14 @@ export function PreQualificationTab() {
                   <SelectItem value="text">Texto curto</SelectItem>
                   <SelectItem value="textarea">Texto longo</SelectItem>
                   <SelectItem value="select">Seleção</SelectItem>
+                  <SelectItem value="multi_select">Seleção múltipla</SelectItem>
                   <SelectItem value="number">Número</SelectItem>
                   <SelectItem value="boolean">Sim/Não</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {formData.field_type === 'select' && (
+            {(formData.field_type === 'select' || formData.field_type === 'multi_select') && (
               <div className="space-y-2">
                 <Label>Opções (uma por linha)</Label>
                 <Textarea

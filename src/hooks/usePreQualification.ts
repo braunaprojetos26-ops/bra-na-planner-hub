@@ -7,7 +7,7 @@ export interface PreQualificationQuestion {
   id: string;
   label: string;
   key: string;
-  field_type: 'text' | 'textarea' | 'select' | 'number' | 'boolean';
+  field_type: 'text' | 'textarea' | 'select' | 'multi_select' | 'number' | 'boolean';
   options: Json;
   placeholder: string | null;
   is_required: boolean;
