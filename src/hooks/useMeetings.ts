@@ -64,7 +64,7 @@ export function useCreateMeeting() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ contactId, opportunityId, data }: { 
+    mutationFn: async ({ contactId, opportunityId, data: meetingData }: { 
       contactId: string; 
       opportunityId?: string | null;
       data: {
@@ -78,19 +78,21 @@ export function useCreateMeeting() {
     }) => {
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('meetings')
         .insert({
           contact_id: contactId,
           opportunity_id: opportunityId || null,
           scheduled_by: user.id,
-          meeting_type: data.meeting_type,
-          scheduled_at: data.scheduled_at.toISOString(),
-          duration_minutes: data.duration_minutes,
-          participants: data.participants,
-          allows_companion: data.allows_companion,
-          notes: data.notes || null,
-        });
+          meeting_type: meetingData.meeting_type,
+          scheduled_at: meetingData.scheduled_at.toISOString(),
+          duration_minutes: meetingData.duration_minutes,
+          participants: meetingData.participants,
+          allows_companion: meetingData.allows_companion,
+          notes: meetingData.notes || null,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -98,9 +100,11 @@ export function useCreateMeeting() {
       await supabase.from('contact_history').insert({
         contact_id: contactId,
         changed_by: user.id,
-        action: `Reunião agendada: ${data.meeting_type}`,
-        notes: data.notes || null,
+        action: `Reunião agendada: ${meetingData.meeting_type}`,
+        notes: meetingData.notes || null,
       });
+
+      return data;
     },
     onSuccess: (_, { contactId, opportunityId }) => {
       queryClient.invalidateQueries({ queryKey: ['meetings', contactId] });

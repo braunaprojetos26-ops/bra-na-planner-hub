@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import PublicPreQualificationForm from "./pages/PublicPreQualificationForm";
 import Contacts from "./pages/Contacts";
 import ContactDetail from "./pages/ContactDetail";
 import ContactAnalysis from "./pages/ContactAnalysis";
@@ -53,7 +54,11 @@ const App = () => (
           <AuthProvider>
             <ActingUserProvider>
               <Routes>
+                {/* Public routes */}
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/formulario-analise/:token" element={<PublicPreQualificationForm />} />
+                
+                {/* Protected routes */}
                 <Route path="/" element={<ProtectedPage><Index /></ProtectedPage>} />
                 <Route path="/contacts" element={<ProtectedPage><Contacts /></ProtectedPage>} />
                 <Route path="/contacts/:contactId" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />

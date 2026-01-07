@@ -19,6 +19,7 @@ import { DynamicSection } from './DynamicSection';
 import { ObservationsPanel } from './ObservationsPanel';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { PreQualificationSummary } from '@/components/analysis/PreQualificationSummary';
 
 interface DataCollectionFormProps {
   contactId: string;
@@ -148,6 +149,8 @@ export function DataCollectionForm({ contactId, onComplete }: DataCollectionForm
     <div className="flex gap-6">
       {/* Main content */}
       <div className="flex-1 space-y-4">
+        {/* Pre-Qualification Summary */}
+        <PreQualificationSummary contactId={contactId} />
         {/* Status, Progress and View Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

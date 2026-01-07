@@ -14,6 +14,8 @@ import {
 import { useOpportunityMeetings, useUpdateMeetingStatus } from '@/hooks/useMeetings';
 import { ScheduleMeetingModal } from '@/components/meetings/ScheduleMeetingModal';
 import type { Meeting } from '@/types/meetings';
+import { useToast } from '@/hooks/use-toast';
+import { PreQualificationBadge } from './PreQualificationBadge';
 
 interface OpportunityMeetingsSectionProps {
   opportunityId: string;
@@ -155,7 +157,7 @@ export function OpportunityMeetingsSection({
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 mt-0.5">
+                          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                             <span className={`text-[10px] flex items-center gap-1 ${
                               timeStatus === 'overdue' ? 'text-destructive' : 'text-muted-foreground'
                             }`}>
@@ -172,6 +174,8 @@ export function OpportunityMeetingsSection({
                               </span>
                             )}
                           </div>
+                          {/* Pre-qualification badge */}
+                          <PreQualificationBadge meetingId={meeting.id} meetingType={meeting.meeting_type} />
                         </div>
                         {!isReadOnly && (
                           <DropdownMenu>
