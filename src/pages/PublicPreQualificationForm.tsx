@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import braunaLogo from '@/assets/brauna-logo.png';
@@ -21,7 +22,7 @@ import {
 
 export default function PublicPreQualificationForm() {
   const { token } = useParams<{ token: string }>();
-  const [responses, setResponses] = useState<Record<string, string | number | boolean>>({});
+  const [responses, setResponses] = useState<Record<string, string | number | boolean | string[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data: responseData, isLoading: isLoadingResponse } = usePreQualificationByToken(token);
@@ -30,7 +31,7 @@ export default function PublicPreQualificationForm() {
 
   const isLoading = isLoadingResponse || isLoadingQuestions;
 
-  const handleChange = (key: string, value: string | number | boolean) => {
+  const handleChange = (key: string, value: string | number | boolean | string[]) => {
     setResponses((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) {
       setErrors((prev) => {
@@ -47,7 +48,8 @@ export default function PublicPreQualificationForm() {
     questions?.forEach((q) => {
       if (q.is_required) {
         const value = responses[q.key];
-        if (value === undefined || value === null || value === '') {
+        if (value === undefined || value === null || value === '' || 
+            (Array.isArray(value) && value.length === 0)) {
           newErrors[q.key] = 'Este campo é obrigatório';
         }
       }
@@ -112,7 +114,7 @@ export default function PublicPreQualificationForm() {
         );
 
       case 'select':
-        const options = (question.options as { items?: string[] })?.items || [];
+        const selectOptions = (question.options as { items?: string[] })?.items || [];
         return (
           <Select
             value={(value as string) || ''}
@@ -122,13 +124,38 @@ export default function PublicPreQualificationForm() {
               <SelectValue placeholder={question.placeholder || 'Selecione uma opção'} />
             </SelectTrigger>
             <SelectContent>
-              {options.map((option) => (
+              {selectOptions.map((option) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        );
+
+      case 'multi_select':
+        const multiOptions = (question.options as { items?: string[] })?.items || [];
+        const selectedValues = (Array.isArray(value) ? value : []) as string[];
+        return (
+          <div className="space-y-2">
+            {multiOptions.map((option) => (
+              <div key={option} className="flex items-center gap-2">
+                <Checkbox
+                  id={`${question.key}-${option}`}
+                  checked={selectedValues.includes(option)}
+                  onCheckedChange={(checked) => {
+                    const newValues = checked
+                      ? [...selectedValues, option]
+                      : selectedValues.filter((v) => v !== option);
+                    handleChange(question.key, newValues);
+                  }}
+                />
+                <Label htmlFor={`${question.key}-${option}`} className="font-normal cursor-pointer">
+                  {option}
+                </Label>
+              </div>
+            ))}
+          </div>
         );
 
       default:

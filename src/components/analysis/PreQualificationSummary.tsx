@@ -50,6 +50,19 @@ export function PreQualificationSummary({ contactId }: PreQualificationSummaryPr
       return <span className="text-muted-foreground italic">Não respondido</span>;
     }
 
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-muted-foreground italic">Não respondido</span>;
+      }
+      return (
+        <ul className="list-disc list-inside">
+          {value.map((item, index) => (
+            <li key={index}>{String(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+
     if (typeof value === 'boolean') {
       return value ? 'Sim' : 'Não';
     }
