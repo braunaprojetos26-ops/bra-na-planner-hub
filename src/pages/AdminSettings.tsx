@@ -1,12 +1,13 @@
 import { Navigate } from 'react-router-dom';
-import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target, Globe, ImageIcon } from 'lucide-react';
+import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target, Globe, ImageIcon, FileQuestion } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { UsersTab, PipelinesTab, AITab, TeamManagementTab, HealthScoreTab, GoalsTab, RemoteConfigTab, DashboardBannerTab } from '@/components/admin/tabs';
+import { PreQualificationTab } from '@/components/admin/tabs/PreQualificationTab';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
@@ -75,6 +76,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
             <ImageIcon className="h-4 w-4 hidden sm:inline" />
             Banner
           </TabsTrigger>
+          <TabsTrigger value="pre-qualification" className="flex-1 gap-2">
+            <FileQuestion className="h-4 w-4 hidden sm:inline" />
+            Pré-Qual
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -115,6 +120,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
 
         <TabsContent value="dashboard-banner">
           <DashboardBannerTab />
+        </TabsContent>
+
+        <TabsContent value="pre-qualification">
+          <PreQualificationTab />
         </TabsContent>
       </Tabs>
     </div>
