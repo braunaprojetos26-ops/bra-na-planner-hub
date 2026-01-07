@@ -240,6 +240,11 @@ export function ScheduleMeetingModal({
           },
         });
 
+        toast({
+          title: 'Reunião agendada!',
+          description: `Reunião de ${data.meeting_type} agendada para ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.`,
+        });
+
         // If it's an Análise meeting, create pre-qualification response with token
         if (data.meeting_type === 'Análise' && newMeeting) {
           try {
@@ -248,21 +253,18 @@ export function ScheduleMeetingModal({
               meetingId: newMeeting.id,
             });
             
-            // Show the link modal
+            // Show the link modal - don't close main modal yet
             setPreQualToken(response.token);
             setScheduledMeetingDate(scheduledAt);
             setShowLinkModal(true);
+            return; // Don't close main modal - wait for link modal to close
           } catch (error) {
             console.error('Error creating pre-qualification response:', error);
           }
         }
-
-        toast({
-          title: 'Reunião agendada!',
-          description: `Reunião de ${data.meeting_type} agendada para ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.`,
-        });
       }
 
+      // Close modal for non-Análise meetings or if pre-qual creation failed
       form.reset();
       setParticipants([]);
       setSelectedOpportunityId(null);
@@ -578,7 +580,18 @@ export function ScheduleMeetingModal({
     {preQualToken && scheduledMeetingDate && (
       <PreQualificationLinkModal
         open={showLinkModal}
-        onOpenChange={setShowLinkModal}
+        onOpenChange={(open) => {
+          setShowLinkModal(open);
+          if (!open) {
+            // When link modal closes, reset everything and close main modal
+            setPreQualToken(null);
+            setScheduledMeetingDate(null);
+            form.reset();
+            setParticipants([]);
+            setSelectedOpportunityId(null);
+            onOpenChange(false);
+          }
+        }}
         token={preQualToken}
         contactName={contactName}
         meetingDate={scheduledMeetingDate}
