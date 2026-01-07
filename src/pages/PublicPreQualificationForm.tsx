@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import braunaLogo from '@/assets/brauna-logo.png';
+import braunaLogoWhite from '@/assets/slide/brauna-logo-white.png';
 import type { Json } from '@/integrations/supabase/types';
 import {
   usePreQualificationByToken,
@@ -163,13 +163,15 @@ export default function PublicPreQualificationForm() {
     }
   };
 
+  const pageBackground = "min-h-screen bg-gradient-to-br from-primary via-primary to-primary/90";
+
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className={`${pageBackground} flex items-center justify-center`}>
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Carregando formulário...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-white" />
+          <p className="text-white/80">Carregando formulário...</p>
         </div>
       </div>
     );
@@ -178,7 +180,7 @@ export default function PublicPreQualificationForm() {
   // Token not found
   if (!responseData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className={`${pageBackground} flex items-center justify-center p-4`}>
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
@@ -197,7 +199,7 @@ export default function PublicPreQualificationForm() {
   // Already submitted
   if (responseData.submitted_at) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className={`${pageBackground} flex items-center justify-center p-4`}>
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
@@ -216,7 +218,7 @@ export default function PublicPreQualificationForm() {
   // No questions configured
   if (!questions || questions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className={`${pageBackground} flex items-center justify-center p-4`}>
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
@@ -235,7 +237,7 @@ export default function PublicPreQualificationForm() {
   // Success state after submission
   if (submitMutation.isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className={`${pageBackground} flex items-center justify-center p-4`}>
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4 text-center">
@@ -261,15 +263,15 @@ export default function PublicPreQualificationForm() {
 
   // Form
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className={`${pageBackground} py-8 px-4`}>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col items-center gap-4">
-          <img src={braunaLogo} alt="Braúna" className="h-12" />
+          <img src={braunaLogoWhite} alt="Braúna" className="h-12" />
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Formulário de Pré-Qualificação</h1>
+            <h1 className="text-2xl font-bold text-white">Formulário de Pré-Qualificação</h1>
             {responseData.contact && (
-              <p className="text-muted-foreground mt-1">
+              <p className="text-white/80 mt-1">
                 Olá, {(responseData.contact as { full_name: string }).full_name}!
               </p>
             )}
@@ -338,7 +340,7 @@ export default function PublicPreQualificationForm() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-white/70">
           Suas informações são confidenciais e serão usadas apenas para nossa reunião.
         </p>
       </div>
