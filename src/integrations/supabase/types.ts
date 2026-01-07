@@ -2066,6 +2066,109 @@ export type Database = {
           },
         ]
       }
+      pre_qualification_questions: {
+        Row: {
+          created_at: string | null
+          field_type: string
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          key: string
+          label: string
+          options: Json | null
+          order_position: number | null
+          placeholder: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          key: string
+          label: string
+          options?: Json | null
+          order_position?: number | null
+          placeholder?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          key?: string
+          label?: string
+          options?: Json | null
+          order_position?: number | null
+          placeholder?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pre_qualification_responses: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          id: string
+          meeting_id: string | null
+          responses: Json | null
+          submitted_at: string | null
+          token: string
+          updated_at: string | null
+          viewed_at: string | null
+          viewed_by: string | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          id?: string
+          meeting_id?: string | null
+          responses?: Json | null
+          submitted_at?: string | null
+          token: string
+          updated_at?: string | null
+          viewed_at?: string | null
+          viewed_by?: string | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          id?: string
+          meeting_id?: string | null
+          responses?: Json | null
+          submitted_at?: string | null
+          token?: string
+          updated_at?: string | null
+          viewed_at?: string | null
+          viewed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_qualification_responses_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_qualification_responses_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pre_qualification_responses_viewed_by_fkey"
+            columns: ["viewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           created_at: string
