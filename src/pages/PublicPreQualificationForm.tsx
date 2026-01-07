@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import braunaLogoWhite from '@/assets/slide/brauna-logo-white.png';
+import braunaLogoWhite from '@/assets/brauna-logo-vertical-white.png';
 import type { Json } from '@/integrations/supabase/types';
 import {
   usePreQualificationByToken,
@@ -163,7 +163,7 @@ export default function PublicPreQualificationForm() {
     }
   };
 
-  const pageBackground = "min-h-screen bg-gradient-to-br from-primary via-primary to-primary/90";
+  const pageBackground = "min-h-screen bg-sidebar";
 
   // Loading state
   if (isLoading) {
@@ -266,8 +266,8 @@ export default function PublicPreQualificationForm() {
     <div className={`${pageBackground} py-8 px-4`}>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col items-center gap-4">
-          <img src={braunaLogoWhite} alt="Braúna" className="h-12" />
+        <div className="flex flex-col items-center gap-6">
+          <img src={braunaLogoWhite} alt="Braúna" className="h-24" />
           <div className="text-center">
             <h1 className="text-2xl font-bold text-white">Formulário de Pré-Qualificação</h1>
             {responseData.contact && (
