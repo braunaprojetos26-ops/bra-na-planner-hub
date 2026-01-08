@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Map,
   Heart,
+  FolderKanban,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -42,6 +43,7 @@ const mainNavItems = [
   { title: 'Clientes', url: '/clients', icon: Briefcase },
   { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { title: 'Contratos', url: '/contracts', icon: FileText },
+  { title: 'Projetos', url: '/projects', icon: FolderKanban },
   { title: 'Wiki', url: '/wiki', icon: BookOpen },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
   { title: 'Chamados', url: '/tickets', icon: Headphones },
