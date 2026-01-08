@@ -21,7 +21,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectPages } from '@/hooks/useProjectPages';
+import { useProjectMembers } from '@/hooks/useProjectMembers';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProjectEditor } from '@/components/projects/ProjectEditor';
+import { PagePropertiesSection } from '@/components/projects/PagePropertiesSection';
 import { Json } from '@/integrations/supabase/types';
 
 const EMOJI_OPTIONS = ['📄', '📋', '📝', '📊', '📈', '💡', '🎯', '🚀', '⭐', '🔥', '💼', '📁'];
@@ -29,7 +32,9 @@ const EMOJI_OPTIONS = ['📄', '📋', '📝', '📊', '📈', '💡', '🎯', '
 export default function ProjectPageDetail() {
   const { projectId, pageId } = useParams<{ projectId: string; pageId: string }>();
   const navigate = useNavigate();
-  const { pages, updatePage, deletePage, isLoading } = useProjectPages(projectId);
+  const { user } = useAuth();
+  const { pages, updatePage, deletePage, assignUser, unassignUser, isLoading } = useProjectPages(projectId);
+  const { members } = useProjectMembers(projectId);
   
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -37,6 +42,7 @@ export default function ProjectPageDetail() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const page = pages.find((p) => p.id === pageId);
+  const acceptedMembers = members.filter((m) => m.status === 'accepted' && m.user_id);
 
   const handleTitleChange = async () => {
     if (!pageId || !title.trim()) {
@@ -57,6 +63,21 @@ export default function ProjectPageDetail() {
     if (!pageId) return;
     await updatePage.mutateAsync({ id: pageId, content: content as Json });
   }, [pageId, updatePage]);
+
+  const handlePropertyChange = async (property: string, value: string | null) => {
+    if (!pageId) return;
+    await updatePage.mutateAsync({ id: pageId, [property]: value });
+  };
+
+  const handleAssign = async (userId: string) => {
+    if (!pageId) return;
+    await assignUser.mutateAsync({ pageId, userId });
+  };
+
+  const handleUnassign = async (userId: string) => {
+    if (!pageId) return;
+    await unassignUser.mutateAsync({ pageId, userId });
+  };
 
   const handleDelete = async () => {
     if (!pageId) return;
@@ -159,6 +180,16 @@ export default function ProjectPageDetail() {
           {page.title}
         </h1>
       )}
+
+      {/* Properties Section */}
+      <PagePropertiesSection
+        page={page}
+        members={acceptedMembers}
+        currentUserId={user?.id || ''}
+        onUpdate={handlePropertyChange}
+        onAssign={handleAssign}
+        onUnassign={handleUnassign}
+      />
 
       {/* Editor */}
       <div className="border rounded-lg bg-background min-h-[500px]">
