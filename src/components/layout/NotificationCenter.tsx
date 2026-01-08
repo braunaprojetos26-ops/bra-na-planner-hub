@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet, HeartPulse, Cake } from 'lucide-react';
+import { Bell, CalendarClock, AlertTriangle, MessageSquare, FileText, Wallet, HeartPulse, Cake, FolderOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const markRead = useMarkNotificationRead();
 
   const handleClick = async () => {
-    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment' || notification.type === 'health_score_drop' || notification.type === 'birthday') && notification.link) {
+    if ((notification.type === 'ticket_update' || notification.type === 'contract_update' || notification.type === 'payment' || notification.type === 'health_score_drop' || notification.type === 'birthday' || notification.type === 'project_invite') && notification.link) {
       await markRead(notification.id);
       navigate(notification.link);
     } else if (notification.type === 'contract_update' || notification.type === 'payment') {
@@ -29,6 +29,9 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
     } else if (notification.type === 'birthday') {
       await markRead(notification.id);
       navigate('/contacts');
+    } else if (notification.type === 'project_invite') {
+      await markRead(notification.id);
+      navigate('/projects');
     } else {
       navigate('/tasks');
     }
@@ -41,6 +44,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
   const isPayment = notification.type === 'payment';
   const isHealthScoreDrop = notification.type === 'health_score_drop';
   const isBirthday = notification.type === 'birthday';
+  const isProjectInvite = notification.type === 'project_invite';
 
   return (
     <button
@@ -59,6 +63,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           isTicket ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
           isContract ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' :
           isPayment ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
+          isProjectInvite ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400' :
           'bg-primary/10 text-primary'
         )}
       >
@@ -74,6 +79,8 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
           <FileText className="h-4 w-4" />
         ) : isPayment ? (
           <Wallet className="h-4 w-4" />
+        ) : isProjectInvite ? (
+          <FolderOpen className="h-4 w-4" />
         ) : (
           <CalendarClock className="h-4 w-4" />
         )}
@@ -90,7 +97,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, birthdayCount, dbUnreadCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, birthdayCount, projectInviteCount, dbUnreadCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -145,7 +152,7 @@ export function NotificationCenter() {
           )}
           
           {/* DB notifications section */}
-          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0 || healthScoreDropCount > 0 || birthdayCount > 0) && (
+          {(ticketCount > 0 || contractCount > 0 || paymentCount > 0 || healthScoreDropCount > 0 || birthdayCount > 0 || projectInviteCount > 0) && (
             <div className="flex gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
               {birthdayCount > 0 && (
                 <span className="flex items-center gap-1 text-pink-600 dark:text-pink-400">
@@ -175,6 +182,12 @@ export function NotificationCenter() {
                 <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
                   <HeartPulse className="h-3 w-3" />
                   {healthScoreDropCount} alerta{healthScoreDropCount > 1 ? 's' : ''} de saúde
+                </span>
+              )}
+              {projectInviteCount > 0 && (
+                <span className="flex items-center gap-1 text-violet-600 dark:text-violet-400">
+                  <FolderOpen className="h-3 w-3" />
+                  {projectInviteCount} convite{projectInviteCount > 1 ? 's' : ''} de projeto
                 </span>
               )}
             </div>

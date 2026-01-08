@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface Notification {
   id: string;
-  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday';
+  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday' | 'project_invite';
   title: string;
   description: string;
   createdAt: Date;
@@ -32,7 +32,7 @@ export function useNotifications() {
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .in('type', ['ticket_update', 'contract_update', 'payment', 'health_score_drop', 'birthday'])
+        .in('type', ['ticket_update', 'contract_update', 'payment', 'health_score_drop', 'birthday', 'project_invite'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -106,9 +106,9 @@ export function useNotifications() {
       });
     }
 
-    // DB notifications (tickets, contracts, health score, birthday)
+    // DB notifications (tickets, contracts, health score, birthday, project invites)
     dbNotifications.forEach((notif) => {
-      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday';
+      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday' | 'project_invite';
       notifs.push({
         id: `db-${notif.id}`,
         type: notifType,
@@ -135,8 +135,9 @@ export function useNotifications() {
   const paymentCount = notifications.filter((n) => n.type === 'payment').length;
   const healthScoreDropCount = notifications.filter((n) => n.type === 'health_score_drop').length;
   const birthdayCount = notifications.filter((n) => n.type === 'birthday').length;
+  const projectInviteCount = notifications.filter((n) => n.type === 'project_invite').length;
   
-  // dbUnreadCount = only database notifications (tickets + contracts + payments + birthday) that can be marked as read
+  // dbUnreadCount = only database notifications (tickets + contracts + payments + birthday + project invites) that can be marked as read
   const dbUnreadCount = dbNotifications.length;
 
   return {
@@ -148,6 +149,7 @@ export function useNotifications() {
     paymentCount,
     healthScoreDropCount,
     birthdayCount,
+    projectInviteCount,
     dbUnreadCount,
     totalCount: notifications.length,
     isLoading: tasksLoading || dbLoading,
