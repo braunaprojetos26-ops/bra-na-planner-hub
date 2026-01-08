@@ -13,6 +13,7 @@ import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
 import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
+import { OpportunitySearchBox } from '@/components/opportunities/OpportunitySearchBox';
 import { OpportunityKanbanCard } from '@/components/opportunities/OpportunityKanbanCard';
 import { movingToProposalStage } from '@/lib/proposalStageValidation';
 import type { Opportunity } from '@/types/opportunities';
@@ -214,6 +215,8 @@ export default function Pipeline() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
+        <OpportunitySearchBox />
+        
         <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Selecione um funil" />
