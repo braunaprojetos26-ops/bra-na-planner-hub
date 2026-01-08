@@ -2353,6 +2353,99 @@ export type Database = {
           },
         ]
       }
+      project_page_assignees: {
+        Row: {
+          assigned_at: string | null
+          id: string
+          page_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          id?: string
+          page_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          id?: string
+          page_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_page_assignees_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "project_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_page_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      project_pages: {
+        Row: {
+          content: Json | null
+          created_at: string | null
+          created_by: string | null
+          due_date: string | null
+          icon: string | null
+          id: string
+          priority: string | null
+          project_id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          icon?: string | null
+          id?: string
+          priority?: string | null
+          project_id: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          icon?: string | null
+          id?: string
+          priority?: string | null
+          project_id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_pages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "project_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           content: Json | null
@@ -2363,6 +2456,7 @@ export type Database = {
           owner_id: string
           title: string
           updated_at: string
+          verification: string | null
         }
         Insert: {
           content?: Json | null
@@ -2373,6 +2467,7 @@ export type Database = {
           owner_id: string
           title?: string
           updated_at?: string
+          verification?: string | null
         }
         Update: {
           content?: Json | null
@@ -2383,6 +2478,7 @@ export type Database = {
           owner_id?: string
           title?: string
           updated_at?: string
+          verification?: string | null
         }
         Relationships: []
       }
@@ -2898,6 +2994,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_project_page: {
+        Args: { _page_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_access_user: {
         Args: { _accessor_id: string; _target_id: string }
         Returns: boolean
