@@ -2926,6 +2926,18 @@ export type Database = {
         Args: { _department: string; _user_id: string }
         Returns: boolean
       }
+      is_project_accepted_member: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_project_editor_or_admin: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_project_owner: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "planejador" | "lider" | "supervisor" | "gerente" | "superadmin"
