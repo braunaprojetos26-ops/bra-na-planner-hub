@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Share2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, Share2, MoreHorizontal, Trash2, Image, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,11 +21,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProject, useProjects } from '@/hooks/useProjects';
+import { useProjectPages } from '@/hooks/useProjectPages';
 import { useProjectRealtime, useProjectContentSync } from '@/hooks/useProjectRealtime';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProjectEditor } from '@/components/projects/ProjectEditor';
 import { ShareProjectModal } from '@/components/projects/ShareProjectModal';
 import { OnlineUsers } from '@/components/projects/OnlineUsers';
+import { ProjectPropertiesSection } from '@/components/projects/ProjectPropertiesSection';
+import { ProjectPagesTable } from '@/components/projects/ProjectPagesTable';
+import { NewPageModal } from '@/components/projects/NewPageModal';
 
 const EMOJI_OPTIONS = ['📄', '📋', '📝', '📊', '📈', '💡', '🎯', '🚀', '⭐', '🔥', '💼', '📁'];
 
@@ -33,12 +36,14 @@ export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { project, isLoading, updateContent } = useProject(projectId);
+  const { project, isLoading } = useProject(projectId);
   const { updateProject, deleteProject } = useProjects();
+  const { pages, createPage, updatePage, deletePage } = useProjectPages(projectId);
   const { onlineUsers } = useProjectRealtime(projectId);
   
   const [shareOpen, setShareOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [newPageOpen, setNewPageOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -47,8 +52,6 @@ export default function ProjectDetail() {
 
   // Handle content updates from other users
   const handleExternalContentUpdate = useCallback((content: unknown[]) => {
-    // The editor would need to handle this externally
-    // For now, we'll rely on page refresh for full sync
     console.log('External content update received');
   }, []);
 
@@ -69,24 +72,45 @@ export default function ProjectDetail() {
     setShowEmojiPicker(false);
   };
 
-  const handleContentChange = async (content: unknown[]) => {
-    await updateContent.mutateAsync(content);
-  };
-
   const handleDelete = async () => {
     if (!projectId) return;
     await deleteProject.mutateAsync(projectId);
     navigate('/projects');
   };
 
+  const handleNewPage = async (data: {
+    title: string;
+    icon: string;
+    status: string;
+    priority: string;
+    due_date: string | null;
+  }) => {
+    if (!projectId) return;
+    await createPage.mutateAsync({
+      project_id: projectId,
+      ...data,
+    });
+    setNewPageOpen(false);
+  };
+
+  const handlePageClick = (pageId: string) => {
+    navigate(`/projects/${projectId}/pages/${pageId}`);
+  };
+
+  const handleUpdatePage = async (pageId: string, data: Partial<{ status: string; priority: string }>) => {
+    await updatePage.mutateAsync({ id: pageId, ...data });
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    await deletePage.mutateAsync(pageId);
+  };
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <Skeleton className="h-8 w-64" />
-        </div>
-        <Skeleton className="h-[500px] w-full" />
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <Skeleton className="h-20 w-20 rounded-lg" />
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-[300px] w-full" />
       </div>
     );
   }
@@ -103,67 +127,18 @@ export default function ProjectDetail() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Top Navigation */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/projects')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-
-          {/* Icon Picker */}
-          <div className="relative">
-            <button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="text-3xl hover:bg-muted rounded-lg p-1 transition-colors"
-            >
-              {project.icon}
-            </button>
-            {showEmojiPicker && (
-              <div className="absolute top-full left-0 mt-2 p-2 bg-popover border rounded-lg shadow-lg z-50 flex flex-wrap gap-1 w-48">
-                {EMOJI_OPTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleIconChange(emoji)}
-                    className="text-xl p-1 hover:bg-muted rounded transition-colors"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Title */}
-          {isEditingTitle ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={handleTitleChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTitleChange();
-                if (e.key === 'Escape') setIsEditingTitle(false);
-              }}
-              className="text-xl font-semibold h-10 w-64"
-              autoFocus
-            />
-          ) : (
-            <h1 
-              className="text-xl font-semibold cursor-pointer hover:bg-muted px-2 py-1 rounded transition-colors"
-              onClick={() => {
-                setTitle(project.title);
-                setIsEditingTitle(true);
-              }}
-            >
-              {project.title}
-            </h1>
-          )}
-        </div>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Projetos
+        </Button>
 
         <div className="flex items-center gap-3">
           <OnlineUsers users={onlineUsers} />
           
-          <Button variant="outline" onClick={() => setShareOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4 mr-2" />
             Compartilhar
           </Button>
@@ -189,16 +164,92 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {/* Editor */}
-      <div className="border rounded-lg bg-background">
-        <ProjectEditor
-          initialContent={project.content as unknown[]}
-          onChange={handleContentChange}
-          editable={true}
-        />
+      {/* Large Icon */}
+      <div className="relative inline-block">
+        <button
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className="text-6xl hover:bg-muted rounded-xl p-3 transition-colors"
+        >
+          {project.icon}
+        </button>
+        {showEmojiPicker && (
+          <div className="absolute top-full left-0 mt-2 p-3 bg-popover border rounded-xl shadow-lg z-50 flex flex-wrap gap-2 w-64">
+            {EMOJI_OPTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleIconChange(emoji)}
+                className="text-2xl p-2 hover:bg-muted rounded-lg transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <button className="flex items-center gap-2 hover:text-foreground transition-colors">
+          <Image className="h-4 w-4" />
+          Adicionar capa
+        </button>
+        <button className="flex items-center gap-2 hover:text-foreground transition-colors">
+          <MessageSquare className="h-4 w-4" />
+          Adicionar comentário
+        </button>
+      </div>
+
+      {/* Title */}
+      {isEditingTitle ? (
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={handleTitleChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleTitleChange();
+            if (e.key === 'Escape') setIsEditingTitle(false);
+          }}
+          className="text-4xl font-bold h-14 border-0 px-0 focus-visible:ring-0 bg-transparent"
+          autoFocus
+        />
+      ) : (
+        <h1 
+          className="text-4xl font-bold cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded-lg transition-colors"
+          onClick={() => {
+            setTitle(project.title);
+            setIsEditingTitle(true);
+          }}
+        >
+          {project.title}
+        </h1>
+      )}
+
+      {/* Properties Section */}
+      <ProjectPropertiesSection
+        owner={{
+          full_name: user?.user_metadata?.full_name || user?.email || 'Você',
+        }}
+        verification={(project as any).verification}
+        updatedAt={project.updated_at}
+      />
+
+      {/* Sub-pages Table */}
+      <ProjectPagesTable
+        pages={pages}
+        onNewPage={() => setNewPageOpen(true)}
+        onPageClick={handlePageClick}
+        onUpdatePage={handleUpdatePage}
+        onDeletePage={handleDeletePage}
+      />
+
       {/* Modals */}
+      <NewPageModal
+        open={newPageOpen}
+        onOpenChange={setNewPageOpen}
+        onSubmit={handleNewPage}
+        isLoading={createPage.isPending}
+      />
+
       <ShareProjectModal
         open={shareOpen}
         onOpenChange={setShareOpen}

@@ -37,6 +37,7 @@ import OpportunityMap from "./pages/OpportunityMap";
 import ProspectionAnalytics from "./pages/ProspectionAnalytics";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import ProjectPageDetail from "./pages/ProjectPageDetail";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => (
                 <Route path="/meu-futuro" element={<ProtectedPage><MeuFuturo /></ProtectedPage>} />
                 <Route path="/projects" element={<ProtectedPage><Projects /></ProtectedPage>} />
                 <Route path="/projects/:projectId" element={<ProtectedPage><ProjectDetail /></ProtectedPage>} />
+                <Route path="/projects/:projectId/pages/:pageId" element={<ProtectedPage><ProjectPageDetail /></ProtectedPage>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ActingUserProvider>
