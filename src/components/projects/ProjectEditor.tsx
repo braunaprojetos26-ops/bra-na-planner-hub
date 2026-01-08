@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/shadcn';
 import { PartialBlock } from '@blocknote/core';
+import { useTheme } from 'next-themes';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/shadcn/style.css';
 
@@ -13,6 +14,7 @@ interface ProjectEditorProps {
 
 export function ProjectEditor({ initialContent, onChange, editable = true }: ProjectEditorProps) {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const { resolvedTheme } = useTheme();
 
   const content = initialContent && initialContent.length > 0 
     ? initialContent as PartialBlock[]
@@ -51,7 +53,7 @@ export function ProjectEditor({ initialContent, onChange, editable = true }: Pro
         editor={editor} 
         editable={editable}
         onChange={handleChange}
-        theme="light"
+        theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
       />
     </div>
   );
