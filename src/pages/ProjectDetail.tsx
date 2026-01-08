@@ -22,6 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProject, useProjects } from '@/hooks/useProjects';
 import { useProjectPages } from '@/hooks/useProjectPages';
+import { useProjectMembers } from '@/hooks/useProjectMembers';
 import { useProjectRealtime, useProjectContentSync } from '@/hooks/useProjectRealtime';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShareProjectModal } from '@/components/projects/ShareProjectModal';
@@ -38,8 +39,12 @@ export default function ProjectDetail() {
   const { user } = useAuth();
   const { project, isLoading } = useProject(projectId);
   const { updateProject, deleteProject } = useProjects();
-  const { pages, createPage, updatePage, deletePage } = useProjectPages(projectId);
+  const { pages, createPage, updatePage, deletePage, assignUser, unassignUser } = useProjectPages(projectId);
+  const { members } = useProjectMembers(projectId);
   const { onlineUsers } = useProjectRealtime(projectId);
+
+  // Filter only accepted members with user_id
+  const acceptedMembers = members.filter(m => m.status === 'accepted' && m.user_id);
   
   const [shareOpen, setShareOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -103,6 +108,14 @@ export default function ProjectDetail() {
 
   const handleDeletePage = async (pageId: string) => {
     await deletePage.mutateAsync(pageId);
+  };
+
+  const handleAssignUser = async (pageId: string, userId: string) => {
+    await assignUser.mutateAsync({ pageId, userId });
+  };
+
+  const handleUnassignUser = async (pageId: string, userId: string) => {
+    await unassignUser.mutateAsync({ pageId, userId });
   };
 
   if (isLoading) {
@@ -236,10 +249,14 @@ export default function ProjectDetail() {
       {/* Sub-pages Table */}
       <ProjectPagesTable
         pages={pages}
+        projectMembers={acceptedMembers}
+        currentUserId={user?.id || ''}
         onNewPage={() => setNewPageOpen(true)}
         onPageClick={handlePageClick}
         onUpdatePage={handleUpdatePage}
         onDeletePage={handleDeletePage}
+        onAssignUser={handleAssignUser}
+        onUnassignUser={handleUnassignUser}
       />
 
       {/* Modals */}

@@ -9,21 +9,30 @@ import {
 } from '@/components/ui/table';
 import { ProjectPageRow } from './ProjectPageRow';
 import { ProjectPage } from '@/hooks/useProjectPages';
+import { ProjectMember } from '@/hooks/useProjectMembers';
 
 interface ProjectPagesTableProps {
   pages: ProjectPage[];
+  projectMembers: ProjectMember[];
+  currentUserId: string;
   onNewPage: () => void;
   onPageClick: (pageId: string) => void;
   onUpdatePage: (id: string, data: Partial<ProjectPage>) => void;
   onDeletePage: (id: string) => void;
+  onAssignUser: (pageId: string, userId: string) => void;
+  onUnassignUser: (pageId: string, userId: string) => void;
 }
 
 export function ProjectPagesTable({
   pages,
+  projectMembers,
+  currentUserId,
   onNewPage,
   onPageClick,
   onUpdatePage,
   onDeletePage,
+  onAssignUser,
+  onUnassignUser,
 }: ProjectPagesTableProps) {
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -53,9 +62,13 @@ export function ProjectPagesTable({
             <ProjectPageRow
               key={page.id}
               page={page}
+              projectMembers={projectMembers}
+              currentUserId={currentUserId}
               onClick={() => onPageClick(page.id)}
               onUpdate={(data) => onUpdatePage(page.id, data)}
               onDelete={() => onDeletePage(page.id)}
+              onAssign={(userId) => onAssignUser(page.id, userId)}
+              onUnassign={(userId) => onUnassignUser(page.id, userId)}
             />
           ))}
           {pages.length === 0 && (

@@ -1,5 +1,4 @@
 import { MoreHorizontal, Trash2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,14 +16,20 @@ import {
 } from '@/components/ui/select';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { ProjectPage } from '@/hooks/useProjectPages';
+import { ProjectMember } from '@/hooks/useProjectMembers';
+import { AssigneePicker } from './AssigneePicker';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface ProjectPageRowProps {
   page: ProjectPage;
+  projectMembers: ProjectMember[];
+  currentUserId: string;
   onClick: () => void;
   onUpdate: (data: Partial<ProjectPage>) => void;
   onDelete: () => void;
+  onAssign: (userId: string) => void;
+  onUnassign: (userId: string) => void;
 }
 
 const STATUS_OPTIONS = [
@@ -39,7 +44,16 @@ const PRIORITY_OPTIONS = [
   { value: 'high', label: 'Alta', color: 'bg-red-500/20 text-red-500' },
 ];
 
-export function ProjectPageRow({ page, onClick, onUpdate, onDelete }: ProjectPageRowProps) {
+export function ProjectPageRow({
+  page,
+  projectMembers,
+  currentUserId,
+  onClick,
+  onUpdate,
+  onDelete,
+  onAssign,
+  onUnassign,
+}: ProjectPageRowProps) {
   const statusOption = STATUS_OPTIONS.find((s) => s.value === page.status) || STATUS_OPTIONS[0];
   const priorityOption = PRIORITY_OPTIONS.find((p) => p.value === page.priority) || PRIORITY_OPTIONS[0];
 
@@ -60,21 +74,14 @@ export function ProjectPageRow({ page, onClick, onUpdate, onDelete }: ProjectPag
         </div>
       </TableCell>
 
-      <TableCell>
-        <div className="flex -space-x-2">
-          {page.assignees?.slice(0, 3).map((assignee) => (
-            <Avatar key={assignee.user_id} className="h-6 w-6 border-2 border-background">
-              <AvatarFallback className="text-xs">
-                {assignee.profile?.full_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-          ))}
-          {(page.assignees?.length || 0) > 3 && (
-            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
-              +{page.assignees!.length - 3}
-            </div>
-          )}
-        </div>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <AssigneePicker
+          assignees={page.assignees}
+          members={projectMembers}
+          currentUserId={currentUserId}
+          onAssign={onAssign}
+          onUnassign={onUnassign}
+        />
       </TableCell>
 
       <TableCell onClick={(e) => e.stopPropagation()}>
