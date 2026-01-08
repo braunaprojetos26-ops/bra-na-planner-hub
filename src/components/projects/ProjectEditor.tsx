@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useCallback, useRef } from 'react';
-import { BlockNoteEditor, PartialBlock } from '@blocknote/core';
-import { BlockNoteView } from '@blocknote/mantine';
+import { useCallback, useRef, useEffect } from 'react';
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/shadcn';
+import { PartialBlock } from '@blocknote/core';
 import '@blocknote/core/fonts/inter.css';
-import '@blocknote/mantine/style.css';
+import '@blocknote/shadcn/style.css';
 
 interface ProjectEditorProps {
   initialContent?: unknown[];
@@ -13,15 +14,13 @@ interface ProjectEditorProps {
 export function ProjectEditor({ initialContent, onChange, editable = true }: ProjectEditorProps) {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const editor = useMemo(() => {
-    const content = initialContent && initialContent.length > 0 
-      ? initialContent as PartialBlock[]
-      : undefined;
+  const content = initialContent && initialContent.length > 0 
+    ? initialContent as PartialBlock[]
+    : undefined;
 
-    return BlockNoteEditor.create({
-      initialContent: content,
-    });
-  }, []);
+  const editor = useCreateBlockNote({
+    initialContent: content,
+  });
 
   // Handle content changes with debounce
   const handleChange = useCallback(() => {
