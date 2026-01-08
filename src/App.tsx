@@ -35,6 +35,8 @@ import MeuFuturo from "./pages/MeuFuturo";
 import NotificationHistory from "./pages/NotificationHistory";
 import OpportunityMap from "./pages/OpportunityMap";
 import ProspectionAnalytics from "./pages/ProspectionAnalytics";
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +94,8 @@ const App = () => (
                 <Route path="/tickets" element={<ProtectedPage><Tickets /></ProtectedPage>} />
                 <Route path="/notifications" element={<ProtectedPage><NotificationHistory /></ProtectedPage>} />
                 <Route path="/meu-futuro" element={<ProtectedPage><MeuFuturo /></ProtectedPage>} />
+                <Route path="/projects" element={<ProtectedPage><Projects /></ProtectedPage>} />
+                <Route path="/projects/:projectId" element={<ProtectedPage><ProjectDetail /></ProtectedPage>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ActingUserProvider>
