@@ -192,7 +192,7 @@ export default function ProjectPageDetail() {
       />
 
       {/* Editor */}
-      <div className="border rounded-lg bg-background min-h-[500px]">
+      <div className="min-h-[500px]">
         <ProjectEditor
           initialContent={page.content as unknown[]}
           onChange={handleContentChange}
