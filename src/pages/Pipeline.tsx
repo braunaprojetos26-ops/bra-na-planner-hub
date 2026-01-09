@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { differenceInHours, differenceInDays, isToday, startOfMonth, startOfYear } from 'date-fns';
+import { differenceInHours, differenceInDays, isToday, startOfMonth, startOfYear, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,10 @@ export default function Pipeline() {
   const [selectedReferredBy, setSelectedReferredBy] = useState<string>('all');
   const [selectedDirtyBase, setSelectedDirtyBase] = useState<string>('all');
   
+  // Custom date range states
+  const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);
+  const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
+  
   // State for proposal value modal
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [pendingStageMove, setPendingStageMove] = useState<{
@@ -96,6 +100,19 @@ export default function Pipeline() {
         return date >= startOfMonth(now);
       case 'this_year':
         return date >= startOfYear(now);
+      case 'custom':
+        // Custom date range filtering
+        if (customDateStart && customDateEnd) {
+          return isWithinInterval(date, {
+            start: startOfDay(customDateStart),
+            end: endOfDay(customDateEnd),
+          });
+        } else if (customDateStart) {
+          return date >= startOfDay(customDateStart);
+        } else if (customDateEnd) {
+          return date <= endOfDay(customDateEnd);
+        }
+        return true;
       default:
         return true;
     }
@@ -146,7 +163,7 @@ export default function Pipeline() {
     }
     
     return filtered;
-  }, [opportunities, selectedStatus, selectedOwnerId, selectedPeriod, selectedSource, selectedCampaign, selectedReferredBy, selectedDirtyBase]);
+  }, [opportunities, selectedStatus, selectedOwnerId, selectedPeriod, selectedSource, selectedCampaign, selectedReferredBy, selectedDirtyBase, customDateStart, customDateEnd]);
 
   // Separate active, won and lost opportunities from filtered list
   const activeAndWonOpportunities = useMemo(() => 
@@ -275,6 +292,8 @@ export default function Pipeline() {
         selectedCampaign={selectedCampaign}
         selectedReferredBy={selectedReferredBy}
         selectedDirtyBase={selectedDirtyBase}
+        customDateStart={customDateStart}
+        customDateEnd={customDateEnd}
         onFunnelChange={setSelectedFunnelId}
         onStatusChange={setSelectedStatus}
         onOwnerChange={setSelectedOwnerId}
@@ -283,6 +302,8 @@ export default function Pipeline() {
         onCampaignChange={setSelectedCampaign}
         onReferredByChange={setSelectedReferredBy}
         onDirtyBaseChange={setSelectedDirtyBase}
+        onCustomDateStartChange={setCustomDateStart}
+        onCustomDateEndChange={setCustomDateEnd}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
