@@ -321,7 +321,7 @@ export default function Pipeline() {
         <OpportunitiesListView opportunities={filteredOpportunities} />
       ) : (
         /* Kanban View */
-        <div className="flex gap-4 flex-1 overflow-x-auto overflow-y-hidden pb-4">
+        <div className="flex gap-4 h-[calc(100%-8rem)] overflow-x-auto pb-4">
           {/* Stage Columns */}
           {stages?.map(stage => (
             <div
