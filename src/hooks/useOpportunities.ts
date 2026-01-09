@@ -27,6 +27,10 @@ export function useOpportunities(funnelId?: string, status?: 'active' | 'lost' |
             phone,
             email,
             owner_id,
+            source,
+            campaign,
+            referred_by,
+            is_dirty_base,
             owner:profiles!contacts_owner_id_fkey(full_name, email)
           ),
           current_stage:funnel_stages!opportunities_current_stage_id_fkey(*),
@@ -83,6 +87,10 @@ export function useOpportunity(opportunityId: string) {
             phone,
             email,
             owner_id,
+            source,
+            campaign,
+            referred_by,
+            is_dirty_base,
             owner:profiles!contacts_owner_id_fkey(full_name, email)
           ),
           current_stage:funnel_stages!opportunities_current_stage_id_fkey(*),
