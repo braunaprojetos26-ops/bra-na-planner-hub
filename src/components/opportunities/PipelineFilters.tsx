@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { LayoutGrid, List, X, SlidersHorizontal, Calendar } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { LayoutGrid, List, X, SlidersHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { DateInput } from '@/components/ui/date-input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
 import { useOpportunityFilterOptions } from '@/hooks/useOpportunityFilterOptions';
 import { OpportunitySearchBox } from '@/components/opportunities/OpportunitySearchBox';
@@ -214,18 +215,13 @@ export function PipelineFilters({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Período</Label>
-                <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PERIOD_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedPeriod}
+                  onValueChange={onPeriodChange}
+                  options={PERIOD_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
+                  placeholder="Selecione o período"
+                  searchPlaceholder="Buscar período..."
+                />
                 
                 {selectedPeriod === 'custom' && (
                   <div className="grid grid-cols-2 gap-2 mt-2">
@@ -254,92 +250,81 @@ export function PipelineFilters({
               {sources.length > 0 && (
                 <div className="space-y-2">
                   <Label>Origem</Label>
-                  <Select value={selectedSource} onValueChange={onSourceChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a origem" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as origens</SelectItem>
-                      {sources.map(source => (
-                        <SelectItem key={source} value={source}>
-                          {source}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={selectedSource}
+                    onValueChange={onSourceChange}
+                    options={[
+                      { value: 'all', label: 'Todas as origens' },
+                      ...sources.map(source => ({ value: source, label: source }))
+                    ]}
+                    placeholder="Selecione a origem"
+                    searchPlaceholder="Buscar origem..."
+                  />
                 </div>
               )}
 
               {canViewPlanejadores && (
                 <div className="space-y-2">
                   <Label>Responsável</Label>
-                  <Select value={selectedOwnerId} onValueChange={onOwnerChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o responsável" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os responsáveis</SelectItem>
-                      <SelectItem value="unassigned">Sem responsável</SelectItem>
-                      {planejadores?.map(p => (
-                        <SelectItem key={p.user_id} value={p.user_id}>
-                          {p.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={selectedOwnerId}
+                    onValueChange={onOwnerChange}
+                    options={[
+                      { value: 'all', label: 'Todos os responsáveis' },
+                      { value: 'unassigned', label: 'Sem responsável' },
+                      ...(planejadores?.map(p => ({ value: p.user_id, label: p.full_name })) || [])
+                    ]}
+                    placeholder="Selecione o responsável"
+                    searchPlaceholder="Buscar responsável..."
+                  />
                 </div>
               )}
 
               {campaigns.length > 0 && (
                 <div className="space-y-2">
                   <Label>Campanha</Label>
-                  <Select value={selectedCampaign} onValueChange={onCampaignChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a campanha" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as campanhas</SelectItem>
-                      {campaigns.map(campaign => (
-                        <SelectItem key={campaign} value={campaign}>
-                          {campaign}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={selectedCampaign}
+                    onValueChange={onCampaignChange}
+                    options={[
+                      { value: 'all', label: 'Todas as campanhas' },
+                      ...campaigns.map(campaign => ({ value: campaign, label: campaign }))
+                    ]}
+                    placeholder="Selecione a campanha"
+                    searchPlaceholder="Buscar campanha..."
+                  />
                 </div>
               )}
 
               {referrers.length > 0 && (
                 <div className="space-y-2">
                   <Label>Indicado por</Label>
-                  <Select value={selectedReferredBy} onValueChange={onReferredByChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o indicador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os indicadores</SelectItem>
-                      {referrers.map(referrer => (
-                        <SelectItem key={referrer.id} value={referrer.id}>
-                          {referrer.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={selectedReferredBy}
+                    onValueChange={onReferredByChange}
+                    options={[
+                      { value: 'all', label: 'Todos os indicadores' },
+                      ...referrers.map(referrer => ({ value: referrer.id, label: referrer.full_name }))
+                    ]}
+                    placeholder="Selecione o indicador"
+                    searchPlaceholder="Buscar indicador..."
+                  />
                 </div>
               )}
 
               <div className="space-y-2">
                 <Label>Base</Label>
-                <Select value={selectedDirtyBase} onValueChange={onDirtyBaseChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de base" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as bases</SelectItem>
-                    <SelectItem value="clean">Base Limpa</SelectItem>
-                    <SelectItem value="dirty">Base Suja</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedDirtyBase}
+                  onValueChange={onDirtyBaseChange}
+                  options={[
+                    { value: 'all', label: 'Todas as bases' },
+                    { value: 'clean', label: 'Base Limpa' },
+                    { value: 'dirty', label: 'Base Suja' },
+                  ]}
+                  placeholder="Selecione o tipo de base"
+                  searchPlaceholder="Buscar..."
+                />
               </div>
 
               {activeFilters.length > 0 && (
