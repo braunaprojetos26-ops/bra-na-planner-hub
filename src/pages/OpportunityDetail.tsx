@@ -19,8 +19,11 @@ import { OpportunityMeetingsSection } from '@/components/opportunities/Opportuni
 import { OpportunityMeetingMinutesSection } from '@/components/opportunities/OpportunityMeetingMinutesSection';
 import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
 import { EditNotesModal } from '@/components/opportunities/EditNotesModal';
+import { OwnerTransferPicker } from '@/components/contacts/OwnerTransferPicker';
 import { useActingUser } from '@/contexts/ActingUserContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMoveOpportunityStage } from '@/hooks/useOpportunities';
+import { useTransferOwnership } from '@/hooks/useTransferOwnership';
 import { isInProposalStage, movingToProposalStage } from '@/lib/proposalStageValidation';
 
 const temperatureColors: Record<string, string> = {
@@ -90,7 +93,9 @@ export default function OpportunityDetail() {
   const { opportunityId } = useParams<{ opportunityId: string }>();
   const navigate = useNavigate();
   const { isImpersonating } = useActingUser();
+  const { role } = useAuth();
   const isReadOnly = isImpersonating;
+  const isAdmin = role === 'superadmin' || role === 'gerente' || role === 'supervisor';
   
   const [showLostModal, setShowLostModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
@@ -108,6 +113,7 @@ export default function OpportunityDetail() {
   const moveStage = useMoveOpportunityStage();
   const updateProposalValue = useUpdateProposalValue();
   const updateNotes = useUpdateOpportunityNotes();
+  const { transferOpportunity } = useTransferOwnership();
 
   const handleStageChange = async (newStageId: string) => {
     if (!opportunity || isReadOnly || !stages) return;
@@ -315,7 +321,29 @@ export default function OpportunityDetail() {
                 ) : '-'
               } 
             />
-            <InfoItem label="Responsável" value={opportunity.contact?.owner?.full_name || 'Não atribuído'} />
+            <div className="flex flex-col py-0.5 border-b border-border/50 last:border-0">
+              <span className="text-[11px] text-muted-foreground">Responsável</span>
+              <span className="text-xs font-medium">
+                {isAdmin && !isReadOnly && opportunity.status === 'active' ? (
+                  <OwnerTransferPicker
+                    currentOwnerId={opportunity.contact?.owner_id || null}
+                    currentOwnerName={opportunity.contact?.owner?.full_name || null}
+                    onTransfer={(newOwnerId, newOwnerName) => {
+                      transferOpportunity.mutate({
+                        opportunityId: opportunity.id,
+                        contactId: opportunity.contact_id,
+                        newOwnerId,
+                        contactName: opportunity.contact?.full_name || '',
+                        newOwnerName,
+                      });
+                    }}
+                    isLoading={transferOpportunity.isPending}
+                  />
+                ) : (
+                  opportunity.contact?.owner?.full_name || 'Não atribuído'
+                )}
+              </span>
+            </div>
           </CardContent>
         </Card>
 

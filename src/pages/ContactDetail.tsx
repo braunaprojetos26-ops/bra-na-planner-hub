@@ -18,10 +18,12 @@ import { MeetingsList } from '@/components/meetings/MeetingsList';
 import { MeetingMinutesList } from '@/components/meetings/MeetingMinutesList';
 import { ContactProposalsSection } from '@/components/contacts/ContactProposalsSection';
 import { WhatsAppHistorySection } from '@/components/contacts/WhatsAppHistorySection';
+import { OwnerTransferPicker } from '@/components/contacts/OwnerTransferPicker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import { useActingUser } from '@/contexts/ActingUserContext';
-
+import { useAuth } from '@/contexts/AuthContext';
+import { useTransferOwnership } from '@/hooks/useTransferOwnership';
 const formatCurrency = (value: number | null | undefined) => {
   if (value === null || value === undefined) return '-';
   return new Intl.NumberFormat('pt-BR', {
@@ -125,13 +127,17 @@ export default function ContactDetail() {
   const { contactId } = useParams<{ contactId: string }>();
   const navigate = useNavigate();
   const { isImpersonating } = useActingUser();
+  const { role } = useAuth();
   const isReadOnly = isImpersonating;
+  const isAdmin = role === 'superadmin' || role === 'gerente' || role === 'supervisor';
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState(false);
   const [scheduleMeetingType, setScheduleMeetingType] = useState<string | undefined>(undefined);
   const [newNote, setNewNote] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
+  
+  const { transferContact } = useTransferOwnership();
 
   const handleScheduleAnalysis = () => {
     setScheduleMeetingType('Análise');
@@ -200,7 +206,26 @@ export default function ContactDetail() {
               Contato desde: {formatDate(contact.created_at)}
             </p>
             <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-              <span>Consultor: <strong>{contact.owner?.full_name || 'Não atribuído'}</strong></span>
+              <span className="flex items-center gap-1">
+                Responsável:{' '}
+                {isAdmin && !isReadOnly ? (
+                  <OwnerTransferPicker
+                    currentOwnerId={contact.owner_id}
+                    currentOwnerName={contact.owner?.full_name || null}
+                    onTransfer={(newOwnerId, newOwnerName) => {
+                      transferContact.mutate({
+                        contactId: contact.id,
+                        newOwnerId,
+                        contactName: contact.full_name,
+                        newOwnerName,
+                      });
+                    }}
+                    isLoading={transferContact.isPending}
+                  />
+                ) : (
+                  <strong>{contact.owner?.full_name || 'Não atribuído'}</strong>
+                )}
+              </span>
               {contact.referred_by_contact && (
                 <span>Indicado por: <strong>{contact.referred_by_contact.full_name}</strong></span>
               )}
