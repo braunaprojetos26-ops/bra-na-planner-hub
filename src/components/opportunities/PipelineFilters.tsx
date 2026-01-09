@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { DateInput } from '@/components/ui/date-input';
 import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
@@ -208,7 +209,8 @@ export function PipelineFilters({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4" align="start">
+        <PopoverContent className="w-80 p-0 max-h-[70vh]" align="start" side="bottom" sideOffset={8}>
+          <ScrollArea className="h-full max-h-[70vh] p-4">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Período</Label>
@@ -352,6 +354,7 @@ export function PipelineFilters({
                 </Button>
               )}
             </div>
+          </ScrollArea>
           </PopoverContent>
         </Popover>
 
