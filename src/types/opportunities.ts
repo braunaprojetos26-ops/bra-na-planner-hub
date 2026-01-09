@@ -27,6 +27,10 @@ export interface Opportunity {
     phone: string;
     email: string | null;
     owner_id: string | null;
+    source: string | null;
+    campaign: string | null;
+    referred_by: string | null;
+    is_dirty_base: boolean;
     owner?: {
       full_name: string;
       email: string;

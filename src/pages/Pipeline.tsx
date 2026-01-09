@@ -1,19 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { differenceInHours } from 'date-fns';
-import { Plus, LayoutGrid, List } from 'lucide-react';
+import { differenceInHours, differenceInDays, isToday, startOfMonth, startOfYear } from 'date-fns';
+import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFunnels, useFunnelStages } from '@/hooks/useFunnels';
 import { useOpportunities, useMoveOpportunityStage } from '@/hooks/useOpportunities';
-import { usePlanejadores, useCanViewPlanejadores } from '@/hooks/usePlanejadores';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
 import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
-import { OpportunitySearchBox } from '@/components/opportunities/OpportunitySearchBox';
+import { PipelineFilters } from '@/components/opportunities/PipelineFilters';
 import { OpportunityKanbanCard } from '@/components/opportunities/OpportunityKanbanCard';
 import { movingToProposalStage } from '@/lib/proposalStageValidation';
 import type { Opportunity } from '@/types/opportunities';
@@ -51,6 +49,13 @@ export default function Pipeline() {
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
   const [draggedOpportunityId, setDraggedOpportunityId] = useState<string | null>(null);
   
+  // New filter states
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedSource, setSelectedSource] = useState<string>('all');
+  const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
+  const [selectedReferredBy, setSelectedReferredBy] = useState<string>('all');
+  const [selectedDirtyBase, setSelectedDirtyBase] = useState<string>('all');
+  
   // State for proposal value modal
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [pendingStageMove, setPendingStageMove] = useState<{
@@ -63,8 +68,6 @@ export default function Pipeline() {
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const { data: stages } = useFunnelStages(selectedFunnelId);
   const { data: opportunities, isLoading: opportunitiesLoading } = useOpportunities(selectedFunnelId);
-  const { data: planejadores } = usePlanejadores();
-  const canViewPlanejadores = useCanViewPlanejadores();
   const moveStage = useMoveOpportunityStage();
 
   // Disable editing when impersonating
@@ -77,7 +80,28 @@ export default function Pipeline() {
     }
   }, [funnels, selectedFunnelId]);
 
-  // Filter opportunities by status and owner
+  // Helper function for period filtering
+  const matchesPeriod = (createdAt: string, period: string): boolean => {
+    const date = new Date(createdAt);
+    const now = new Date();
+    
+    switch (period) {
+      case 'today':
+        return isToday(date);
+      case 'week':
+        return differenceInDays(now, date) <= 7;
+      case 'month':
+        return differenceInDays(now, date) <= 30;
+      case 'this_month':
+        return date >= startOfMonth(now);
+      case 'this_year':
+        return date >= startOfYear(now);
+      default:
+        return true;
+    }
+  };
+
+  // Filter opportunities by all criteria
   const filteredOpportunities = useMemo(() => {
     let filtered = opportunities || [];
     
@@ -95,8 +119,34 @@ export default function Pipeline() {
       }
     }
     
+    // Filter by period
+    if (selectedPeriod !== 'all') {
+      filtered = filtered.filter(o => matchesPeriod(o.created_at, selectedPeriod));
+    }
+    
+    // Filter by source
+    if (selectedSource !== 'all') {
+      filtered = filtered.filter(o => o.contact?.source === selectedSource);
+    }
+    
+    // Filter by campaign
+    if (selectedCampaign !== 'all') {
+      filtered = filtered.filter(o => o.contact?.campaign === selectedCampaign);
+    }
+    
+    // Filter by referred_by
+    if (selectedReferredBy !== 'all') {
+      filtered = filtered.filter(o => o.contact?.referred_by === selectedReferredBy);
+    }
+    
+    // Filter by dirty base
+    if (selectedDirtyBase !== 'all') {
+      const isDirty = selectedDirtyBase === 'dirty';
+      filtered = filtered.filter(o => o.contact?.is_dirty_base === isDirty);
+    }
+    
     return filtered;
-  }, [opportunities, selectedStatus, selectedOwnerId]);
+  }, [opportunities, selectedStatus, selectedOwnerId, selectedPeriod, selectedSource, selectedCampaign, selectedReferredBy, selectedDirtyBase]);
 
   // Separate active, won and lost opportunities from filtered list
   const activeAndWonOpportunities = useMemo(() => 
@@ -214,71 +264,28 @@ export default function Pipeline() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <OpportunitySearchBox />
-        
-        <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Selecione um funil" />
-          </SelectTrigger>
-          <SelectContent>
-            {funnels?.map(funnel => (
-              <SelectItem key={funnel.id} value={funnel.id}>
-                {funnel.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {canViewPlanejadores && (
-          <Select value={selectedOwnerId} onValueChange={setSelectedOwnerId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os responsáveis</SelectItem>
-              <SelectItem value="unassigned">Sem responsável</SelectItem>
-              {planejadores?.map(p => (
-                <SelectItem key={p.user_id} value={p.user_id}>
-                  {p.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="active">Em andamento</SelectItem>
-            <SelectItem value="won">Vendido</SelectItem>
-            <SelectItem value="lost">Perdido</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-1 ml-auto">
-          <Button
-            variant={viewMode === 'kanban' ? 'default' : 'outline'}
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => setViewMode('kanban')}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <PipelineFilters
+        opportunities={opportunities}
+        funnels={funnels}
+        selectedFunnelId={selectedFunnelId}
+        selectedStatus={selectedStatus}
+        selectedOwnerId={selectedOwnerId}
+        selectedPeriod={selectedPeriod}
+        selectedSource={selectedSource}
+        selectedCampaign={selectedCampaign}
+        selectedReferredBy={selectedReferredBy}
+        selectedDirtyBase={selectedDirtyBase}
+        onFunnelChange={setSelectedFunnelId}
+        onStatusChange={setSelectedStatus}
+        onOwnerChange={setSelectedOwnerId}
+        onPeriodChange={setSelectedPeriod}
+        onSourceChange={setSelectedSource}
+        onCampaignChange={setSelectedCampaign}
+        onReferredByChange={setSelectedReferredBy}
+        onDirtyBaseChange={setSelectedDirtyBase}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       {!selectedFunnelId ? (
         <div className="flex items-center justify-center h-[50vh]">
@@ -293,7 +300,7 @@ export default function Pipeline() {
         <OpportunitiesListView opportunities={filteredOpportunities} />
       ) : (
         /* Kanban View */
-        <div className="flex gap-4 h-[calc(100%-5rem)] overflow-x-auto pb-4">
+        <div className="flex gap-4 h-[calc(100%-8rem)] overflow-x-auto pb-4">
           {/* Stage Columns */}
           {stages?.map(stage => (
             <div
