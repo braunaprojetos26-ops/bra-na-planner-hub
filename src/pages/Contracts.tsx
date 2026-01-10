@@ -322,12 +322,30 @@ export default function Contracts() {
   // Build filters for the query
   const dateRange = getDateRangeFromPeriod(selectedPeriod, customDateStart, customDateEnd);
   
-  const queryFilters = useMemo(() => ({
-    productId: selectedProductId !== 'all' ? selectedProductId : undefined,
-    status: selectedStatus !== 'all' ? selectedStatus : undefined,
-    startDate: dateRange.start,
-    endDate: dateRange.end,
-  }), [selectedProductId, selectedStatus, dateRange.start, dateRange.end]);
+  const queryFilters = useMemo(() => {
+    const filters: {
+      productId?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {};
+    
+    if (selectedProductId !== 'all') {
+      filters.productId = selectedProductId;
+    }
+    if (selectedStatus !== 'all') {
+      filters.status = selectedStatus;
+    }
+    if (dateRange.start) {
+      filters.startDate = dateRange.start;
+    }
+    if (dateRange.end) {
+      filters.endDate = dateRange.end;
+    }
+    
+    // Return undefined if no filters, otherwise return the filters object
+    return Object.keys(filters).length > 0 ? filters : undefined;
+  }, [selectedProductId, selectedStatus, dateRange.start, dateRange.end]);
   
   const { data: contracts = [], isLoading } = useContracts(queryFilters);
   const { data: metrics } = useContractMetrics();
