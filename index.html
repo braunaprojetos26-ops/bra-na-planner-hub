@@ -5,7 +5,7 @@
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
-    >
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Central do Planejador | Braúna</title>
@@ -22,147 +22,11 @@
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <script>
-      // Fallback para quando o app não consegue inicializar (ex.: erro de bundle)
-      // Objetivo: capturar também falhas de import (que não disparam window.onerror)
-      (function () {
-        var moduleLoaded = false;
-
-        function escapeHtml(str) {
-          return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-        }
-
-        function showFatal(title, details) {
-          var root = document.getElementById('root');
-          if (!root) return;
-          root.innerHTML =
-            '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">' +
-            '  <div style="max-width:900px;width:100%;">' +
-            '    <h1 style="font-size:18px;margin:0 0 8px 0;">' + escapeHtml(title) + '</h1>' +
-            '    <p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">Copie a mensagem abaixo e me envie no chat.</p>' +
-            '    <pre style="white-space:pre-wrap;background:#f3f4f6;border-radius:10px;padding:12px;max-height:50vh;overflow:auto;font-size:12px;">' +
-            escapeHtml(details || '') +
-            '    </pre>' +
-            '  </div>' +
-            '</div>';
-        }
-
-        function peek(url) {
-          return fetch(url, { cache: 'no-store' })
-            .then(function (res) {
-              return res.text().then(function (txt) {
-                var head = (txt || '').slice(0, 500);
-                var looksHtml = /^\s*</.test(head);
-                return {
-                  status: res.status,
-                  statusText: res.statusText,
-                  url: url,
-                  looksHtml: looksHtml,
-                  head: head,
-                };
-              });
-            })
-            .catch(function (err) {
-              return { url: url, error: String(err) };
-            });
-        }
-
-        window.addEventListener('error', function (e) {
-          var msg = (e && (e.message || (e.error && e.error.message))) || 'Erro desconhecido';
-          var stack = e && e.error && e.error.stack ? '\n\n' + e.error.stack : '';
-          showFatal('Erro ao executar a aplicação', msg + stack);
-        });
-
-        window.addEventListener('unhandledrejection', function (e) {
-          var r = e && e.reason;
-          var msg = r && r.message ? r.message : String(r || 'Promise rejection');
-          var stack = r && r.stack ? '\n\n' + r.stack : '';
-          showFatal('Erro ao executar a aplicação', msg + stack);
-        });
-
-        document.addEventListener('DOMContentLoaded', function () {
-          var root = document.getElementById('root');
-          if (root && !root.innerHTML.trim()) {
-            root.innerHTML =
-              '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#6b7280;">Carregando…</div>';
-          }
-
-          // Carrega o módulo principal manualmente para capturar falhas de download/import.
-          var s = document.createElement('script');
-          s.type = 'module';
-          s.src = '/src/main.tsx';
-          s.onload = function () {
-            moduleLoaded = true;
-          };
-          s.onerror = function () {
-            Promise.all([peek('/src/main.tsx'), peek('/src/App.tsx'), peek('/@vite/client')]).then(function (results) {
-              var lines = [];
-              lines.push('Falha ao carregar módulo (script type=module).');
-              lines.push('Isso quase sempre é um import que falhou (ex.: /src/App.tsx ou algo que ele importa).');
-              lines.push('');
-              results.forEach(function (r) {
-                if (r.error) {
-                  lines.push(r.url + ' -> ERRO: ' + r.error);
-                  lines.push('');
-                  return;
-                }
-                lines.push(
-                  r.url +
-                    ' -> HTTP ' +
-                    r.status +
-                    ' ' +
-                    (r.statusText || '') +
-                    (r.looksHtml ? ' (parece HTML!)' : '')
-                );
-                lines.push('head: ' + (r.head || '').replace(/\n/g, ' '));
-                lines.push('');
-              });
-              showFatal('Falha ao carregar o app', lines.join('\n'));
-            });
-          };
-          document.body.appendChild(s);
-
-          // Se travar sem erro explícito, mostramos diagnóstico
-          setTimeout(function () {
-            var stillLoading = root && root.textContent && root.textContent.toLowerCase().indexOf('carregando') !== -1;
-            if (!moduleLoaded && stillLoading) {
-              Promise.all([peek('/src/main.tsx'), peek('/src/App.tsx')]).then(function (results) {
-                var lines = [];
-                lines.push('O módulo principal (/src/main.tsx) não concluiu o carregamento após 5s.');
-                lines.push('');
-                results.forEach(function (r) {
-                  if (r.error) {
-                    lines.push(r.url + ' -> ERRO: ' + r.error);
-                    lines.push('');
-                    return;
-                  }
-                  lines.push(
-                    r.url +
-                      ' -> HTTP ' +
-                      r.status +
-                      ' ' +
-                      (r.statusText || '') +
-                      (r.looksHtml ? ' (parece HTML!)' : '')
-                  );
-                  lines.push('head: ' + (r.head || '').replace(/\n/g, ' '));
-                  lines.push('');
-                });
-                showFatal('Inicialização travada', lines.join('\n'));
-              });
-            }
-          }, 5000);
-        });
-      })();
-    </script>
   </head>
 
   <body>
     <div id="root"></div>
+    <!-- IMPORTANTE: manter o entry padrão para o Vite/React Refresh funcionar no preview -->
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
