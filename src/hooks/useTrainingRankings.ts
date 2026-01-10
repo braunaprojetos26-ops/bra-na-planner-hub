@@ -1,9 +1,9 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TrainingRankingEntry, CohortOption } from '@/types/training';
-import { format, startOfQuarter, startOfYear, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
 
 export function useTrainingRankings() {
   const { user } = useAuth();

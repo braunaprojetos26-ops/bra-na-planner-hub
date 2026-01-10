@@ -14,7 +14,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,14 +29,14 @@ export default function TrainingCourse() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { courses, isLoading: coursesLoading } = useTrainingCourses();
-  const { modules, isLoading: modulesLoading, deleteModule } = useTrainingModules(courseId);
+  const { coursesWithProgress, isLoading: coursesLoading } = useTrainingCourses();
+  const { modulesWithProgress, isLoading: modulesLoading, deleteModule } = useTrainingModules(courseId);
   
   const [showNewModuleModal, setShowNewModuleModal] = useState(false);
   const [editingModule, setEditingModule] = useState<TrainingModuleWithProgress | null>(null);
 
-  const course = courses?.find(c => c.id === courseId);
-  const isTrainer = profile?.is_trainer || profile?.role === 'superadmin';
+  const course = coursesWithProgress?.find(c => c.id === courseId);
+  const isTrainer = profile?.is_trainer || false;
 
   if (coursesLoading || modulesLoading) {
     return (
@@ -118,7 +118,7 @@ export default function TrainingCourse() {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <GraduationCap className="h-4 w-4" />
-                <span>{modules?.length || 0} módulos</span>
+                <span>{modulesWithProgress?.length || 0} módulos</span>
               </div>
             </div>
             <span className="text-sm font-medium">{course.progressPercentage}% concluído</span>
@@ -131,7 +131,7 @@ export default function TrainingCourse() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Módulos</h2>
         
-        {modules?.length === 0 ? (
+        {modulesWithProgress?.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />
@@ -146,7 +146,7 @@ export default function TrainingCourse() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {modules?.map((module, index) => (
+            {modulesWithProgress?.map((module, index) => (
               <Card 
                 key={module.id}
                 className={`transition-all ${
@@ -190,7 +190,7 @@ export default function TrainingCourse() {
                           <BookOpen className="h-4 w-4" />
                           {module.completedLessons}/{module.totalLessons} aulas
                         </span>
-                        {module.deadline_days && (
+                        {module.deadline_days > 0 && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
                             Prazo: {module.deadline_days} dias

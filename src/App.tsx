@@ -41,7 +41,10 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectPageDetail from "./pages/ProjectPageDetail";
 import Training from "./pages/Training";
-
+import TrainingCourse from "./pages/TrainingCourse";
+import TrainingModule from "./pages/TrainingModule";
+import TrainingExam from "./pages/TrainingExam";
+import TrainingRankings from "./pages/TrainingRankings";
 const queryClient = new QueryClient();
 
 const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
@@ -105,6 +108,10 @@ const App = () => (
                 <Route path="/projects/:projectId" element={<ProtectedPage><ProjectDetail /></ProtectedPage>} />
                 <Route path="/projects/:projectId/pages/:pageId" element={<ProtectedPage><ProjectPageDetail /></ProtectedPage>} />
                 <Route path="/training" element={<ProtectedPage><Training /></ProtectedPage>} />
+                <Route path="/training/:courseId" element={<ProtectedPage><TrainingCourse /></ProtectedPage>} />
+                <Route path="/training/:courseId/:moduleId" element={<ProtectedPage><TrainingModule /></ProtectedPage>} />
+                <Route path="/training/exam/:examId" element={<ProtectedPage><TrainingExam /></ProtectedPage>} />
+                <Route path="/training/rankings" element={<ProtectedPage><TrainingRankings /></ProtectedPage>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ActingUserProvider>

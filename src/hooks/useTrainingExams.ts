@@ -4,27 +4,41 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { TrainingExam, TrainingExamQuestion, TrainingExamAttempt } from '@/types/training';
 
-export function useTrainingExams(moduleId: string | undefined) {
+export function useTrainingExams(moduleIdOrExamId: string | undefined) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // First try to fetch by module_id, then by exam_id
   const { data: exam, isLoading: isLoadingExam } = useQuery({
-    queryKey: ['training-exam', moduleId],
+    queryKey: ['training-exam', moduleIdOrExamId],
     queryFn: async () => {
-      if (!moduleId) return null;
+      if (!moduleIdOrExamId) return null;
 
-      const { data, error } = await supabase
+      // Try by module_id first
+      let { data, error } = await supabase
         .from('training_exams')
         .select('*')
-        .eq('module_id', moduleId)
+        .eq('module_id', moduleIdOrExamId)
         .eq('is_active', true)
         .maybeSingle();
+
+      // If not found, try by exam id
+      if (!data) {
+        const result = await supabase
+          .from('training_exams')
+          .select('*')
+          .eq('id', moduleIdOrExamId)
+          .eq('is_active', true)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
       return data as TrainingExam | null;
     },
-    enabled: !!moduleId,
+    enabled: !!moduleIdOrExamId,
   });
 
   const { data: questions, isLoading: isLoadingQuestions } = useQuery({
@@ -72,12 +86,15 @@ export function useTrainingExams(moduleId: string | undefined) {
   const bestAttempt = attempts?.find(a => a.completed_at && a.passed) 
     || attempts?.find(a => a.completed_at);
 
+  const moduleId = exam?.module_id;
+
   const createExam = useMutation({
     mutationFn: async (data: Partial<TrainingExam>) => {
+      if (!moduleId) throw new Error('Module ID required');
       const { data: result, error } = await supabase
         .from('training_exams')
         .insert({
-          module_id: moduleId!,
+          module_id: moduleId,
           name: data.name || 'Prova do Módulo',
           time_limit_minutes: data.time_limit_minutes,
         })
@@ -88,7 +105,7 @@ export function useTrainingExams(moduleId: string | undefined) {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['training-exam', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['training-exam', moduleIdOrExamId] });
       toast({ title: 'Prova criada com sucesso!' });
     },
     onError: (error) => {
@@ -106,7 +123,7 @@ export function useTrainingExams(moduleId: string | undefined) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['training-exam', moduleId] });
+      queryClient.invalidateQueries({ queryKey: ['training-exam', moduleIdOrExamId] });
       toast({ title: 'Prova atualizada!' });
     },
     onError: (error) => {
