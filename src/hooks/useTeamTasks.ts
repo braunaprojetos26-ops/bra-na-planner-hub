@@ -25,13 +25,10 @@ export function useTeamTasks(teamMemberIds: string[], filters?: TeamTaskFilters)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || teamMemberIds.length === 0) return [];
 
+      // First get the tasks
       let query = supabase
         .from('tasks')
-        .select(`
-          *,
-          assigned_to_profile:profiles!tasks_assigned_to_fkey(full_name),
-          created_by_profile:profiles!tasks_created_by_fkey(full_name)
-        `)
+        .select('*')
         .eq('created_by', user.id)
         .in('assigned_to', teamMemberIds)
         .order('scheduled_at', { ascending: true });
@@ -63,13 +60,33 @@ export function useTeamTasks(teamMemberIds: string[], filters?: TeamTaskFilters)
 
       if (error) throw error;
 
-      // Update overdue status for pending tasks
+      // Get profiles for assigned users
+      const assignedIds = [...new Set((data || []).map(t => t.assigned_to).filter(Boolean))];
+      let profilesMap: Record<string, string> = {};
+      
+      if (assignedIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', assignedIds);
+        
+        profilesMap = (profiles || []).reduce((acc, p) => {
+          acc[p.user_id] = p.full_name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      // Update overdue status for pending tasks and add profile info
       const now = new Date();
       return (data || []).map(task => {
+        const updatedTask = {
+          ...task,
+          assigned_to_profile: task.assigned_to ? { full_name: profilesMap[task.assigned_to] || 'Desconhecido' } : null,
+        };
         if (task.status === 'pending' && new Date(task.scheduled_at) < now) {
-          return { ...task, status: 'overdue' as TaskStatus };
+          return { ...updatedTask, status: 'overdue' as TaskStatus };
         }
-        return task;
+        return updatedTask;
       }) as unknown as Task[];
     },
     enabled: teamMemberIds.length > 0,
