@@ -9,6 +9,7 @@ import { ActingUserProvider } from "@/contexts/ActingUserContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GlobalErrorOverlay } from "@/components/GlobalErrorOverlay";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -56,6 +57,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <GlobalErrorOverlay />
         <BrowserRouter>
           <AuthProvider>
             <ActingUserProvider>
