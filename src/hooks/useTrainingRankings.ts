@@ -5,8 +5,9 @@ import type { TrainingRankingEntry, CohortOption } from '@/types/training';
 import { format, startOfQuarter, startOfYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export function useTrainingRankings(cohortDate?: string) {
+export function useTrainingRankings() {
   const { user } = useAuth();
+  const [cohortFilter, setCohortFilter] = useState<string>('all');
 
   const { data: cohorts, isLoading: isLoadingCohorts } = useQuery({
     queryKey: ['training-cohorts'],
@@ -38,7 +39,7 @@ export function useTrainingRankings(cohortDate?: string) {
   });
 
   const { data: rankings, isLoading: isLoadingRankings } = useQuery({
-    queryKey: ['training-rankings', cohortDate],
+    queryKey: ['training-rankings', cohortFilter],
     queryFn: async () => {
       // Get all users (optionally filtered by cohort)
       let usersQuery = supabase
@@ -46,8 +47,8 @@ export function useTrainingRankings(cohortDate?: string) {
         .select('user_id, full_name, cohort_date')
         .eq('is_active', true);
 
-      if (cohortDate) {
-        usersQuery = usersQuery.eq('cohort_date', cohortDate);
+      if (cohortFilter && cohortFilter !== 'all') {
+        usersQuery = usersQuery.eq('cohort_date', cohortFilter);
       }
 
       const { data: users, error: usersError } = await usersQuery;
@@ -143,5 +144,7 @@ export function useTrainingRankings(cohortDate?: string) {
     cohorts,
     rankings,
     isLoading: isLoadingCohorts || isLoadingRankings,
+    cohortFilter,
+    setCohortFilter,
   };
 }
