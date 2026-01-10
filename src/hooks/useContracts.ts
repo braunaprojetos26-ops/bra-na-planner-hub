@@ -10,6 +10,9 @@ export function useContracts(filters?: {
   opportunityId?: string;
   ownerId?: string;
   status?: string;
+  productId?: string;
+  startDate?: string;
+  endDate?: string;
 }) {
   return useQuery({
     queryKey: ['contracts', filters],
@@ -42,6 +45,15 @@ export function useContracts(filters?: {
       }
       if (filters?.status) {
         query = query.eq('status', filters.status);
+      }
+      if (filters?.productId) {
+        query = query.eq('product_id', filters.productId);
+      }
+      if (filters?.startDate) {
+        query = query.gte('reported_at', filters.startDate);
+      }
+      if (filters?.endDate) {
+        query = query.lte('reported_at', filters.endDate);
       }
 
       const { data, error } = await query;
