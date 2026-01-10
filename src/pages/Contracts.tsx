@@ -17,7 +17,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { ContractsFilters } from '@/components/contracts/ContractsFilters';
 import { useToast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
 
 // ID da categoria "Planejamento Financeiro"
 const PLANEJAMENTO_CATEGORY_ID = 'd770d864-4679-4a6d-9620-6844db224dc3';
@@ -306,6 +305,39 @@ function getDateRangeFromPeriod(period: string, customStart?: Date, customEnd?: 
   }
 }
 
+function escapeCsvValue(value: unknown): string {
+  const str = value === null || value === undefined ? '' : String(value);
+  // Escape quotes by doubling them
+  const escaped = str.replace(/"/g, '""');
+  // Wrap in quotes if contains comma, quote or newline
+  if (/[",\n\r;]/.test(escaped)) {
+    return `"${escaped}"`;
+  }
+  return escaped;
+}
+
+function toCsv(rows: Array<Record<string, unknown>>): string {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.map(escapeCsvValue).join(';')];
+  for (const row of rows) {
+    lines.push(headers.map((h) => escapeCsvValue(row[h])).join(';'));
+  }
+  return lines.join('\n');
+}
+
+function downloadTextFile(content: string, fileName: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function Contracts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -376,29 +408,37 @@ export default function Contracts() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      
-      const exportData = filteredContracts.map(contract => ({
-        'Contato': contract.contact?.full_name || '-',
-        'Produto': contract.product?.name || '-',
-        'Categoria': contract.product?.category?.name || '-',
-        'Valor': contract.contract_value,
-        'PBs': contract.calculated_pbs,
-        'Data': format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR }),
-        'Status': contract.status === 'active' ? 'Ativo' : contract.status === 'pending' ? 'Pendente' : 'Cancelado',
+
+      const rows = filteredContracts.map((contract) => ({
+        Contato: contract.contact?.full_name || '-',
+        Produto: contract.product?.name || '-',
+        Categoria: contract.product?.category?.name || '-',
+        Valor: contract.contract_value,
+        PBs: contract.calculated_pbs,
+        Data: format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR }),
+        Status:
+          contract.status === 'active'
+            ? 'Ativo'
+            : contract.status === 'pending'
+              ? 'Pendente'
+              : 'Cancelado',
         'Status Pagamento': getPaymentStatusLabel(contract),
       }));
-      
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Contratos');
-      
-      const fileName = `contratos-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
-      XLSX.writeFile(wb, fileName);
-      
-      toast({ title: 'Exportação concluída!', description: `${filteredContracts.length} contratos exportados.` });
+
+      const csv = toCsv(rows);
+      downloadTextFile(csv, `contratos-${format(new Date(), 'yyyy-MM-dd')}.csv`, 'text/csv;charset=utf-8');
+
+      toast({
+        title: 'Exportação concluída!',
+        description: `${filteredContracts.length} contratos exportados.`,
+      });
     } catch (error) {
       console.error('Export error:', error);
-      toast({ title: 'Erro ao exportar', description: 'Não foi possível exportar os dados.', variant: 'destructive' });
+      toast({
+        title: 'Erro ao exportar',
+        description: 'Não foi possível exportar os dados.',
+        variant: 'destructive',
+      });
     } finally {
       setIsExporting(false);
     }
