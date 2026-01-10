@@ -223,6 +223,7 @@ export function useAllUserTasks(filters?: TaskFilters) {
 
       const userId = targetUserId || user.id;
 
+      // Fetch tasks created by user OR assigned to user
       let query = supabase
         .from('tasks')
         .select(`
@@ -231,9 +232,10 @@ export function useAllUserTasks(filters?: TaskFilters) {
             id,
             contact:contacts(id, full_name),
             current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
-          )
+          ),
+          created_by_profile:profiles!tasks_created_by_fkey(full_name)
         `)
-        .eq('created_by', userId)
+        .or(`created_by.eq.${userId},assigned_to.eq.${userId}`)
         .order('scheduled_at', { ascending: true });
 
       // Apply date filters
