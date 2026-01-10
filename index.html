@@ -20,16 +20,27 @@
     <script>
       // Fallback para quando o app não consegue inicializar (ex.: erro de bundle)
       (function () {
+        var moduleLoaded = false;
+
+        function escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        }
+
         function showFatal(title, details) {
           var root = document.getElementById('root');
           if (!root) return;
           root.innerHTML =
             '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">' +
             '  <div style="max-width:900px;width:100%;">' +
-            '    <h1 style="font-size:18px;margin:0 0 8px 0;">' + title + '</h1>' +
+            '    <h1 style="font-size:18px;margin:0 0 8px 0;">' + escapeHtml(title) + '</h1>' +
             '    <p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">Copie a mensagem abaixo e me envie no chat.</p>' +
             '    <pre style="white-space:pre-wrap;background:#f3f4f6;border-radius:10px;padding:12px;max-height:50vh;overflow:auto;font-size:12px;">' +
-            (details || '') +
+            escapeHtml(details || '') +
             '    </pre>' +
             '  </div>' +
             '</div>';
@@ -38,23 +49,60 @@
         window.addEventListener('error', function (e) {
           var msg = (e && (e.message || (e.error && e.error.message))) || 'Erro desconhecido';
           var stack = (e && e.error && e.error.stack) ? '\n\n' + e.error.stack : '';
-          showFatal('Erro ao carregar a aplicação', msg + stack);
+          showFatal('Erro ao executar a aplicação', msg + stack);
         });
 
         window.addEventListener('unhandledrejection', function (e) {
           var r = e && e.reason;
           var msg = (r && r.message) ? r.message : String(r || 'Promise rejection');
           var stack = (r && r.stack) ? '\n\n' + r.stack : '';
-          showFatal('Erro ao carregar a aplicação', msg + stack);
+          showFatal('Erro ao executar a aplicação', msg + stack);
         });
 
-        // Se nada renderizar, pelo menos mostramos um "Carregando..."
         document.addEventListener('DOMContentLoaded', function () {
           var root = document.getElementById('root');
           if (root && !root.innerHTML.trim()) {
             root.innerHTML =
               '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#6b7280;">Carregando…</div>';
           }
+
+          // Carrega o módulo principal manualmente para capturar falhas de download
+          var s = document.createElement('script');
+          s.type = 'module';
+          s.src = '/src/main.tsx';
+          s.onload = function () {
+            moduleLoaded = true;
+          };
+          s.onerror = function () {
+            // Erros de carregamento de module script não disparam window.onerror
+            fetch('/src/main.tsx', { cache: 'no-store' })
+              .then(function (res) {
+                return res.text().then(function (txt) {
+                  showFatal(
+                    'Falha ao carregar o app',
+                    'Não foi possível baixar /src/main.tsx.\n' +
+                      'HTTP ' + res.status + ' ' + res.statusText + '\n\n' +
+                      (txt ? txt.slice(0, 2000) : '')
+                  );
+                });
+              })
+              .catch(function (err) {
+                showFatal('Falha ao carregar o app', String(err));
+              });
+          };
+          document.body.appendChild(s);
+
+          // Se travar sem erro explícito, mostramos diagnóstico
+          setTimeout(function () {
+            var stillLoading = root && root.textContent && root.textContent.toLowerCase().indexOf('carregando') !== -1;
+            if (!moduleLoaded && stillLoading) {
+              showFatal(
+                'Inicialização travada',
+                'O módulo principal (/src/main.tsx) não concluiu o carregamento após 5s. ' +
+                  'Isso costuma indicar falha de rede/cache/preview. Recarregue e, se persistir, envie esta mensagem.'
+              );
+            }
+          }, 5000);
         });
       })();
     </script>
@@ -62,7 +110,7 @@
 
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
 
