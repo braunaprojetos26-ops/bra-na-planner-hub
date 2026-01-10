@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -20,23 +20,34 @@ export default function TrainingExam() {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { exams, questions, submitAttempt, isLoadingQuestions } = useTrainingExams(undefined, examId);
+  
+  // We need to get the moduleId from the exam, so we'll fetch the exam first
+  const { exam, questions, isLoading, startAttempt, submitAttempt } = useTrainingExams(examId);
   
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; passed: boolean } | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
-  const exam = exams?.find(e => e.id === examId);
   const sortedQuestions = questions?.sort((a, b) => a.order_position - b.order_position) || [];
+
+  // Start attempt when component mounts
+  useEffect(() => {
+    if (exam && !attemptId && !result) {
+      startAttempt.mutateAsync().then((attempt) => {
+        setAttemptId(attempt.id);
+      }).catch(console.error);
+    }
+  }, [exam, attemptId, result]);
 
   // Timer effect
   useEffect(() => {
-    if (exam?.time_limit_minutes && !result) {
+    if (exam?.time_limit_minutes && !result && attemptId) {
       setTimeLeft(exam.time_limit_minutes * 60);
     }
-  }, [exam, result]);
+  }, [exam, result, attemptId]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0 || result) return;
@@ -78,12 +89,12 @@ export default function TrainingExam() {
   };
 
   const handleSubmit = async () => {
-    if (!exam) return;
+    if (!attemptId) return;
     
     setIsSubmitting(true);
     try {
       const attemptResult = await submitAttempt.mutateAsync({
-        examId: exam.id,
+        attemptId,
         answers
       });
       
@@ -115,7 +126,7 @@ export default function TrainingExam() {
     }
   };
 
-  if (isLoadingQuestions) {
+  if (isLoading) {
     return (
       <div className="space-y-6 p-6">
         <Skeleton className="h-8 w-64" />
@@ -159,7 +170,7 @@ export default function TrainingExam() {
             </div>
 
             <div className="text-4xl font-bold">
-              {result.score}%
+              {result.score.toFixed(0)}%
             </div>
 
             <div className="flex justify-center gap-4">
@@ -171,6 +182,7 @@ export default function TrainingExam() {
                   setResult(null);
                   setAnswers([]);
                   setCurrentQuestion(0);
+                  setAttemptId(null);
                   if (exam.time_limit_minutes) {
                     setTimeLeft(exam.time_limit_minutes * 60);
                   }
@@ -187,7 +199,7 @@ export default function TrainingExam() {
 
   const question = sortedQuestions[currentQuestion];
   const answeredCount = answers.length;
-  const progress = (answeredCount / sortedQuestions.length) * 100;
+  const progress = sortedQuestions.length > 0 ? (answeredCount / sortedQuestions.length) * 100 : 0;
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -226,12 +238,10 @@ export default function TrainingExam() {
       {/* Question */}
       {question && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
+          <CardContent className="pt-6">
+            <h2 className="text-lg font-medium mb-6">
               {question.question_text}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h2>
             <RadioGroup
               value={getAnswer(question.id)}
               onValueChange={(value) => handleAnswerChange(question.id, value)}

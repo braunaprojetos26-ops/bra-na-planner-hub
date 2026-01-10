@@ -6,7 +6,6 @@ import {
   Circle,
   Play,
   FileText,
-  Download,
   Plus,
   Pencil,
   Trash2,
@@ -32,22 +31,22 @@ export default function TrainingModule() {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { modules } = useTrainingModules(courseId);
-  const { lessons, isLoading, markComplete, markIncomplete, deleteLesson } = useTrainingLessons(moduleId);
-  const { exams, attempts } = useTrainingExams(moduleId);
+  const { modulesWithProgress } = useTrainingModules(courseId);
+  const { lessonsWithProgress, isLoading, markLessonComplete, unmarkLessonComplete, deleteLesson, createLesson, updateLesson } = useTrainingLessons(moduleId);
+  const { exam, attempts } = useTrainingExams(moduleId);
   
   const [showNewLessonModal, setShowNewLessonModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState<TrainingLessonWithProgress | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<TrainingLessonWithProgress | null>(null);
 
-  const module = modules?.find(m => m.id === moduleId);
-  const isTrainer = profile?.is_trainer || profile?.role === 'superadmin';
-  const exam = exams?.[0]; // Module has at most one exam
-  const examAttempt = attempts?.find(a => a.exam_id === exam?.id && a.passed);
+  const module = modulesWithProgress?.find(m => m.id === moduleId);
+  const isTrainer = profile?.is_trainer || false;
+  const examAttempt = attempts?.find(a => a.passed);
   const examPassed = !!examAttempt;
 
-  const completedLessons = lessons?.filter(l => l.isCompleted).length || 0;
-  const totalLessons = lessons?.length || 0;
+  const lessons = lessonsWithProgress || [];
+  const completedLessons = lessons.filter(l => l.isCompleted).length;
+  const totalLessons = lessons.length;
   const allLessonsCompleted = totalLessons > 0 && completedLessons === totalLessons;
 
   if (isLoading) {
@@ -76,9 +75,9 @@ export default function TrainingModule() {
 
   const handleToggleComplete = (lesson: TrainingLessonWithProgress) => {
     if (lesson.isCompleted) {
-      markIncomplete.mutate(lesson.id);
+      unmarkLessonComplete.mutate(lesson.id);
     } else {
-      markComplete.mutate(lesson.id);
+      markLessonComplete.mutate(lesson.id);
     }
   };
 
@@ -123,7 +122,7 @@ export default function TrainingModule() {
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-lg font-semibold">Aulas</h2>
           
-          {lessons?.length === 0 ? (
+          {lessons.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Play className="h-12 w-12 text-muted-foreground mb-4" />
@@ -138,7 +137,7 @@ export default function TrainingModule() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {lessons?.map((lesson, index) => (
+              {lessons.map((lesson, index) => (
                 <Card 
                   key={lesson.id}
                   className={`transition-all hover:shadow-md cursor-pointer ${

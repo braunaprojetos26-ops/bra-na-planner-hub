@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { FileText, Download, Trash2, Upload, Plus } from 'lucide-react';
+import { FileText, Download, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTrainingMaterials } from '@/hooks/useTrainingMaterials';
 import { useToast } from '@/hooks/use-toast';
+import type { TrainingLessonMaterial } from '@/types/training';
 
 interface LessonMaterialsProps {
   lessonId: string;
@@ -51,18 +52,18 @@ export function LessonMaterials({ lessonId, isTrainer }: LessonMaterialsProps) {
     }
   };
 
-  const handleDownload = (filePath: string, fileName: string) => {
+  const handleDownload = (filePath: string) => {
     const url = getPublicUrl(filePath);
     if (url) {
       window.open(url, '_blank');
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (material: TrainingLessonMaterial) => {
     if (!confirm('Excluir este material?')) return;
     
     try {
-      await deleteMaterial.mutateAsync(id);
+      await deleteMaterial.mutateAsync(material);
       toast({
         title: 'Material excluído',
       });
@@ -79,10 +80,6 @@ export function LessonMaterials({ lessonId, isTrainer }: LessonMaterialsProps) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const getFileIcon = (fileType: string | null) => {
-    return <FileText className="h-4 w-4" />;
   };
 
   return (
@@ -136,7 +133,7 @@ export function LessonMaterials({ lessonId, isTrainer }: LessonMaterialsProps) {
                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  {getFileIcon(material.file_type)}
+                  <FileText className="h-4 w-4" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{material.name}</p>
                     {material.file_size && (
@@ -151,7 +148,7 @@ export function LessonMaterials({ lessonId, isTrainer }: LessonMaterialsProps) {
                     size="icon"
                     variant="ghost"
                     className="h-8 w-8"
-                    onClick={() => handleDownload(material.file_path, material.name)}
+                    onClick={() => handleDownload(material.file_path)}
                   >
                     <Download className="h-4 w-4" />
                   </Button>
@@ -160,7 +157,7 @@ export function LessonMaterials({ lessonId, isTrainer }: LessonMaterialsProps) {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(material.id)}
+                      onClick={() => handleDelete(material)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
