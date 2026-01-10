@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { format } from 'date-fns';
+import { useEffect, useState, useMemo } from 'react';
+import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,13 @@ import {
 import { useContracts, useContractMetrics } from '@/hooks/useContracts';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { ContractsFilters } from '@/components/contracts/ContractsFilters';
+import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
+
+// ID da categoria "Planejamento Financeiro"
+const PLANEJAMENTO_CATEGORY_ID = 'd770d864-4679-4a6d-9620-6844db224dc3';
+const PAID_STAGE_KEYWORDS = ['paga', 'pago'];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', {
@@ -42,10 +49,6 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
   return <Badge variant="outline">{status}</Badge>;
 }
 
-// ID da categoria "Planejamento Financeiro"
-const PLANEJAMENTO_CATEGORY_ID = 'd770d864-4679-4a6d-9620-6844db224dc3';
-const PAID_STAGE_KEYWORDS = ['paga', 'pago'];
-
 function getVindiStatusBadge(vindiStatus?: string | null) {
   if (!vindiStatus) {
     return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
@@ -65,6 +68,35 @@ function getVindiStatusBadge(vindiStatus?: string | null) {
     default:
       return <Badge variant="outline">{vindiStatus}</Badge>;
   }
+}
+
+function getPaymentStatus(contract: {
+  vindi_status?: string | null;
+  opportunity_id?: string | null;
+  product?: { category_id?: string | null } | null;
+  opportunity?: { current_stage?: { name: string } | null } | null;
+}): string {
+  const isPlanejamento = contract.product?.category_id === PLANEJAMENTO_CATEGORY_ID;
+  
+  // Para produtos de Planejamento Financeiro, usa status da Vindi
+  if (isPlanejamento) {
+    return contract.vindi_status || 'unknown';
+  }
+  
+  // Para outros produtos, verifica a etapa do funil da oportunidade
+  const stageName = contract.opportunity?.current_stage?.name?.toLowerCase() || '';
+  const isPaid = PAID_STAGE_KEYWORDS.some(kw => stageName.includes(kw));
+  
+  if (isPaid) {
+    return 'paid';
+  }
+  
+  // Se não tem oportunidade vinculada
+  if (!contract.opportunity_id) {
+    return 'unknown';
+  }
+  
+  return 'pending';
 }
 
 function getPaymentStatusBadge(contract: {
@@ -175,9 +207,9 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
     return (
       <div className="text-center py-12">
         <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
-        <p className="text-muted-foreground mt-4">Nenhum contrato registrado ainda</p>
+        <p className="text-muted-foreground mt-4">Nenhum contrato encontrado</p>
         <p className="text-sm text-muted-foreground/70 mt-1">
-          Contratos serão exibidos aqui quando registrados
+          Tente ajustar os filtros para ver mais resultados
         </p>
       </div>
     );
@@ -235,10 +267,124 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
   );
 }
 
+function getDateRangeFromPeriod(period: string, customStart?: Date, customEnd?: Date): { start?: string; end?: string } {
+  const now = new Date();
+  
+  switch (period) {
+    case 'today':
+      return {
+        start: startOfDay(now).toISOString(),
+        end: endOfDay(now).toISOString(),
+      };
+    case 'week':
+      return {
+        start: startOfDay(subDays(now, 7)).toISOString(),
+        end: endOfDay(now).toISOString(),
+      };
+    case 'month':
+      return {
+        start: startOfDay(subDays(now, 30)).toISOString(),
+        end: endOfDay(now).toISOString(),
+      };
+    case 'this_month':
+      return {
+        start: startOfMonth(now).toISOString(),
+        end: endOfDay(now).toISOString(),
+      };
+    case 'this_year':
+      return {
+        start: startOfYear(now).toISOString(),
+        end: endOfDay(now).toISOString(),
+      };
+    case 'custom':
+      return {
+        start: customStart ? startOfDay(customStart).toISOString() : undefined,
+        end: customEnd ? endOfDay(customEnd).toISOString() : undefined,
+      };
+    default:
+      return {};
+  }
+}
+
 export default function Contracts() {
   const queryClient = useQueryClient();
-  const { data: contracts = [], isLoading } = useContracts();
+  const { toast } = useToast();
+  
+  // Filter states
+  const [selectedProductId, setSelectedProductId] = useState('all');
+  const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('all');
+  const [customDateStart, setCustomDateStart] = useState<Date | undefined>();
+  const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>();
+  const [isExporting, setIsExporting] = useState(false);
+  
+  // Build filters for the query
+  const dateRange = getDateRangeFromPeriod(selectedPeriod, customDateStart, customDateEnd);
+  
+  const queryFilters = useMemo(() => ({
+    productId: selectedProductId !== 'all' ? selectedProductId : undefined,
+    status: selectedStatus !== 'all' ? selectedStatus : undefined,
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  }), [selectedProductId, selectedStatus, dateRange.start, dateRange.end]);
+  
+  const { data: contracts = [], isLoading } = useContracts(queryFilters);
   const { data: metrics } = useContractMetrics();
+
+  // Apply client-side payment status filter
+  const filteredContracts = useMemo(() => {
+    if (selectedPaymentStatus === 'all') {
+      return contracts;
+    }
+    
+    return contracts.filter(contract => {
+      const paymentStatus = getPaymentStatus(contract);
+      return paymentStatus === selectedPaymentStatus;
+    });
+  }, [contracts, selectedPaymentStatus]);
+
+  // Calculate filtered metrics
+  const filteredMetrics = useMemo(() => {
+    const activeContracts = filteredContracts.filter(c => c.status === 'active');
+    return {
+      totalPbs: activeContracts.reduce((sum, c) => sum + Number(c.calculated_pbs || 0), 0),
+      totalValue: activeContracts.reduce((sum, c) => sum + Number(c.contract_value || 0), 0),
+      count: filteredContracts.length,
+    };
+  }, [filteredContracts]);
+
+  // Export function
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      
+      const exportData = filteredContracts.map(contract => ({
+        'Contato': contract.contact?.full_name || '-',
+        'Produto': contract.product?.name || '-',
+        'Categoria': contract.product?.category?.name || '-',
+        'Valor': contract.contract_value,
+        'PBs': contract.calculated_pbs,
+        'Data': format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR }),
+        'Status': contract.status === 'active' ? 'Ativo' : contract.status === 'pending' ? 'Pendente' : 'Cancelado',
+        'Status Pagamento': getPaymentStatusLabel(contract),
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Contratos');
+      
+      const fileName = `contratos-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      toast({ title: 'Exportação concluída!', description: `${filteredContracts.length} contratos exportados.` });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({ title: 'Erro ao exportar', description: 'Não foi possível exportar os dados.', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Real-time subscription for contract updates
   useEffect(() => {
@@ -272,10 +418,27 @@ export default function Contracts() {
         <p className="text-muted-foreground">Visualize todos os contratos registrados</p>
       </div>
 
+      <ContractsFilters
+        selectedProductId={selectedProductId}
+        selectedPeriod={selectedPeriod}
+        selectedStatus={selectedStatus}
+        selectedPaymentStatus={selectedPaymentStatus}
+        customDateStart={customDateStart}
+        customDateEnd={customDateEnd}
+        onProductChange={setSelectedProductId}
+        onPeriodChange={setSelectedPeriod}
+        onStatusChange={setSelectedStatus}
+        onPaymentStatusChange={setSelectedPaymentStatus}
+        onCustomDateStartChange={setCustomDateStart}
+        onCustomDateEndChange={setCustomDateEnd}
+        onExport={handleExport}
+        isExporting={isExporting}
+      />
+
       <MetricsCards 
-        totalPbs={metrics?.totalPbs || 0}
-        totalValue={metrics?.totalValue || 0}
-        count={metrics?.count || 0}
+        totalPbs={filteredMetrics.totalPbs}
+        totalValue={filteredMetrics.totalValue}
+        count={filteredMetrics.count}
       />
 
       <Card>
@@ -283,15 +446,44 @@ export default function Contracts() {
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Todos os Contratos
+            {filteredContracts.length !== contracts.length && (
+              <Badge variant="secondary" className="ml-2">
+                {filteredContracts.length} de {contracts.length}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ContractsTable 
-            contracts={contracts} 
+            contracts={filteredContracts} 
             isLoading={isLoading}
           />
         </CardContent>
       </Card>
     </div>
   );
+}
+
+function getPaymentStatusLabel(contract: {
+  vindi_status?: string | null;
+  opportunity_id?: string | null;
+  product?: { category_id?: string | null } | null;
+  opportunity?: { current_stage?: { name: string } | null } | null;
+}): string {
+  const status = getPaymentStatus(contract);
+  
+  switch (status) {
+    case 'paid':
+      return 'Pago';
+    case 'pending':
+      return 'Aguardando';
+    case 'rejected':
+      return 'Rejeitado';
+    case 'cancelled':
+      return 'Cancelado';
+    case 'refunded':
+      return 'Estornado';
+    default:
+      return '-';
+  }
 }
