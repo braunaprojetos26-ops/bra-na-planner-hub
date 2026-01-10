@@ -422,3 +422,96 @@ export function useUpdateClientPlan() {
     },
   });
 }
+
+// Hook para buscar clientes inadimplentes
+export function useDelinquentClients() {
+  const { user } = useAuth();
+  const { actingUser, isImpersonating } = useActingUser();
+  const targetUserId = isImpersonating && actingUser ? actingUser.id : user?.id;
+
+  return useQuery({
+    queryKey: ['delinquent-clients', targetUserId],
+    queryFn: async () => {
+      // Buscar contratos com vindi_status = 'overdue' ou similar
+      let query = supabase
+        .from('contracts')
+        .select(`
+          id,
+          contact_id,
+          installment_value,
+          installments,
+          vindi_status,
+          billing_date,
+          custom_data,
+          contact:contacts(id, full_name)
+        `)
+        .eq('status', 'active')
+        .in('vindi_status', ['overdue', 'pending']);
+
+      if (targetUserId) {
+        query = query.eq('owner_id', targetUserId);
+      }
+
+      const { data: contracts, error } = await query;
+      if (error) throw error;
+
+      // Buscar planos de cliente para mapear contact_id para client plan id
+      let plansQuery = supabase
+        .from('client_plans')
+        .select('id, contact_id')
+        .eq('status', 'active');
+
+      if (targetUserId) {
+        plansQuery = plansQuery.eq('owner_id', targetUserId);
+      }
+
+      const { data: plans, error: plansError } = await plansQuery;
+      if (plansError) throw plansError;
+
+      const planByContact = new Map(plans?.map(p => [p.contact_id, p.id]) || []);
+
+      // Filtrar apenas contratos com atraso (vindi_status = 'overdue')
+      const delinquentContracts = contracts?.filter(c => c.vindi_status === 'overdue') || [];
+
+      // Agrupar por contato
+      const clientsMap = new Map<string, {
+        clientId: string;
+        clientName: string;
+        contactId: string;
+        overdueInstallments: number;
+        overdueAmount: number;
+        lastDueDate: string;
+      }>();
+
+      delinquentContracts.forEach(contract => {
+        const contactId = contract.contact_id;
+        const clientId = planByContact.get(contactId) || contactId;
+        const clientName = (contract.contact as any)?.full_name || 'Cliente';
+        const customData = contract.custom_data as Record<string, unknown> | null;
+        const paidInstallments = (customData?.paid_installments as number) || 0;
+        const totalInstallments = contract.installments || 1;
+        const overdueInstallments = Math.max(1, totalInstallments - paidInstallments);
+        const installmentValue = contract.installment_value || 0;
+        const overdueAmount = overdueInstallments * installmentValue;
+
+        const existing = clientsMap.get(contactId);
+        if (existing) {
+          existing.overdueInstallments += overdueInstallments;
+          existing.overdueAmount += overdueAmount;
+        } else {
+          clientsMap.set(contactId, {
+            clientId,
+            clientName,
+            contactId,
+            overdueInstallments,
+            overdueAmount,
+            lastDueDate: contract.billing_date || '',
+          });
+        }
+      });
+
+      return Array.from(clientsMap.values());
+    },
+    enabled: !!user,
+  });
+}

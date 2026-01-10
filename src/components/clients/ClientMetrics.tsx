@@ -1,12 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, Calendar, CalendarCheck, DollarSign, Briefcase, Shield, TrendingUp, CreditCard, HeartPulse } from 'lucide-react';
+import { Users, Calendar, DollarSign, Briefcase, Shield, TrendingUp, CreditCard, HeartPulse, AlertTriangle } from 'lucide-react';
 import type { ClientMetrics as ClientMetricsType } from '@/types/clients';
 import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
+import type { DelinquentClient } from './DelinquentClientsDrawer';
 
 interface ClientMetricsProps {
   metrics: ClientMetricsType | undefined;
   isLoading: boolean;
+  delinquentClients?: DelinquentClient[];
+  onDelinquentClick?: () => void;
 }
 
 function formatCurrency(value: number): string {
@@ -18,13 +21,16 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
+export function ClientMetrics({ metrics, isLoading, delinquentClients = [], onDelinquentClick }: ClientMetricsProps) {
   const navigate = useNavigate();
   const { data: healthData, isLoading: isHealthLoading } = useHealthScore();
 
   const averageScore = healthData?.summary?.averageScore ?? 0;
   const category = averageScore >= 75 ? 'otimo' : averageScore >= 50 ? 'estavel' : averageScore >= 30 ? 'atencao' : 'critico';
   const categoryConfig = CATEGORY_CONFIG[category];
+
+  const delinquentCount = delinquentClients.length;
+  const delinquentAmount = delinquentClients.reduce((sum, c) => sum + c.overdueAmount, 0);
 
   const cards = [
     {
@@ -35,12 +41,14 @@ export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
       bgColor: 'bg-blue-500/10',
     },
     {
-      title: 'Reuniões Realizadas',
-      value: metrics?.meetingsCompletedThisMonth ?? 0,
-      subtitle: 'este mês',
-      icon: CalendarCheck,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
+      title: 'Inadimplentes',
+      value: delinquentCount,
+      subtitle: delinquentAmount > 0 ? formatCurrency(delinquentAmount) : undefined,
+      icon: AlertTriangle,
+      color: delinquentCount > 0 ? 'text-red-500' : 'text-green-500',
+      bgColor: delinquentCount > 0 ? 'bg-red-500/10' : 'bg-green-500/10',
+      onClick: onDelinquentClick,
+      clickable: true,
     },
     {
       title: 'Reuniões Pendentes',
@@ -138,7 +146,11 @@ export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
 
         {/* General Metrics Cards */}
         {cards.map((card) => (
-          <Card key={card.title}>
+          <Card 
+            key={card.title}
+            className={card.clickable ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}
+            onClick={card.onClick}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${card.bgColor}`}>
@@ -149,7 +161,7 @@ export function ClientMetrics({ metrics, isLoading }: ClientMetricsProps) {
                   {isLoading ? (
                     <div className="h-6 w-16 bg-muted animate-pulse rounded" />
                   ) : (
-                    <p className="text-xl font-bold">
+                    <p className={`text-xl font-bold ${card.color}`}>
                       {card.isFormatted ? card.value : card.value}
                     </p>
                   )}
