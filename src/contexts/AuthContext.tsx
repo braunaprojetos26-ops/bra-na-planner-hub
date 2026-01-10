@@ -11,6 +11,8 @@ interface Profile {
   email: string;
   is_active: boolean;
   position: string | null;
+  is_trainer: boolean;
+  cohort_date: string | null;
   created_at: string;
   updated_at: string;
 }
