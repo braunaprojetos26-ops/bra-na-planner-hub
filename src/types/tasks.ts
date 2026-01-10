@@ -5,6 +5,7 @@ export interface Task {
   id: string;
   opportunity_id: string;
   created_by: string;
+  assigned_to?: string | null;
   title: string;
   description: string | null;
   task_type: TaskType;
@@ -30,10 +31,21 @@ export interface Task {
   created_by_profile?: {
     full_name: string;
   };
+  assigned_to_profile?: {
+    full_name: string;
+  };
 }
 
 export interface TaskFormData {
   opportunity_id: string;
+  title: string;
+  description?: string;
+  task_type: TaskType;
+  scheduled_at: string;
+}
+
+export interface TeamTaskFormData {
+  assigned_to: string;
   title: string;
   description?: string;
   task_type: TaskType;
