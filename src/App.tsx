@@ -45,6 +45,7 @@ import TrainingCourse from "./pages/TrainingCourse";
 import TrainingModule from "./pages/TrainingModule";
 import TrainingExam from "./pages/TrainingExam";
 import TrainingRankings from "./pages/TrainingRankings";
+import Settings from "./pages/Settings";
 const queryClient = new QueryClient();
 
 const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
@@ -112,6 +113,7 @@ const App = () => (
                 <Route path="/training/:courseId/:moduleId" element={<ProtectedPage><TrainingModule /></ProtectedPage>} />
                 <Route path="/training/exam/:examId" element={<ProtectedPage><TrainingExam /></ProtectedPage>} />
                 <Route path="/training/rankings" element={<ProtectedPage><TrainingRankings /></ProtectedPage>} />
+                <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ActingUserProvider>
