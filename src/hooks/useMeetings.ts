@@ -3,6 +3,49 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meeting } from '@/types/meetings';
 
+// Helper to create Outlook calendar event
+async function createOutlookEvent(meeting: {
+  meeting_type: string;
+  scheduled_at: Date;
+  duration_minutes: number;
+  participants: string[];
+  contact_name: string;
+}) {
+  try {
+    // Check if user has Outlook connected
+    const { data: connection } = await supabase
+      .from('outlook_connections')
+      .select('id')
+      .maybeSingle();
+
+    if (!connection) {
+      console.log('Outlook not connected, skipping calendar event creation');
+      return;
+    }
+
+    const endTime = new Date(meeting.scheduled_at);
+    endTime.setMinutes(endTime.getMinutes() + meeting.duration_minutes);
+
+    await supabase.functions.invoke('outlook-calendar', {
+      body: {
+        action: 'create-event',
+        event: {
+          subject: `${meeting.meeting_type} - ${meeting.contact_name}`,
+          start: meeting.scheduled_at.toISOString(),
+          end: endTime.toISOString(),
+          attendees: meeting.participants,
+          body: `<p>Reunião de <strong>${meeting.meeting_type}</strong> com <strong>${meeting.contact_name}</strong></p>`,
+        },
+      },
+    });
+
+    console.log('Outlook calendar event created successfully');
+  } catch (error) {
+    console.error('Error creating Outlook event:', error);
+    // Don't throw - we don't want to fail the meeting creation if Outlook fails
+  }
+}
+
 export function useMeetings(contactId?: string) {
   const { user } = useAuth();
 
@@ -64,8 +107,9 @@ export function useCreateMeeting() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ contactId, opportunityId, data: meetingData }: { 
+    mutationFn: async ({ contactId, contactName, opportunityId, data: meetingData }: { 
       contactId: string; 
+      contactName?: string;
       opportunityId?: string | null;
       data: {
         meeting_type: string;
@@ -103,6 +147,17 @@ export function useCreateMeeting() {
         action: `Reunião agendada: ${meetingData.meeting_type}`,
         notes: meetingData.notes || null,
       });
+
+      // Try to create Outlook calendar event (non-blocking)
+      if (contactName) {
+        createOutlookEvent({
+          meeting_type: meetingData.meeting_type,
+          scheduled_at: meetingData.scheduled_at,
+          duration_minutes: meetingData.duration_minutes,
+          participants: meetingData.participants,
+          contact_name: contactName,
+        });
+      }
 
       return data;
     },

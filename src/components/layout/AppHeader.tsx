@@ -1,4 +1,5 @@
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { LogOut, Moon, Sun, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const roleLabels: Record<string, string> = {
 export function AppHeader() {
   const { profile, role, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   const getInitials = (name: string) => {
     return name
@@ -77,6 +79,11 @@ export function AppHeader() {
                 <p className="text-xs text-muted-foreground font-normal">{profile?.email}</p>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={signOut}>
               <LogOut className="mr-2 h-4 w-4" />

@@ -229,6 +229,7 @@ export function ScheduleMeetingModal({
       } else {
         const newMeeting = await createMeeting.mutateAsync({
           contactId,
+          contactName, // Pass contact name for Outlook integration
           opportunityId: selectedOpportunityId,
           data: {
             meeting_type: data.meeting_type as any,
