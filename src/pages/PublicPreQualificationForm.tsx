@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -14,20 +14,73 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import braunaLogoWhite from '@/assets/brauna-logo-vertical-white.png';
 import type { Json } from '@/integrations/supabase/types';
 import {
-  usePreQualificationByToken,
   useActivePreQualificationQuestions,
-  useSubmitPreQualificationResponse,
   PreQualificationQuestion,
 } from '@/hooks/usePreQualification';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+interface ResponseData {
+  id: string;
+  token: string;
+  submitted_at: string | null;
+  responses: Json;
+  contact_id: string;
+  meeting_id: string | null;
+  contact: { id: string; full_name: string } | null;
+  meeting: { id: string; scheduled_at: string; meeting_type: string } | null;
+}
 
 export default function PublicPreQualificationForm() {
   const { token } = useParams<{ token: string }>();
   const [responses, setResponses] = useState<Record<string, string | number | boolean | string[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [responseData, setResponseData] = useState<ResponseData | null>(null);
+  const [isLoadingResponse, setIsLoadingResponse] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitSuccess, setIsSubmitSuccess] = useState(false);
 
-  const { data: responseData, isLoading: isLoadingResponse } = usePreQualificationByToken(token);
   const { data: questions, isLoading: isLoadingQuestions } = useActivePreQualificationQuestions();
-  const submitMutation = useSubmitPreQualificationResponse();
+
+  // Fetch response data via edge function (secure, no RLS bypass needed)
+  useEffect(() => {
+    async function fetchResponseData() {
+      if (!token) {
+        setIsLoadingResponse(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/pre-qualification-public?token=${encodeURIComponent(token)}`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          setFetchError(errorData.error || 'Token not found');
+          setIsLoadingResponse(false);
+          return;
+        }
+
+        const data = await response.json();
+        setResponseData(data);
+      } catch (error) {
+        console.error('Error fetching response:', error);
+        setFetchError('Failed to load form');
+      } finally {
+        setIsLoadingResponse(false);
+      }
+    }
+
+    fetchResponseData();
+  }, [token]);
 
   const isLoading = isLoadingResponse || isLoadingQuestions;
 
@@ -64,7 +117,32 @@ export default function PublicPreQualificationForm() {
 
     if (!validate() || !token) return;
 
-    await submitMutation.mutateAsync({ token, responses });
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/pre-qualification-public`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token, responses }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit');
+      }
+
+      setIsSubmitSuccess(true);
+    } catch (error) {
+      console.error('Error submitting:', error);
+      setErrors({ _form: 'Erro ao enviar respostas. Tente novamente.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderField = (question: PreQualificationQuestion) => {
@@ -177,8 +255,8 @@ export default function PublicPreQualificationForm() {
     );
   }
 
-  // Token not found
-  if (!responseData) {
+  // Token not found or error
+  if (fetchError || !responseData) {
     return (
       <div className={`${pageBackground} flex items-center justify-center p-4`}>
         <Card className="max-w-md w-full">
@@ -235,7 +313,7 @@ export default function PublicPreQualificationForm() {
   }
 
   // Success state after submission
-  if (submitMutation.isSuccess) {
+  if (isSubmitSuccess) {
     return (
       <div className={`${pageBackground} flex items-center justify-center p-4`}>
         <Card className="max-w-md w-full">
@@ -272,7 +350,7 @@ export default function PublicPreQualificationForm() {
             <h1 className="text-2xl font-bold text-white">Formulário de Pré-Qualificação</h1>
             {responseData.contact && (
               <p className="text-white/80 mt-1">
-                Olá, {(responseData.contact as { full_name: string }).full_name}!
+                Olá, {responseData.contact.full_name}!
               </p>
             )}
           </div>
@@ -289,7 +367,7 @@ export default function PublicPreQualificationForm() {
                 <div>
                   <p className="text-sm text-muted-foreground">Reunião agendada para</p>
                   <p className="font-medium">
-                    {format(new Date((responseData.meeting as { scheduled_at: string }).scheduled_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(responseData.meeting.scheduled_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                   </p>
                 </div>
               </div>
@@ -320,13 +398,17 @@ export default function PublicPreQualificationForm() {
                 </div>
               ))}
 
+              {errors._form && (
+                <p className="text-sm text-destructive text-center">{errors._form}</p>
+              )}
+
               <Button
                 type="submit"
                 className="w-full"
                 size="lg"
-                disabled={submitMutation.isPending}
+                disabled={isSubmitting}
               >
-                {submitMutation.isPending ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Enviando...
