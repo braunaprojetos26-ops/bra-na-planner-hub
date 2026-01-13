@@ -38,6 +38,7 @@ import NotificationHistory from "./pages/NotificationHistory";
 import OpportunityMap from "./pages/OpportunityMap";
 import ProspectionAnalytics from "./pages/ProspectionAnalytics";
 import ChurnAnalytics from "./pages/ChurnAnalytics";
+import NpsAnalytics from "./pages/NpsAnalytics";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import ProjectPageDetail from "./pages/ProjectPageDetail";
@@ -98,6 +99,7 @@ const App = () => (
                 <Route path="/analytics/opportunity-map" element={<ProtectedPage><OpportunityMap /></ProtectedPage>} />
                 <Route path="/analytics/prospection" element={<ProtectedPage><ProspectionAnalytics /></ProtectedPage>} />
                 <Route path="/analytics/churn" element={<ProtectedPage><ChurnAnalytics /></ProtectedPage>} />
+                <Route path="/analytics/nps" element={<ProtectedPage><NpsAnalytics /></ProtectedPage>} />
                 <Route path="/wiki" element={<ProtectedPage><Wiki /></ProtectedPage>} />
                 <Route path="/wiki/:categorySlug" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
                 <Route path="/wiki/:categorySlug/:folderId" element={<ProtectedPage><WikiCategory /></ProtectedPage>} />
