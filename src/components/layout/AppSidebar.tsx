@@ -18,6 +18,7 @@ import {
   Map,
   Heart,
   FolderKanban,
+  UserMinus,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -54,7 +55,7 @@ const analyticsSubItems = [
   { title: 'Health Score', url: '/analytics/health-score', icon: Heart },
   { title: 'Mapa de Oportunidades', url: '/analytics/opportunity-map', icon: Map },
   { title: 'Lista de Prospecção', url: '/analytics/prospection', icon: Users },
-  
+  { title: 'Cancelamentos', url: '/analytics/churn', icon: UserMinus },
 ];
 
 const teamSubItems = [
