@@ -11,34 +11,27 @@ interface NpsFiltersProps {
   startDate: Date | null;
   endDate: Date | null;
   ownerId: string | null;
-  productId: string | null;
   onStartDateChange: (date: Date | null) => void;
   onEndDateChange: (date: Date | null) => void;
   onOwnerChange: (ownerId: string | null) => void;
-  onProductChange: (productId: string | null) => void;
   owners: Array<{ user_id: string; full_name: string }>;
-  products: Array<{ id: string; name: string }>;
 }
 
 export function NpsFilters({
   startDate,
   endDate,
   ownerId,
-  productId,
   onStartDateChange,
   onEndDateChange,
   onOwnerChange,
-  onProductChange,
   owners,
-  products,
 }: NpsFiltersProps) {
-  const hasFilters = startDate || endDate || ownerId || productId;
+  const hasFilters = startDate || endDate || ownerId;
 
   const clearFilters = () => {
     onStartDateChange(null);
     onEndDateChange(null);
     onOwnerChange(null);
-    onProductChange(null);
   };
 
   return (
@@ -100,20 +93,6 @@ export function NpsFilters({
           {owners.map((owner) => (
             <SelectItem key={owner.user_id} value={owner.user_id}>
               {owner.full_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select value={productId || 'all'} onValueChange={(v) => onProductChange(v === 'all' ? null : v)}>
-        <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="Produto" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos</SelectItem>
-          {products.map((product) => (
-            <SelectItem key={product.id} value={product.id}>
-              {product.name}
             </SelectItem>
           ))}
         </SelectContent>
