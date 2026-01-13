@@ -7,7 +7,6 @@ interface NpsFilters {
   startDate: Date | null;
   endDate: Date | null;
   ownerId: string | null;
-  productId: string | null;
 }
 
 interface NpsMetrics {
@@ -116,16 +115,7 @@ export function useNpsAnalytics(filters: NpsFilters) {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
 
-      // Filter by product if specified
-      let filteredResponses = npsResponses || [];
-      if (filters.productId) {
-        const contactsWithProduct = contracts
-          ?.filter(c => c.product_id === filters.productId)
-          .map(c => c.contact_id) || [];
-        filteredResponses = filteredResponses.filter(r => 
-          contactsWithProduct.includes(r.contact_id)
-        );
-      }
+      const filteredResponses = npsResponses || [];
 
       // Calculate metrics
       const metrics = calculateMetrics(filteredResponses, totalClients || 0);
@@ -345,14 +335,13 @@ export function useNpsFilterOptions() {
   return useQuery({
     queryKey: ['nps-filter-options'],
     queryFn: async () => {
-      const [{ data: owners }, { data: products }] = await Promise.all([
-        supabase.from('profiles').select('user_id, full_name').order('full_name'),
-        supabase.from('products').select('id, name').eq('is_active', true).order('name'),
-      ]);
+      const { data: owners } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .order('full_name');
 
       return {
         owners: owners || [],
-        products: products || [],
       };
     },
   });

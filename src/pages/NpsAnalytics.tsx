@@ -17,13 +17,11 @@ export default function NpsAnalytics() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
-  const [productId, setProductId] = useState<string | null>(null);
 
   const { data, isLoading } = useNpsAnalytics({
     startDate,
     endDate,
     ownerId,
-    productId,
   });
 
   const { data: filterOptions } = useNpsFilterOptions();
@@ -52,13 +50,10 @@ export default function NpsAnalytics() {
         startDate={startDate}
         endDate={endDate}
         ownerId={ownerId}
-        productId={productId}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
         onOwnerChange={setOwnerId}
-        onProductChange={setProductId}
         owners={filterOptions?.owners || []}
-        products={filterOptions?.products || []}
       />
 
       {isLoading ? (
