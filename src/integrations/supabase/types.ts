@@ -517,6 +517,70 @@ export type Database = {
           },
         ]
       }
+      contract_cancellations: {
+        Row: {
+          cancelled_at: string
+          cancelled_by: string
+          contract_id: string
+          contract_month: number | null
+          contract_value: number
+          created_at: string
+          id: string
+          last_completed_meeting: number | null
+          reason_details: string | null
+          reason_id: string | null
+          total_meetings_planned: number | null
+        }
+        Insert: {
+          cancelled_at?: string
+          cancelled_by: string
+          contract_id: string
+          contract_month?: number | null
+          contract_value: number
+          created_at?: string
+          id?: string
+          last_completed_meeting?: number | null
+          reason_details?: string | null
+          reason_id?: string | null
+          total_meetings_planned?: number | null
+        }
+        Update: {
+          cancelled_at?: string
+          cancelled_by?: string
+          contract_id?: string
+          contract_month?: number | null
+          contract_value?: number
+          created_at?: string
+          id?: string
+          last_completed_meeting?: number | null
+          reason_details?: string | null
+          reason_id?: string | null
+          total_meetings_planned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_cancellations_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contract_cancellations_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_cancellations_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "lost_reasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           billing_date: string | null
