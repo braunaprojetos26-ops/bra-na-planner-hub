@@ -91,12 +91,12 @@ export function NpsFilters({
         </PopoverContent>
       </Popover>
 
-      <Select value={ownerId || ''} onValueChange={(v) => onOwnerChange(v || null)}>
+      <Select value={ownerId || 'all'} onValueChange={(v) => onOwnerChange(v === 'all' ? null : v)}>
         <SelectTrigger className="w-[200px]">
           <SelectValue placeholder="Planejador" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todos</SelectItem>
+          <SelectItem value="all">Todos</SelectItem>
           {owners.map((owner) => (
             <SelectItem key={owner.user_id} value={owner.user_id}>
               {owner.full_name}
@@ -105,12 +105,12 @@ export function NpsFilters({
         </SelectContent>
       </Select>
 
-      <Select value={productId || ''} onValueChange={(v) => onProductChange(v || null)}>
+      <Select value={productId || 'all'} onValueChange={(v) => onProductChange(v === 'all' ? null : v)}>
         <SelectTrigger className="w-[200px]">
           <SelectValue placeholder="Produto" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todos</SelectItem>
+          <SelectItem value="all">Todos</SelectItem>
           {products.map((product) => (
             <SelectItem key={product.id} value={product.id}>
               {product.name}
