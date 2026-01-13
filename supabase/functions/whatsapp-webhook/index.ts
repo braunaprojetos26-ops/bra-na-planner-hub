@@ -38,6 +38,26 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Validate API key authentication
+  const apiKey = req.headers.get('X-API-Key');
+  const expectedKey = Deno.env.get('WHATSAPP_WEBHOOK_API_KEY');
+
+  if (!expectedKey) {
+    console.error('WHATSAPP_WEBHOOK_API_KEY is not configured');
+    return new Response(
+      JSON.stringify({ error: 'Server configuration error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!apiKey || apiKey !== expectedKey) {
+    console.error('Invalid or missing API key');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const payload: WhatsAppMessage = await req.json();
     console.log('Received WhatsApp message:', JSON.stringify(payload));
