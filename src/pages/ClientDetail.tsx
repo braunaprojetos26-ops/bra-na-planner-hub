@@ -9,9 +9,9 @@ import { Progress } from '@/components/ui/progress';
 import { ClientMeetingsTimeline } from '@/components/clients/ClientMeetingsTimeline';
 import { ClientTasksSection } from '@/components/clients/ClientTasksSection';
 import { ClientMinutesSection } from '@/components/clients/ClientMinutesSection';
+import { ClientPaymentSection } from '@/components/clients/ClientPaymentSection';
 import { useClientPlan } from '@/hooks/useClients';
 import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -252,6 +252,11 @@ export default function ClientDetail() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Payments Section */}
+      {contactId && (
+        <ClientPaymentSection contactId={contactId} />
       )}
 
       {/* Meetings Timeline */}
