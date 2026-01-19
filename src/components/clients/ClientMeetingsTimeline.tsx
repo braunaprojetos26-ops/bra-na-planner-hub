@@ -21,7 +21,7 @@ import {
 import { useMarkMeetingCompleted } from '@/hooks/useClientMeetings';
 import { EditPlanMeetingModal } from './EditPlanMeetingModal';
 import { LinkMeetingModal } from './LinkMeetingModal';
-import type { ClientPlanMeeting } from '@/types/clients';
+import { CLIENT_PLAN_MEETING_THEMES, type ClientPlanMeeting, type ClientPlanMeetingTheme } from '@/types/clients';
 
 interface ClientMeetingsTimelineProps {
   meetings: ClientPlanMeeting[];
@@ -72,7 +72,9 @@ export function ClientMeetingsTimeline({ meetings, contactId }: ClientMeetingsTi
   };
 
   const isPlaceholderTheme = (theme: string, meetingNumber: number) => {
-    return theme === `Reunião ${meetingNumber}`;
+    // Check if theme is a placeholder (Reunião X) or not in the valid themes list
+    if (theme === `Reunião ${meetingNumber}`) return true;
+    return !CLIENT_PLAN_MEETING_THEMES.includes(theme as ClientPlanMeetingTheme);
   };
 
   return (
