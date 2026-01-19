@@ -84,7 +84,15 @@ export function ClientCard({ client }: ClientCardProps) {
           <div className="flex items-center gap-2">
             <Badge variant={status.variant}>{status.label}</Badge>
             {overdueMeetings > 0 && (
-              <Badge variant="destructive">{overdueMeetings} atrasada{overdueMeetings > 1 ? 's' : ''}</Badge>
+              <Badge variant="destructive">
+                {overdueMeetings} reunião{overdueMeetings > 1 ? 'ões' : ''} atrasada{overdueMeetings > 1 ? 's' : ''}
+              </Badge>
+            )}
+            {/* Overdue payments badge */}
+            {!isPaymentLoading && paymentData && paymentData.overdueCount > 0 && (
+              <Badge variant="destructive">
+                {paymentData.overdueCount} pagamento{paymentData.overdueCount > 1 ? 's' : ''} atrasado{paymentData.overdueCount > 1 ? 's' : ''}
+              </Badge>
             )}
             {(client.productCount ?? 0) > 0 && (
               <Badge variant="outline" className="gap-1">
