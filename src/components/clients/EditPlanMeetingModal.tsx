@@ -18,7 +18,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -29,10 +35,12 @@ import {
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUpdatePlanMeeting } from '@/hooks/useClientMeetings';
-import type { ClientPlanMeeting } from '@/types/clients';
+import { CLIENT_PLAN_MEETING_THEMES, type ClientPlanMeeting } from '@/types/clients';
 
 const formSchema = z.object({
-  theme: z.string().min(1, 'Tema obrigatório'),
+  theme: z.enum(CLIENT_PLAN_MEETING_THEMES, { 
+    required_error: 'Selecione o tema da reunião' 
+  }),
   scheduled_date: z.date({ required_error: 'Data obrigatória' }),
 });
 
@@ -52,15 +60,20 @@ export function EditPlanMeetingModal({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      theme: '',
+      theme: undefined,
       scheduled_date: new Date(),
     },
   });
 
   useEffect(() => {
     if (meeting && open) {
+      // Check if meeting theme is a valid theme option
+      const isValidTheme = CLIENT_PLAN_MEETING_THEMES.includes(
+        meeting.theme as typeof CLIENT_PLAN_MEETING_THEMES[number]
+      );
+      
       form.reset({
-        theme: meeting.theme,
+        theme: isValidTheme ? (meeting.theme as typeof CLIENT_PLAN_MEETING_THEMES[number]) : undefined,
         scheduled_date: parseISO(meeting.scheduled_date),
       });
     }
@@ -88,7 +101,7 @@ export function EditPlanMeetingModal({
         <DialogHeader>
           <DialogTitle>Editar Reunião {meeting.meeting_number}</DialogTitle>
           <DialogDescription>
-            Altere o tema e a data prevista para esta reunião do cronograma.
+            Selecione o tema e a data prevista para esta reunião do cronograma.
           </DialogDescription>
         </DialogHeader>
 
@@ -100,9 +113,20 @@ export function EditPlanMeetingModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tema da Reunião *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Análise Patrimonial" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tema" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CLIENT_PLAN_MEETING_THEMES.map((theme) => (
+                        <SelectItem key={theme} value={theme}>
+                          {theme}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
