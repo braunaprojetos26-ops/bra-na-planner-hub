@@ -10,6 +10,7 @@ import { ClientMeetingsTimeline } from '@/components/clients/ClientMeetingsTimel
 import { ClientTasksSection } from '@/components/clients/ClientTasksSection';
 import { ClientMinutesSection } from '@/components/clients/ClientMinutesSection';
 import { ClientPaymentSection } from '@/components/clients/ClientPaymentSection';
+import { ClientProductsSection } from '@/components/clients/ClientProductsSection';
 import { useClientPlan } from '@/hooks/useClients';
 import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
 function formatCurrency(value: number): string {
@@ -252,6 +253,11 @@ export default function ClientDetail() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Products Section */}
+      {contactId && (
+        <ClientProductsSection contactId={contactId} />
       )}
 
       {/* Payments Section */}
