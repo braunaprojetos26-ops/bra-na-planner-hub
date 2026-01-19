@@ -2,11 +2,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { User, DollarSign, Calendar, ChevronRight, Package, CreditCard } from 'lucide-react';
+import { User, DollarSign, Calendar, ChevronRight, Package, CreditCard, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, isBefore, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { ClientPlan } from '@/types/clients';
+import { useClientPayments } from '@/hooks/useClientPayments';
 
 interface ClientCardProps {
   client: ClientPlan;
@@ -23,11 +24,11 @@ function formatCurrency(value: number): string {
 
 export function ClientCard({ client }: ClientCardProps) {
   const navigate = useNavigate();
+  const { data: paymentData, isLoading: isPaymentLoading } = useClientPayments(client.contact_id);
 
   const completedMeetings = client.plan_meetings?.filter(m => m.status === 'completed').length || 0;
   const totalMeetings = client.total_meetings;
   const progressPercent = Math.round((completedMeetings / totalMeetings) * 100);
-
   // Find next pending meeting
   const pendingMeetings = client.plan_meetings
     ?.filter(m => m.status === 'pending' || m.status === 'scheduled')
@@ -91,24 +92,28 @@ export function ClientCard({ client }: ClientCardProps) {
                 {client.productCount}
               </Badge>
             )}
-            {client.paymentProgress && (
+            {/* Real-time Vindi Payment Status */}
+            {isPaymentLoading ? (
+              <Badge variant="outline" className="gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+              </Badge>
+            ) : paymentData && paymentData.totalCount > 0 ? (
               <Badge 
                 variant="outline" 
                 className={`gap-1 ${
-                  client.paymentProgress.vindiStatus === 'paid' 
+                  paymentData.isUpToDate 
                     ? 'bg-green-500/10 text-green-600 border-green-500/20' 
-                    : client.paymentProgress.vindiStatus === 'pending'
-                    ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
-                    : ''
+                    : 'bg-red-500/10 text-red-600 border-red-500/20'
                 }`}
               >
-                <CreditCard className="h-3 w-3" />
-                {client.paymentProgress.totalInstallments > 1 
-                  ? `${client.paymentProgress.paidInstallments}/${client.paymentProgress.totalInstallments}`
-                  : client.paymentProgress.vindiStatus === 'paid' ? 'Pago' : 'Pendente'
-                }
+                {paymentData.isUpToDate ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <AlertTriangle className="h-3 w-3" />
+                )}
+                {paymentData.paidCount}/{paymentData.totalCount}
               </Badge>
-            )}
+            ) : null}
           </div>
         </div>
 
