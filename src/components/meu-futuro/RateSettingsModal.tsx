@@ -80,14 +80,14 @@ export function RateSettingsModal({
                 onChange={(e) => {
                   const digits = e.target.value.replace(/\D/g, "");
                   if (digits === "") {
-                    onIdadeAtualChange(18);
+                    onIdadeAtualChange(0);
                     return;
                   }
                   const num = parseInt(digits, 10);
                   onIdadeAtualChange(Math.min(90, num));
                 }}
                 onBlur={() => {
-                  onIdadeAtualChange(Math.max(18, Math.min(90, idadeAtual)));
+                  onIdadeAtualChange(Math.max(0, Math.min(90, idadeAtual)));
                 }}
                 className="pr-12 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
               />
