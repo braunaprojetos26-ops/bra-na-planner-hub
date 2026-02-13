@@ -45,7 +45,7 @@ export default function MeuFuturo() {
   const [taxaUsufruteAnual, setTaxaUsufruteAnual] = useState(DEFAULT_CONFIG.taxaUsufruteAnual);
 
   // Estados da UI
-  const [showNegatives, setShowNegatives] = useState(false);
+  const [showNegatives, setShowNegatives] = useState(true);
   const [showPrincipalInvestido, setShowPrincipalInvestido] = useState(false);
   const [showPerene, setShowPerene] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("max");
