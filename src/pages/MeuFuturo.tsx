@@ -21,7 +21,7 @@ import { Dream } from "@/types/dreams";
 const DEFAULT_CONFIG = {
   idadeAtual: 33,
   patrimonioInicial: 0,
-  idadeAposentadoria: 65,
+  idadeAposentadoria: 60,
   rendaDesejada: 0,
   investimentoMensal: 0,
   outrasFontesRenda: 0,

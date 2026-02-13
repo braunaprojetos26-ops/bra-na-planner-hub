@@ -74,12 +74,22 @@ export function RateSettingsModal({
             <div className="relative">
               <Input
                 id="idade-atual"
-                type="number"
-                min="18"
-                max="90"
+                type="text"
+                inputMode="numeric"
                 value={idadeAtual}
-                onChange={(e) => onIdadeAtualChange(parseInt(e.target.value) || 18)}
-                className="pr-12"
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "");
+                  if (digits === "") {
+                    onIdadeAtualChange(18);
+                    return;
+                  }
+                  const num = parseInt(digits, 10);
+                  onIdadeAtualChange(Math.min(90, num));
+                }}
+                onBlur={() => {
+                  onIdadeAtualChange(Math.max(18, Math.min(90, idadeAtual)));
+                }}
+                className="pr-12 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                 anos
