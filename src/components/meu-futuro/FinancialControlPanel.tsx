@@ -20,6 +20,8 @@ interface FinancialControlPanelProps {
   aporteNecessario: number;
   aporteIdealMensal: number;
   capitalNecessario: number;
+  capitalNecessarioPerene: number;
+  aporteIdealMensalPerene: number;
   patrimonioFinalAposentadoria: number;
   idadePatrimonioAcaba: number | null;
   idadeFinalIdeal: number;
@@ -117,6 +119,8 @@ export function FinancialControlPanel({
   aporteNecessario,
   aporteIdealMensal,
   capitalNecessario,
+  capitalNecessarioPerene,
+  aporteIdealMensalPerene,
   patrimonioFinalAposentadoria,
   idadePatrimonioAcaba,
   idadeFinalIdeal,
@@ -124,47 +128,65 @@ export function FinancialControlPanel({
   contributionSteps,
   onOpenStepsModal,
 }: FinancialControlPanelProps) {
-  const atingiuMeta = patrimonioFinalAposentadoria >= capitalNecessario;
+  const atingiuMetaConsumptiva = patrimonioFinalAposentadoria >= capitalNecessario;
+  const atingiuMetaPerene = patrimonioFinalAposentadoria >= capitalNecessarioPerene;
   const temRendaDesejada = rendaDesejada > 0;
 
   return (
     <div className="space-y-4">
       {/* Card resumo */}
-      <Card className={atingiuMeta && temRendaDesejada ? "border-emerald-500/50 bg-emerald-500/5" : "border-orange-500/50 bg-orange-500/5"}>
+      <Card className={atingiuMetaPerene && temRendaDesejada ? "border-emerald-500/50 bg-emerald-500/5" : atingiuMetaConsumptiva && temRendaDesejada ? "border-blue-500/50 bg-blue-500/5" : "border-orange-500/50 bg-orange-500/5"}>
         <CardContent className="pt-4">
           {temRendaDesejada ? (
-            atingiuMeta ? (
+            <div className="space-y-3">
+              {/* Cenário consumptivo */}
               <div className="flex items-start gap-3">
-                <TrendingUp className="h-5 w-5 text-emerald-500 mt-0.5" />
+                {atingiuMetaConsumptiva ? (
+                  <TrendingUp className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                )}
                 <div>
-                  <p className="text-sm text-foreground">
-                    Parabéns! Com as configurações atuais, você atingirá sua meta de aposentadoria com{" "}
-                    <span className="font-semibold">{formatCurrency(patrimonioFinalAposentadoria)}</span>.
-                  </p>
-                  {idadePatrimonioAcaba && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Seu patrimônio durará até os {idadePatrimonioAcaba} anos.
+                  <p className="text-xs font-medium text-muted-foreground mb-0.5">Consumindo até {idadeFinalIdeal} anos</p>
+                  {atingiuMetaConsumptiva ? (
+                    <p className="text-xs text-foreground">
+                      Meta atingida com <span className="font-semibold">{formatCurrency(patrimonioFinalAposentadoria)}</span>
+                      {idadePatrimonioAcaba && (
+                        <span className="text-muted-foreground"> — dura até {idadePatrimonioAcaba} anos</span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-foreground">
+                      Precisa de <span className="font-semibold text-orange-600">{formatCurrency(aporteIdealMensal)}/mês</span> para acumular {formatCurrency(capitalNecessario)}
                     </p>
                   )}
                 </div>
               </div>
-            ) : (
+
+              {/* Divisor */}
+              <div className="border-t border-border" />
+
+              {/* Cenário perene */}
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
+                {atingiuMetaPerene ? (
+                  <TrendingUp className="h-4 w-4 text-violet-500 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-violet-400 mt-0.5 shrink-0" />
+                )}
                 <div>
-                  <p className="text-sm text-foreground">
-                    Para a aposentadoria ideal, você precisa investir{" "}
-                    <span className="font-semibold text-orange-600">{formatCurrency(aporteIdealMensal)}/mês</span>{" "}
-                    para acumular{" "}
-                    <span className="font-semibold">{formatCurrency(capitalNecessario)}</span>{" "}
-                    aos {idadeAposentadoria} anos.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    No cenário ideal, o patrimônio durará até os {idadeFinalIdeal} anos.
-                  </p>
+                  <p className="text-xs font-medium text-muted-foreground mb-0.5">Patrimônio perene</p>
+                  {atingiuMetaPerene ? (
+                    <p className="text-xs text-foreground">
+                      Meta atingida! Patrimônio se mantém indefinidamente com renda de {formatCurrency(rendaDesejada - outrasFontesRenda)}/mês
+                    </p>
+                  ) : (
+                    <p className="text-xs text-foreground">
+                      Precisa de <span className="font-semibold text-violet-600">{formatCurrency(aporteIdealMensalPerene)}/mês</span> para acumular {formatCurrency(capitalNecessarioPerene)}
+                    </p>
+                  )}
                 </div>
               </div>
-            )
+            </div>
           ) : (
             <div className="flex items-start gap-3">
               <TrendingUp className="h-5 w-5 text-muted-foreground mt-0.5" />
