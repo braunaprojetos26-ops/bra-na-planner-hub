@@ -39,8 +39,13 @@ export function ContributionStepsModal({ open, onOpenChange, steps, onConfirm, m
   };
 
   const handleYearsChange = (id: string, value: string) => {
-    const num = parseInt(value.replace(/\D/g, "")) || 0;
-    setLocalSteps(prev => prev.map(s => s.id === id ? { ...s, durationYears: Math.max(1, num) } : s));
+    const cleaned = value.replace(/\D/g, "");
+    const num = cleaned === "" ? 0 : parseInt(cleaned, 10);
+    setLocalSteps(prev => prev.map(s => s.id === id ? { ...s, durationYears: num } : s));
+  };
+
+  const handleYearsBlur = (id: string) => {
+    setLocalSteps(prev => prev.map(s => s.id === id ? { ...s, durationYears: Math.max(1, s.durationYears) } : s));
   };
 
   const handleAmountChange = (id: string, value: string) => {
@@ -69,9 +74,9 @@ export function ContributionStepsModal({ open, onOpenChange, steps, onConfirm, m
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-2 items-center text-xs font-medium text-muted-foreground">
+          <div className="grid grid-cols-[24px_1fr_1fr_32px] gap-2 items-center text-xs font-medium text-muted-foreground">
             <span>#</span>
-            <span>Período</span>
+            <span>Período (anos)</span>
             <span>Aporte mensal</span>
             <span />
           </div>
@@ -79,36 +84,35 @@ export function ContributionStepsModal({ open, onOpenChange, steps, onConfirm, m
           {localSteps.map((step, idx) => {
             const startYear = cumYears;
             cumYears += step.durationYears;
-            const periodLabel = step.durationYears === 1
+            const periodLabel = step.durationYears <= 1
               ? `Ano ${startYear + 1}`
               : `Ano ${startYear + 1} ao ${cumYears}`;
 
             return (
-              <div key={step.id} className="grid grid-cols-[auto_1fr_1fr_auto] gap-2 items-center">
-                <span className="text-xs text-muted-foreground w-4">{idx + 1}</span>
+              <div key={step.id} className="grid grid-cols-[24px_1fr_1fr_32px] gap-2 items-center">
+                <span className="text-xs text-muted-foreground text-center">{idx + 1}</span>
                 <div className="space-y-1">
                   <Input
                     type="text"
                     inputMode="numeric"
-                    value={String(step.durationYears)}
+                    value={step.durationYears === 0 ? "" : String(step.durationYears)}
                     onChange={(e) => handleYearsChange(step.id, e.target.value)}
+                    onBlur={() => handleYearsBlur(step.id)}
                     className="h-8 text-sm"
                     placeholder="Anos"
                   />
                   <span className="text-[10px] text-muted-foreground">{periodLabel}</span>
                 </div>
-                <div>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={step.monthlyAmount > 0 ? step.monthlyAmount.toLocaleString("pt-BR") : ""}
-                      onChange={(e) => handleAmountChange(step.id, e.target.value)}
-                      className="h-8 text-sm pl-8"
-                      placeholder="0"
-                    />
-                  </div>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground z-10">R$</span>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={step.monthlyAmount > 0 ? step.monthlyAmount.toLocaleString("pt-BR") : ""}
+                    onChange={(e) => handleAmountChange(step.id, e.target.value)}
+                    className="h-8 text-sm pl-8"
+                    placeholder="0"
+                  />
                 </div>
                 <Button
                   variant="ghost"
