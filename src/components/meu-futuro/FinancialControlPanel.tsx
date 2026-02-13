@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, TrendingUp, AlertTriangle, Pencil, Check, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Save, TrendingUp, AlertTriangle, Pencil, Check, X, Layers } from "lucide-react";
+import { ContributionStep } from "@/types/dreams";
 
 interface FinancialControlPanelProps {
   idadeAposentadoria: number;
@@ -22,6 +24,8 @@ interface FinancialControlPanelProps {
   idadePatrimonioAcaba: number | null;
   idadeFinalIdeal: number;
   onSalvar: () => void;
+  contributionSteps: ContributionStep[];
+  onOpenStepsModal: () => void;
 }
 
 const formatCurrency = (value: number): string => {
@@ -117,6 +121,8 @@ export function FinancialControlPanel({
   idadePatrimonioAcaba,
   idadeFinalIdeal,
   onSalvar,
+  contributionSteps,
+  onOpenStepsModal,
 }: FinancialControlPanelProps) {
   const atingiuMeta = patrimonioFinalAposentadoria >= capitalNecessario;
   const temRendaDesejada = rendaDesejada > 0;
@@ -256,28 +262,57 @@ export function FinancialControlPanel({
         {/* Investimento mensal */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Investimento mensal</Label>
-            <EditableValue
-              value={investimentoMensal}
-              onChange={onInvestimentoMensalChange}
-              formatFn={formatCurrency}
-              min={0}
-              max={100000}
-              isCurrency
-            />
+            <div className="flex items-center gap-1.5">
+              <Label className="text-sm font-medium">Investimento mensal</Label>
+              <button
+                onClick={onOpenStepsModal}
+                className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+                title="Aportes escalonados"
+              >
+                <Layers className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {contributionSteps.length > 0 ? (
+              <Badge variant="secondary" className="text-xs cursor-pointer" onClick={onOpenStepsModal}>
+                Escalonado ({contributionSteps.length} faixas)
+              </Badge>
+            ) : (
+              <EditableValue
+                value={investimentoMensal}
+                onChange={onInvestimentoMensalChange}
+                formatFn={formatCurrency}
+                min={0}
+                max={100000}
+                isCurrency
+              />
+            )}
           </div>
-          <Slider
-            value={[investimentoMensal]}
-            onValueChange={(v) => onInvestimentoMensalChange(v[0])}
-            min={0}
-            max={100000}
-            step={500}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>R$ 0</span>
-            <span>R$ 100.000</span>
-          </div>
+          {contributionSteps.length === 0 && (
+            <>
+              <Slider
+                value={[investimentoMensal]}
+                onValueChange={(v) => onInvestimentoMensalChange(v[0])}
+                min={0}
+                max={100000}
+                step={500}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>R$ 0</span>
+                <span>R$ 100.000</span>
+              </div>
+            </>
+          )}
+          {contributionSteps.length > 0 && (
+            <div className="space-y-1 text-xs text-muted-foreground">
+              {contributionSteps.map((step, idx) => (
+                <div key={step.id} className="flex justify-between">
+                  <span>{step.durationYears} {step.durationYears === 1 ? "ano" : "anos"}</span>
+                  <span>{formatCurrency(step.monthlyAmount)}/mês</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

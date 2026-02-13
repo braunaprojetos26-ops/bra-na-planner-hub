@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Dream, RepetitionType } from "@/types/dreams";
+import { Dream, RepetitionType, ContributionStep } from "@/types/dreams";
 
 export interface FinancialProjectionParams {
   idadeAtual: number;
@@ -11,6 +11,7 @@ export interface FinancialProjectionParams {
   taxaAcumuloAnual: number;
   taxaUsufruteAnual: number;
   dreams?: Dream[];
+  contributionSteps?: ContributionStep[];
 }
 
 export interface ProjectionDataPoint {
@@ -136,7 +137,28 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       taxaAcumuloAnual,
       taxaUsufruteAnual,
       dreams = [],
+      contributionSteps = [],
     } = params;
+
+    // Build month-based step lookup
+    const stepRanges: { startMonth: number; endMonth: number; amount: number }[] = [];
+    if (contributionSteps.length > 0) {
+      let cumMonths = 0;
+      for (const step of contributionSteps) {
+        const months = step.durationYears * 12;
+        stepRanges.push({ startMonth: cumMonths, endMonth: cumMonths + months - 1, amount: step.monthlyAmount });
+        cumMonths += months;
+      }
+    }
+
+    function getMonthlyContribution(month: number): number {
+      if (stepRanges.length === 0) return aporteMensal;
+      for (const range of stepRanges) {
+        if (month >= range.startMonth && month <= range.endMonth) return range.amount;
+      }
+      // Beyond defined steps, use last step's amount
+      return stepRanges[stepRanges.length - 1].amount;
+    }
 
     const taxaMensalAcumulo = Math.pow(1 + taxaAcumuloAnual / 100, 1 / 12) - 1;
     const taxaMensalUsufruto = Math.pow(1 + taxaUsufruteAnual / 100, 1 / 12) - 1;
@@ -193,8 +215,9 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       if (mes <= mesesAteAposentadoria) {
         // FASE DE ACÚMULO
         if (mes > 0) {
-          patrimonioProjetado = patrimonioProjetado * (1 + taxaMensalAcumulo) + aporteMensal;
-          patrimonioInvestido += aporteMensal;
+          const aporteDoMes = getMonthlyContribution(mes);
+          patrimonioProjetado = patrimonioProjetado * (1 + taxaMensalAcumulo) + aporteDoMes;
+          patrimonioInvestido += aporteDoMes;
           
           aposentadoriaIdealAtual = aposentadoriaIdealAtual * (1 + taxaMensalAcumulo) + aporteIdealMensal;
         }

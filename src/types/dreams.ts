@@ -56,6 +56,12 @@ export const DREAM_CATEGORIES: DreamCategoryOption[] = [
   { value: 'contribution', label: 'Aporte', icon: 'PiggyBank' },
 ];
 
+export interface ContributionStep {
+  id: string;
+  durationYears: number;
+  monthlyAmount: number;
+}
+
 export const REPETITION_OPTIONS: { value: RepetitionType; label: string }[] = [
   { value: 'none', label: 'Sem repetição' },
   { value: 'quarterly', label: 'Trimestral' },
