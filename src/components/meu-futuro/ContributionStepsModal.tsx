@@ -89,9 +89,9 @@ export function ContributionStepsModal({ open, onOpenChange, steps, onConfirm, m
               : `Ano ${startYear + 1} ao ${cumYears}`;
 
             return (
-              <div key={step.id} className="grid grid-cols-[24px_1fr_1fr_32px] gap-2 items-center">
-                <span className="text-xs text-muted-foreground text-center">{idx + 1}</span>
-                <div className="space-y-1">
+              <div key={step.id} className="space-y-1">
+                <div className="grid grid-cols-[24px_1fr_1fr_32px] gap-2 items-center">
+                  <span className="text-xs text-muted-foreground text-center">{idx + 1}</span>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -101,28 +101,28 @@ export function ContributionStepsModal({ open, onOpenChange, steps, onConfirm, m
                     className="h-8 text-sm"
                     placeholder="Anos"
                   />
-                  <span className="text-[10px] text-muted-foreground">{periodLabel}</span>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground z-10">R$</span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={step.monthlyAmount > 0 ? step.monthlyAmount.toLocaleString("pt-BR") : ""}
+                      onChange={(e) => handleAmountChange(step.id, e.target.value)}
+                      className="h-8 text-sm pl-8"
+                      placeholder="0"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleRemove(step.id)}
+                    disabled={localSteps.length <= 1}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground z-10">R$</span>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={step.monthlyAmount > 0 ? step.monthlyAmount.toLocaleString("pt-BR") : ""}
-                    onChange={(e) => handleAmountChange(step.id, e.target.value)}
-                    className="h-8 text-sm pl-8"
-                    placeholder="0"
-                  />
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => handleRemove(step.id)}
-                  disabled={localSteps.length <= 1}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <span className="text-[10px] text-muted-foreground pl-[32px]">{periodLabel}</span>
               </div>
             );
           })}
