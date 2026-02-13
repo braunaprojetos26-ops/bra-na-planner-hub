@@ -241,9 +241,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         
         // Aplicar impacto dos sonhos (positivo = aporte extra, negativo = retirada)
         patrimonioProjetado += dreamImpact;
-        if (dreamImpact > 0) {
-          patrimonioInvestido += dreamImpact;
-        }
+        patrimonioInvestido += dreamImpact;
       } else {
         // FASE DE USUFRUTO
         const rendaLiquida = Math.max(0, rendaDesejada - outrasFontesRenda);
@@ -254,7 +252,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         patrimonioProjetado += dreamImpact;
         
         if (rendaLiquida > 0) {
-          patrimonioInvestido = Math.max(0, patrimonioInvestido - rendaLiquida);
+          patrimonioInvestido = patrimonioInvestido - rendaLiquida;
         }
 
         if (patrimonioProjetado <= 0 && idadePatrimonioAcaba === null) {
