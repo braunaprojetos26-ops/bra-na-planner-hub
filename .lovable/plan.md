@@ -1,66 +1,37 @@
 
-## Aportes Escalonados no "Meu Futuro"
+## Correcao do calculo de aportes escalonados
 
-### O que muda para o usuario
+### Problema identificado
 
-Ao lado do slider de "Investimento mensal", aparecera um pequeno icone (escada/degraus). Ao clicar, abre um modal onde o usuario pode definir faixas de aporte por periodo de anos, como na planilha Excel. Exemplo:
+No hook `useFinancialProjection.ts`, as faixas de meses dos aportes escalonados sao construidas comecando do mes 0, porem o primeiro aporte so acontece no mes 1 (o mes 0 e o ponto de partida sem contribuicao). Isso gera dois erros:
 
-- Primeiros 2 anos: R$ 200/mes
-- Proximos 3 anos: R$ 500/mes
-- Proximos 4 anos: R$ 1.000/mes
+1. A primeira faixa perde 1 mes de contribuicao (mes 0 esta na faixa mas e pulado)
+2. O ultimo mes do periodo cai fora de todas as faixas e recebe um aporte extra via fallback
 
-Quando o escalonamento estiver ativo, o slider de investimento mensal ficara desabilitado (pois o valor varia por periodo) e mostrara um badge indicando "Escalonado" com o icone. O usuario pode desativar o escalonamento a qualquer momento, voltando ao aporte fixo.
+No exemplo do usuario, isso resulta em R$2.500 a mais do que o correto.
 
-### Como funciona o modal
-
-- Tabela editavel com duas colunas: "Anos" (duracao do periodo) e "Aporte Mensal" (valor em R$)
-- Botao "Adicionar faixa" para incluir novas linhas
-- Botao de excluir em cada linha
-- Resumo na parte inferior mostrando o total de anos configurados
-- Validacao: a soma dos anos nao pode ultrapassar o periodo ate a aposentadoria
-
-### Como o calculo muda
-
-Em vez de um unico `aporteMensal` fixo, o hook `useFinancialProjection` recebera um array opcional de faixas (`contributionSteps`). Na fase de acumulo, o sistema verificara em qual faixa o mes atual se encontra e usara o aporte correspondente.
-
----
-
-### Detalhes Tecnicos
-
-**Novo tipo em `src/types/dreams.ts` (ou novo arquivo de tipos):**
-
-```text
-ContributionStep {
-  id: string
-  durationYears: number
-  monthlyAmount: number
-}
-```
+### Solucao
 
 **Arquivo: `src/hooks/useFinancialProjection.ts`**
-- Adicionar campo opcional `contributionSteps?: ContributionStep[]` em `FinancialProjectionParams`
-- Na fase de acumulo (linha 195-200), ao inves de usar `aporteMensal` fixo, calcular o aporte do mes atual com base no array de steps:
-  - Converter steps em ranges de meses (ex: step 1 = meses 0-23, step 2 = meses 24-59, etc.)
-  - Se `contributionSteps` existir e tiver itens, usar o valor da faixa correspondente; senao, usar `aporteMensal`
-- Ajustar tambem o calculo de `patrimonioInvestido` para refletir os aportes variaveis
-- O calculo de `aporteIdealMensal` continua usando o valor medio/fixo como referencia
 
-**Novo componente: `src/components/meu-futuro/ContributionStepsModal.tsx`**
-- Modal com tabela editavel (Anos | Aporte Mensal)
-- Cada linha tem: input numerico para anos, input de moeda para valor, botao excluir
-- Botao "Adicionar faixa" no rodape da tabela
-- Resumo: "Total: X anos de Y disponiveis"
-- Botoes Cancelar e Confirmar
+Alterar a construcao das faixas de meses para iniciar em 1 ao inves de 0:
 
-**Arquivo: `src/components/meu-futuro/FinancialControlPanel.tsx`**
-- Adicionar props: `contributionSteps`, `onContributionStepsChange`, `onOpenStepsModal`
-- Ao lado do label "Investimento mensal", adicionar icone clicavel (Layers ou BarChart3 do lucide)
-- Quando `contributionSteps.length > 0`: desabilitar slider, mostrar badge "Escalonado" com resumo compacto
-- Quando vazio: comportamento atual com slider normal
+```
+// Antes (bug):
+let cumMonths = 0;
 
-**Arquivo: `src/pages/MeuFuturo.tsx`**
-- Novo estado: `contributionSteps: ContributionStep[]`
-- Novo estado: `stepsModalOpen: boolean`
-- Passar `contributionSteps` para o hook `useFinancialProjection`
-- Passar props necessarias para `FinancialControlPanel`
-- Renderizar `ContributionStepsModal`
+// Depois (correto):
+let cumMonths = 1;
+```
+
+Com essa mudanca, as faixas ficam corretamente alinhadas com os meses em que os aportes realmente acontecem (meses 1 a N), eliminando tanto a perda do primeiro mes quanto o aporte extra no final.
+
+### Verificacao
+
+Com o exemplo do usuario (1+2+5+10+9 = 27 anos = 324 meses):
+- Faixa 1: meses 1-12 (12 aportes de R$500) = R$6.000
+- Faixa 2: meses 13-36 (24 aportes de R$1.000) = R$24.000
+- Faixa 3: meses 37-96 (60 aportes de R$2.000) = R$120.000
+- Faixa 4: meses 97-216 (120 aportes de R$2.500) = R$300.000
+- Faixa 5: meses 217-324 (108 aportes de R$3.000) = R$324.000
+- Total = R$774.000 (correto)
