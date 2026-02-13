@@ -224,6 +224,16 @@ export function FinancialProjectionChart({
             ticks={yAxisTicks}
           />
           <Tooltip content={<CustomTooltip />} />
+
+          {/* Linha horizontal no valor zero */}
+          {minValue < 0 && (
+            <ReferenceLine
+              y={0}
+              stroke="hsl(var(--muted-foreground))"
+              strokeDasharray="3 3"
+              strokeWidth={1}
+            />
+          )}
           
           {/* Linha vertical na idade de aposentadoria */}
           <ReferenceLine
