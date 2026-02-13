@@ -47,6 +47,7 @@ export default function MeuFuturo() {
   // Estados da UI
   const [showNegatives, setShowNegatives] = useState(false);
   const [showPrincipalInvestido, setShowPrincipalInvestido] = useState(false);
+  const [showPerene, setShowPerene] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("max");
   const [viewMode, setViewMode] = useState<ViewMode>("anual");
   const [rateModalOpen, setRateModalOpen] = useState(false);
@@ -217,6 +218,7 @@ export default function MeuFuturo() {
                 idadeAtual={idadeAtual}
                 viewMode={viewMode}
                 showPrincipalInvestido={showPrincipalInvestido}
+                showPerene={showPerene}
               />
               
               {/* Legenda Interativa */}
@@ -247,11 +249,31 @@ export default function MeuFuturo() {
                   </span>
                 </button>
                 
-                {/* Aposentadoria Ideal - sempre visível */}
+                {/* Aposentadoria Ideal (consumindo) - sempre visível */}
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-0.5 bg-orange-500" style={{ borderStyle: "dashed" }} />
-                  <span className="text-muted-foreground">Aposentadoria ideal</span>
+                  <span className="text-muted-foreground">Ideal (consumindo)</span>
                 </div>
+                
+                {/* Aposentadoria Ideal (perene) - clicável para toggle */}
+                <button
+                  onClick={() => setShowPerene(!showPerene)}
+                  className={cn(
+                    "flex items-center gap-2 transition-opacity cursor-pointer hover:opacity-80",
+                    !showPerene && "opacity-50"
+                  )}
+                >
+                  <div className={cn(
+                    "w-3 h-0.5",
+                    !showPerene && "opacity-50"
+                  )} style={{ backgroundColor: "#8b5cf6", borderStyle: "dashed" }} />
+                  <span className={cn(
+                    "text-muted-foreground",
+                    !showPerene && "line-through"
+                  )}>
+                    Ideal (perene)
+                  </span>
+                </button>
               </div>
 
               {/* Seção Montante Inicial */}
@@ -281,6 +303,8 @@ export default function MeuFuturo() {
               aporteNecessario={projection.aporteNecessario}
               aporteIdealMensal={projection.aporteIdealMensal}
               capitalNecessario={projection.capitalNecessario}
+              capitalNecessarioPerene={projection.capitalNecessarioPerene}
+              aporteIdealMensalPerene={projection.aporteIdealMensalPerene}
               patrimonioFinalAposentadoria={projection.patrimonioFinalAposentadoria}
               idadePatrimonioAcaba={projection.idadePatrimonioAcaba}
               idadeFinalIdeal={projection.idadeFinalIdeal}

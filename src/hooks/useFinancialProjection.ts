@@ -21,6 +21,7 @@ export interface ProjectionDataPoint {
   patrimonioProjetado: number;
   patrimonioInvestido: number;
   aposentadoriaIdeal: number;
+  aposentadoriaIdealPerene: number;
 }
 
 export interface FinancialProjectionResult {
@@ -30,6 +31,8 @@ export interface FinancialProjectionResult {
   aporteIdealMensal: number;
   patrimonioFinalAposentadoria: number;
   capitalNecessario: number;
+  capitalNecessarioPerene: number;
+  aporteIdealMensalPerene: number;
   idadeFinalIdeal: number;
 }
 
@@ -173,8 +176,20 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       ? rendaLiquidaMensal * ((1 - Math.pow(1 + taxaMensalUsufruto, -mesesUsufruto)) / taxaMensalUsufruto)
       : 0;
 
+    // Capital perene: rendimento mensal cobre a renda sem consumir o principal
+    const capitalNecessarioPerene = rendaLiquidaMensal > 0 && taxaMensalUsufruto > 0
+      ? rendaLiquidaMensal / taxaMensalUsufruto
+      : 0;
+
     const aporteIdealMensal = calcularAporteNecessario(
       capitalNecessario,
+      patrimonioInicial,
+      taxaMensalAcumulo,
+      mesesAteAposentadoria
+    );
+
+    const aporteIdealMensalPerene = calcularAporteNecessario(
+      capitalNecessarioPerene,
       patrimonioInicial,
       taxaMensalAcumulo,
       mesesAteAposentadoria
@@ -189,6 +204,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
     let patrimonioProjetado = patrimonioInicial;
     let patrimonioInvestido = patrimonioInicial;
     let aposentadoriaIdealAtual = patrimonioInicial;
+    let aposentadoriaIdealPereneAtual = patrimonioInicial;
     let idadePatrimonioAcaba: number | null = null;
 
     const dataInicial = new Date();
@@ -220,6 +236,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
           patrimonioInvestido += aporteDoMes;
           
           aposentadoriaIdealAtual = aposentadoriaIdealAtual * (1 + taxaMensalAcumulo) + aporteIdealMensal;
+          aposentadoriaIdealPereneAtual = aposentadoriaIdealPereneAtual * (1 + taxaMensalAcumulo) + aporteIdealMensalPerene;
         }
         
         // Aplicar impacto dos sonhos (positivo = aporte extra, negativo = retirada)
@@ -250,6 +267,10 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         } else {
           aposentadoriaIdealAtual = 0;
         }
+
+        // Perene: rende juros e paga renda, patrimônio se mantém estável
+        aposentadoriaIdealPereneAtual = aposentadoriaIdealPereneAtual * (1 + taxaMensalUsufruto) - rendaLiquida;
+        aposentadoriaIdealPereneAtual = Math.max(0, aposentadoriaIdealPereneAtual);
       }
 
       data.push({
@@ -259,6 +280,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         patrimonioProjetado: Math.max(0, patrimonioProjetado),
         patrimonioInvestido: Math.max(0, patrimonioInvestido),
         aposentadoriaIdeal: aposentadoriaIdealAtual,
+        aposentadoriaIdealPerene: aposentadoriaIdealPereneAtual,
       });
     }
 
@@ -271,6 +293,8 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
       aporteIdealMensal,
       patrimonioFinalAposentadoria,
       capitalNecessario,
+      capitalNecessarioPerene,
+      aporteIdealMensalPerene,
       idadeFinalIdeal: IDADE_FINAL_IDEAL,
     };
   }, [params]);

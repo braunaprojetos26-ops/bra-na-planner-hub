@@ -18,6 +18,7 @@ interface FinancialProjectionChartProps {
   idadeAtual: number;
   viewMode: "mensal" | "anual";
   showPrincipalInvestido?: boolean;
+  showPerene?: boolean;
 }
 
 const formatCurrency = (value: number): string => {
@@ -78,11 +79,20 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
           )}
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-orange-500" />
-            <span className="text-sm text-muted-foreground">Aposentadoria ideal:</span>
+            <span className="text-sm text-muted-foreground">Ideal (consumindo):</span>
             <span className="text-sm font-medium text-foreground ml-auto">
               {formatCurrencyFull(payload.find(p => p.dataKey === "aposentadoriaIdeal")?.value || 0)}
             </span>
           </div>
+          {payload.find(p => p.dataKey === "aposentadoriaIdealPerene") && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#8b5cf6" }} />
+              <span className="text-sm text-muted-foreground">Ideal (perene):</span>
+              <span className="text-sm font-medium text-foreground ml-auto">
+                {formatCurrencyFull(payload.find(p => p.dataKey === "aposentadoriaIdealPerene")?.value || 0)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -116,6 +126,7 @@ export function FinancialProjectionChart({
   idadeAtual,
   viewMode,
   showPrincipalInvestido = false,
+  showPerene = true,
 }: FinancialProjectionChartProps) {
   // Filtrar dados baseado no período selecionado
   const filteredData = (() => {
@@ -162,6 +173,7 @@ export function FinancialProjectionChart({
     d.patrimonioProjetado,
     d.patrimonioInvestido,
     d.aposentadoriaIdeal,
+    ...(showPerene ? [d.aposentadoriaIdealPerene] : []),
   ]);
   const maxValue = Math.max(...allValues);
   const minValue = showNegatives ? Math.min(...allValues, 0) : 0;
@@ -184,6 +196,10 @@ export function FinancialProjectionChart({
             <linearGradient id="colorInvestido" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorPerene" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -231,6 +247,18 @@ export function FinancialProjectionChart({
             dot={false}
           />
 
+          {/* Linha ideal perene (violeta tracejada) */}
+          {showPerene && (
+            <Area
+              type="natural"
+              dataKey="aposentadoriaIdealPerene"
+              stroke="#8b5cf6"
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              fill="transparent"
+              dot={false}
+            />
+          )}
           {/* Área do patrimônio investido (azul) - condicional */}
           {showPrincipalInvestido && (
             <Area
