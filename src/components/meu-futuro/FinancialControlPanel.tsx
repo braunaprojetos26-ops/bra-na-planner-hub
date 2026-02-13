@@ -181,21 +181,21 @@ export function FinancialControlPanel({
               onChange={onIdadeAposentadoriaChange}
               formatFn={(v) => String(v)}
               suffix=" anos"
-              min={50}
-              max={80}
+              min={18}
+              max={90}
             />
           </div>
           <Slider
             value={[idadeAposentadoria]}
             onValueChange={(v) => onIdadeAposentadoriaChange(v[0])}
-            min={50}
-            max={80}
+            min={18}
+            max={90}
             step={1}
             className="w-full"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>50 anos</span>
-            <span>80 anos</span>
+            <span>18 anos</span>
+            <span>90 anos</span>
           </div>
         </div>
 
