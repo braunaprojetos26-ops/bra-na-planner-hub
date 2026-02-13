@@ -278,7 +278,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         mes,
         anoMes,
         patrimonioProjetado: patrimonioProjetado,
-        patrimonioInvestido: Math.max(0, patrimonioInvestido),
+        patrimonioInvestido: patrimonioInvestido,
         aposentadoriaIdeal: aposentadoriaIdealAtual,
         aposentadoriaIdealPerene: aposentadoriaIdealPereneAtual,
       });
