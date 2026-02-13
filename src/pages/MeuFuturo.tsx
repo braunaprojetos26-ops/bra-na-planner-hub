@@ -16,7 +16,8 @@ import { InitialAmountModal } from "@/components/meu-futuro/InitialAmountModal";
 import { InitialAmountSection } from "@/components/meu-futuro/InitialAmountSection";
 import { DreamsSection } from "@/components/meu-futuro/DreamsSection";
 import { NewDreamModal } from "@/components/meu-futuro/NewDreamModal";
-import { Dream } from "@/types/dreams";
+import { ContributionStepsModal } from "@/components/meu-futuro/ContributionStepsModal";
+import { Dream, ContributionStep } from "@/types/dreams";
 
 const DEFAULT_CONFIG = {
   idadeAtual: 33,
@@ -56,6 +57,10 @@ export default function MeuFuturo() {
   const [dreamModalOpen, setDreamModalOpen] = useState(false);
   const [editingDream, setEditingDream] = useState<Dream | null>(null);
 
+  // Estados dos aportes escalonados
+  const [contributionSteps, setContributionSteps] = useState<ContributionStep[]>([]);
+  const [stepsModalOpen, setStepsModalOpen] = useState(false);
+
   // Calcular projeção
   const projection = useFinancialProjection({
     idadeAtual,
@@ -67,6 +72,7 @@ export default function MeuFuturo() {
     taxaAcumuloAnual,
     taxaUsufruteAnual,
     dreams,
+    contributionSteps,
   });
 
   const handleSalvarMeta = () => {
@@ -279,6 +285,8 @@ export default function MeuFuturo() {
               idadePatrimonioAcaba={projection.idadePatrimonioAcaba}
               idadeFinalIdeal={projection.idadeFinalIdeal}
               onSalvar={handleSalvarMeta}
+              contributionSteps={contributionSteps}
+              onOpenStepsModal={() => setStepsModalOpen(true)}
             />
           </div>
         </CardContent>
@@ -320,6 +328,15 @@ export default function MeuFuturo() {
         onOpenChange={setDreamModalOpen}
         onSave={handleSaveDream}
         editingDream={editingDream}
+      />
+
+      {/* Modal de aportes escalonados */}
+      <ContributionStepsModal
+        open={stepsModalOpen}
+        onOpenChange={setStepsModalOpen}
+        steps={contributionSteps}
+        onConfirm={setContributionSteps}
+        maxYears={idadeAposentadoria - idadeAtual}
       />
     </div>
   );
