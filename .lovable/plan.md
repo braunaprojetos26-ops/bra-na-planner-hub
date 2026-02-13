@@ -1,37 +1,82 @@
 
-## Correcao do calculo de aportes escalonados
+## Patrimonio Perene vs Consumptivo - Duas Linhas no Grafico
 
-### Problema identificado
+### Conceito
 
-No hook `useFinancialProjection.ts`, as faixas de meses dos aportes escalonados sao construidas comecando do mes 0, porem o primeiro aporte so acontece no mes 1 (o mes 0 e o ponto de partida sem contribuicao). Isso gera dois erros:
+Hoje o sistema calcula apenas um cenario de aposentadoria ideal: consumir o patrimonio ate os 90 anos. A mudanca adiciona uma segunda linha tracejada no grafico representando o cenario de patrimonio perene (viver apenas dos rendimentos, sem consumir o principal).
 
-1. A primeira faixa perde 1 mes de contribuicao (mes 0 esta na faixa mas e pulado)
-2. O ultimo mes do periodo cai fora de todas as faixas e recebe um aporte extra via fallback
+O usuario vera ambas as linhas simultaneamente no grafico, podendo comparar visualmente quanto precisa acumular em cada modelo. As mensagens do painel de controle tambem mostrarao os dois cenarios.
 
-No exemplo do usuario, isso resulta em R$2.500 a mais do que o correto.
+### O que muda visualmente
 
-### Solucao
+**No grafico:**
+- Linha laranja tracejada (ja existente): "Aposentadoria ideal (consumindo)" -- patrimonio zera aos 90 anos
+- Nova linha roxa/violeta tracejada: "Aposentadoria ideal (perene)" -- patrimonio se mantem indefinidamente
+- Ambas clicaveis na legenda para mostrar/ocultar individualmente
+
+**No tooltip:**
+- Mostrara os valores de ambas as linhas quando visiveis
+
+**No painel de controle (resumo):**
+- Mostrara as duas metas: "Para consumir ate 90 anos: R$ X/mes" e "Para manter perene: R$ Y/mes"
+- Indicara qual cenario o aporte atual atinge (ou nenhum)
+
+### Logica matematica
+
+**Modelo consumptivo (atual):**
+Capital necessario = rendaLiquida * ((1 - (1 + r)^-n) / r)
+Onde n = meses de usufruto ate 90 anos. O patrimonio e projetado para zerar.
+
+**Modelo perene (novo):**
+Capital necessario = rendaLiquida / taxaMensalUsufruto
+Isso significa que o rendimento mensal do patrimonio e suficiente para cobrir a renda desejada sem consumir o principal. O patrimonio nunca diminui.
+
+---
+
+### Detalhes Tecnicos
 
 **Arquivo: `src/hooks/useFinancialProjection.ts`**
 
-Alterar a construcao das faixas de meses para iniciar em 1 ao inves de 0:
+1. Adicionar novo campo no `ProjectionDataPoint`:
+   - `aposentadoriaIdealPerene: number`
 
-```
-// Antes (bug):
-let cumMonths = 0;
+2. Adicionar novos campos no `FinancialProjectionResult`:
+   - `capitalNecessarioPerene: number`
+   - `aporteIdealMensalPerene: number`
 
-// Depois (correto):
-let cumMonths = 1;
-```
+3. Calcular o capital necessario perene:
+   - `capitalNecessarioPerene = rendaLiquidaMensal / taxaMensalUsufruto`
+   - Calcular `aporteIdealMensalPerene` usando a mesma funcao `calcularAporteNecessario` com esse novo capital alvo
 
-Com essa mudanca, as faixas ficam corretamente alinhadas com os meses em que os aportes realmente acontecem (meses 1 a N), eliminando tanto a perda do primeiro mes quanto o aporte extra no final.
+4. Na fase de acumulo, calcular a linha ideal perene em paralelo (mesma logica da ideal consumptiva, mas usando `aporteIdealMensalPerene`)
 
-### Verificacao
+5. Na fase de usufruto da linha perene: patrimonio rende juros e paga a renda, mas como o capital foi dimensionado para cobrir exatamente a renda, a linha fica estavel (sem decrescer)
 
-Com o exemplo do usuario (1+2+5+10+9 = 27 anos = 324 meses):
-- Faixa 1: meses 1-12 (12 aportes de R$500) = R$6.000
-- Faixa 2: meses 13-36 (24 aportes de R$1.000) = R$24.000
-- Faixa 3: meses 37-96 (60 aportes de R$2.000) = R$120.000
-- Faixa 4: meses 97-216 (120 aportes de R$2.500) = R$300.000
-- Faixa 5: meses 217-324 (108 aportes de R$3.000) = R$324.000
-- Total = R$774.000 (correto)
+**Arquivo: `src/components/meu-futuro/FinancialProjectionChart.tsx`**
+
+1. Adicionar nova `Area` tracejada com cor violeta/roxa (#8b5cf6) para `aposentadoriaIdealPerene`
+2. Adicionar gradiente para a nova linha
+3. Atualizar o tooltip para mostrar o valor perene quando visivel
+4. Adicionar item na legenda interativa (clicavel para mostrar/ocultar)
+5. Incluir `aposentadoriaIdealPerene` no calculo do dominio Y
+
+**Arquivo: `src/components/meu-futuro/FinancialControlPanel.tsx`**
+
+1. Receber novos props: `capitalNecessarioPerene`, `aporteIdealMensalPerene`
+2. Atualizar o card de resumo para mostrar ambos os cenarios:
+   - "Consumindo ate 90 anos: precisa de R$ X (aporte de R$ Y/mes)"
+   - "Patrimonio perene: precisa de R$ X (aporte de R$ Y/mes)"
+   - Indicar visualmente qual(is) cenario(s) o aporte atual atinge
+
+**Arquivo: `src/pages/MeuFuturo.tsx`**
+
+1. Passar os novos campos do hook para o `FinancialControlPanel`
+
+### Cores e legenda
+
+| Linha | Cor | Estilo | Legenda |
+|-------|-----|--------|---------|
+| Planejamento Brauna | Verde (#10b981) | Solida com area | Sempre visivel |
+| Principal investido | Azul (#3b82f6) | Solida com area | Toggle na legenda |
+| Ideal (consumindo) | Laranja (#f97316) | Tracejada | Toggle na legenda |
+| Ideal (perene) | Violeta (#8b5cf6) | Tracejada | Toggle na legenda |
