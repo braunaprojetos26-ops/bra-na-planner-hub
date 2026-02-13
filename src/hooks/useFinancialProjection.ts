@@ -143,7 +143,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
     // Build month-based step lookup
     const stepRanges: { startMonth: number; endMonth: number; amount: number }[] = [];
     if (contributionSteps.length > 0) {
-      let cumMonths = 0;
+      let cumMonths = 1;
       for (const step of contributionSteps) {
         const months = step.durationYears * 12;
         stepRanges.push({ startMonth: cumMonths, endMonth: cumMonths + months - 1, amount: step.monthlyAmount });
