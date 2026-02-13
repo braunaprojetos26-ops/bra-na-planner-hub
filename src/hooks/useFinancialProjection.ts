@@ -277,7 +277,7 @@ export function useFinancialProjection(params: FinancialProjectionParams): Finan
         idade,
         mes,
         anoMes,
-        patrimonioProjetado: Math.max(0, patrimonioProjetado),
+        patrimonioProjetado: patrimonioProjetado,
         patrimonioInvestido: Math.max(0, patrimonioInvestido),
         aposentadoriaIdeal: aposentadoriaIdealAtual,
         aposentadoriaIdealPerene: aposentadoriaIdealPereneAtual,
