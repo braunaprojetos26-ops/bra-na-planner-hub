@@ -22,6 +22,7 @@ interface ClientsTableViewProps {
   clients: ClientPlan[];
   isLoading: boolean;
   expanded?: boolean;
+  showOwner?: boolean;
 }
 
 // Credit categories matching useOpportunityMap
@@ -195,7 +196,7 @@ function useClientOpportunityMap(contactIds: string[]) {
 // ----- Sorting -----
 
 type SortKey =
-  | 'clientName' | 'startDate' | 'nextMeeting' | 'totalMeetings' | 'cycle'
+  | 'clientName' | 'ownerName' | 'startDate' | 'nextMeeting' | 'totalMeetings' | 'cycle'
   | 'progress' | 'healthScore' | 'productCount' | 'status' | 'value'
   | 'paAtivo' | 'credito' | 'investimentosXP' | 'prunus' | 'previdencia';
 
@@ -238,7 +239,7 @@ function SortableHeader({ label, sortKey, currentSort, onSort, className = '' }:
   );
 }
 
-export function ClientsTableView({ clients, isLoading, expanded = false }: ClientsTableViewProps) {
+export function ClientsTableView({ clients, isLoading, expanded = false, showOwner = false }: ClientsTableViewProps) {
   const navigate = useNavigate();
   const contactIds = useMemo(() => [...new Set(clients.map(c => c.contact_id))], [clients]);
   const { data: healthScores } = useClientHealthScores(contactIds);
@@ -306,6 +307,7 @@ export function ClientsTableView({ clients, isLoading, expanded = false }: Clien
       const getVal = (item: EnrichedClient): number | string | null => {
         switch (sortState.key) {
           case 'clientName': return item.client.contact?.full_name || '';
+          case 'ownerName': return item.client.owner?.full_name || '';
           case 'startDate': return item.client.start_date;
           case 'nextMeeting': return item.nextMeetingDate;
           case 'totalMeetings': return item.client.total_meetings;
@@ -371,6 +373,9 @@ export function ClientsTableView({ clients, isLoading, expanded = false }: Clien
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <SortableHeader label="Nome do cliente" sortKey="clientName" currentSort={sortState} onSort={handleSort} />
+                {showOwner && (
+                  <SortableHeader label="Planejador" sortKey="ownerName" currentSort={sortState} onSort={handleSort} />
+                )}
                 <SortableHeader label="Início" sortKey="startDate" currentSort={sortState} onSort={handleSort} />
                 <SortableHeader label="Próxima reunião" sortKey="nextMeeting" currentSort={sortState} onSort={handleSort} />
                 <SortableHeader label="Nº Reuniões" sortKey="totalMeetings" currentSort={sortState} onSort={handleSort} className="text-center" />
@@ -410,6 +415,11 @@ export function ClientsTableView({ clients, isLoading, expanded = false }: Clien
                         )}
                       </div>
                     </TableCell>
+                    {showOwner && (
+                      <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                        {client.owner?.full_name || '-'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(client.start_date)}</TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">{nextMeetingDate ? formatDate(nextMeetingDate) : '-'}</TableCell>
                     <TableCell className="text-center">
