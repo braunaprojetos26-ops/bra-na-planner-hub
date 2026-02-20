@@ -48,6 +48,7 @@ import TrainingModule from "./pages/TrainingModule";
 import TrainingExam from "./pages/TrainingExam";
 import TrainingRankings from "./pages/TrainingRankings";
 import Settings from "./pages/Settings";
+import InvestmentManagement from "./pages/InvestmentManagement";
 const queryClient = new QueryClient();
 
 const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
@@ -107,6 +108,7 @@ const App = () => (
                 <Route path="/equipe/gestao" element={<ProtectedPage><TeamManagement /></ProtectedPage>} />
                 <Route path="/equipe/gestao/:userId" element={<ProtectedPage><PlannerDetail /></ProtectedPage>} />
                 <Route path="/tickets" element={<ProtectedPage><Tickets /></ProtectedPage>} />
+                <Route path="/investments" element={<ProtectedPage><InvestmentManagement /></ProtectedPage>} />
                 <Route path="/notifications" element={<ProtectedPage><NotificationHistory /></ProtectedPage>} />
                 <Route path="/meu-futuro" element={<ProtectedPage><MeuFuturo /></ProtectedPage>} />
                 <Route path="/projects" element={<ProtectedPage><Projects /></ProtectedPage>} />

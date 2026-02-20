@@ -14,6 +14,9 @@ export interface Ticket {
   resolved_at: string | null;
   resolved_by: string | null;
   contact_id: string | null;
+  ticket_type_id: string | null;
+  dynamic_fields: Record<string, any> | null;
+  sla_deadline: string | null;
   created_at: string;
   updated_at: string;
   creator?: {

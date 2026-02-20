@@ -20,6 +20,7 @@ import {
   FolderKanban,
   UserMinus,
   Star,
+  TrendingUp,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -95,6 +96,8 @@ export function AppSidebar() {
   const canSeeTeam = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const canSeeManagement = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const canSeeAdmin = role === 'superadmin';
+  const { profile } = useAuth();
+  const canSeeInvestments = role === 'superadmin' || profile?.position === 'operacoes_investimentos';
 
   return (
     <Sidebar className={`border-r border-sidebar-border ${isImpersonating ? 'pt-8' : ''}`}>
@@ -209,6 +212,30 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {canSeeInvestments && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
+              Investimentos
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive('/investments')}>
+                    <NavLink
+                      to="/investments"
+                      className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Gestão de Investimentos</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {canSeeManagement && (
           <SidebarGroup>

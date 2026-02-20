@@ -184,15 +184,28 @@ export function useCreateTicket() {
       department: TicketDepartment;
       priority: TicketPriority;
       contact_id?: string | null;
+      ticket_type_id?: string | null;
+      dynamic_fields?: Record<string, any>;
+      sla_deadline?: string;
     }) => {
       if (!user) throw new Error('User not authenticated');
 
+      const insertData: any = {
+        title: data.title,
+        description: data.description,
+        department: data.department,
+        priority: data.priority,
+        contact_id: data.contact_id || null,
+        created_by: user.id,
+      };
+
+      if (data.ticket_type_id) insertData.ticket_type_id = data.ticket_type_id;
+      if (data.dynamic_fields) insertData.dynamic_fields = data.dynamic_fields;
+      if (data.sla_deadline) insertData.sla_deadline = data.sla_deadline;
+
       const { data: ticket, error } = await supabase
         .from('tickets')
-        .insert({
-          ...data,
-          created_by: user.id,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -201,6 +214,7 @@ export function useCreateTicket() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['investment-queue'] });
       toast.success('Chamado criado com sucesso');
     },
     onError: (error) => {
