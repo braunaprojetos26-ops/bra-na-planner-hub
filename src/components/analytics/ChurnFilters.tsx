@@ -43,7 +43,7 @@ const planTypeOptions = [
 
 export function ChurnFilters({ filters, onFiltersChange }: ChurnFiltersProps) {
   const [period, setPeriod] = useState("6m");
-  const { data: users } = useAllActiveUsers();
+  const { data: users } = useAllActiveUsers({ includeInactive: true });
 
   const handlePeriodChange = (value: string) => {
     setPeriod(value);
@@ -162,7 +162,7 @@ export function ChurnFilters({ filters, onFiltersChange }: ChurnFiltersProps) {
           <SelectItem value="all">Todos os planejadores</SelectItem>
           {users?.map((user) => (
             <SelectItem key={user.user_id} value={user.user_id}>
-              {user.full_name}
+              {user.full_name}{!user.is_active ? ' (Inativo)' : ''}
             </SelectItem>
           ))}
         </SelectContent>

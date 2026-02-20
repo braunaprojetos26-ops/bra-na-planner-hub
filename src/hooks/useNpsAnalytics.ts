@@ -335,9 +335,10 @@ export function useNpsFilterOptions() {
   return useQuery({
     queryKey: ['nps-filter-options'],
     queryFn: async () => {
+      // Include inactive users so historical data can be analyzed
       const { data: owners } = await supabase
         .from('profiles')
-        .select('user_id, full_name')
+        .select('user_id, full_name, is_active')
         .order('full_name');
 
       return {

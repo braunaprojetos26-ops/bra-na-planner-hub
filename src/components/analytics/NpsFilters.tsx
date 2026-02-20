@@ -14,7 +14,7 @@ interface NpsFiltersProps {
   onStartDateChange: (date: Date | null) => void;
   onEndDateChange: (date: Date | null) => void;
   onOwnerChange: (ownerId: string | null) => void;
-  owners: Array<{ user_id: string; full_name: string }>;
+  owners: Array<{ user_id: string; full_name: string; is_active?: boolean }>;
 }
 
 export function NpsFilters({
@@ -92,7 +92,7 @@ export function NpsFilters({
           <SelectItem value="all">Todos</SelectItem>
           {owners.map((owner) => (
             <SelectItem key={owner.user_id} value={owner.user_id}>
-              {owner.full_name}
+              {owner.full_name}{owner.is_active === false ? ' (Inativo)' : ''}
             </SelectItem>
           ))}
         </SelectContent>

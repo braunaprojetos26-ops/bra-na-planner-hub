@@ -275,11 +275,11 @@ export function useTeamMembers() {
         .rpc('get_accessible_user_ids', { _accessor_id: user.id });
       if (accessError) throw accessError;
 
+      // Include inactive users so they appear in filters for historical analysis
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, full_name, position')
+        .select('user_id, full_name, position, is_active, deactivated_at')
         .in('user_id', accessibleIds || [])
-        .eq('is_active', true)
         .order('full_name');
 
       const { data: roles } = await supabase
@@ -293,6 +293,7 @@ export function useTeamMembers() {
         fullName: p.full_name,
         position: p.position,
         role: rolesMap.get(p.user_id) || null,
+        isActive: p.is_active,
       }));
     },
     enabled: !!user,

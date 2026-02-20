@@ -236,17 +236,17 @@ export function useChurnAnalytics(filters: ChurnFilters = {}) {
         .sort((a, b) => a.month.localeCompare(b.month));
 
       // Churn by owner
+      // Include all users (active and inactive) so historical data is preserved
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
-        .eq("is_active", true);
+        .select("user_id, full_name, is_active");
 
       const ownerMap: Record<string, { name: string; cancellations: number; lostValue: number; activeCount: number }> = {};
 
       // Initialize with profiles
       (profiles || []).forEach((p: any) => {
         ownerMap[p.user_id] = {
-          name: p.full_name,
+          name: p.full_name + (p.is_active === false ? ' (Inativo)' : ''),
           cancellations: 0,
           lostValue: 0,
           activeCount: 0,

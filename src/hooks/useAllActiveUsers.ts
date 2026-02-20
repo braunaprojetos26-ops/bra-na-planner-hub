@@ -5,18 +5,30 @@ export interface ActiveUser {
   user_id: string;
   full_name: string;
   email: string;
+  is_active: boolean;
+  deactivated_at: string | null;
 }
 
-export function useAllActiveUsers() {
+interface UseAllActiveUsersOptions {
+  includeInactive?: boolean;
+}
+
+export function useAllActiveUsers(options?: UseAllActiveUsersOptions) {
+  const includeInactive = options?.includeInactive ?? false;
+
   return useQuery({
-    queryKey: ['all-active-users'],
+    queryKey: ['all-active-users', includeInactive],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('profiles')
-        .select('user_id, full_name, email')
-        .eq('is_active', true)
+        .select('user_id, full_name, email, is_active, deactivated_at')
         .order('full_name');
 
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as ActiveUser[];
     },

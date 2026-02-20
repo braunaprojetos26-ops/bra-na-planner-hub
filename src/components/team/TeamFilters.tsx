@@ -120,7 +120,7 @@ export function TeamFilters({ filters, onFiltersChange }: TeamFiltersProps) {
             <SelectItem value="all">Todos Coordenadores</SelectItem>
             {coordinators.map((c) => (
               <SelectItem key={c.userId} value={c.userId}>
-                {c.fullName}
+                {c.fullName}{c.isActive === false ? ' (Inativo)' : ''}
               </SelectItem>
             ))}
           </SelectContent>
@@ -144,7 +144,7 @@ export function TeamFilters({ filters, onFiltersChange }: TeamFiltersProps) {
             <SelectItem value="all">Todos Líderes</SelectItem>
             {leaders.map((l) => (
               <SelectItem key={l.userId} value={l.userId}>
-                {l.fullName}
+                {l.fullName}{l.isActive === false ? ' (Inativo)' : ''}
               </SelectItem>
             ))}
           </SelectContent>
@@ -167,7 +167,7 @@ export function TeamFilters({ filters, onFiltersChange }: TeamFiltersProps) {
             <SelectItem value="all">Todos Planejadores</SelectItem>
             {planners.map((p) => (
               <SelectItem key={p.userId} value={p.userId}>
-                {p.fullName}
+                {p.fullName}{p.isActive === false ? ' (Inativo)' : ''}
               </SelectItem>
             ))}
           </SelectContent>
