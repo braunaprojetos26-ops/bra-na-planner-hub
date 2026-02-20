@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, Circle, Clock, Trash2, Phone, Mail, Calendar, MessageCircle, FileText, Send, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Trash2, Phone, Mail, Calendar, MessageCircle, FileText, Send, MoreHorizontal, AlertTriangle, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -22,6 +22,7 @@ const TASK_TYPE_ICONS: Record<TaskType, React.ReactNode> = {
   proposal: <Send className="w-4 h-4" />,
   document: <FileText className="w-4 h-4" />,
   whatsapp: <MessageCircle className="w-4 h-4" />,
+  scheduling_analysis: <CalendarCheck className="w-4 h-4" />,
   other: <MoreHorizontal className="w-4 h-4" />,
 };
 
