@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Search, Plus, Users, LayoutGrid, Table } from 'lucide-react';
+import { Search, Plus, Users, Columns3, Columns4 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ClientMetrics } from '@/components/clients/ClientMetrics';
-import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientsTableView } from '@/components/clients/ClientsTableView';
 import { NewClientModal } from '@/components/clients/NewClientModal';
 import { DelinquentClientsDrawer } from '@/components/clients/DelinquentClientsDrawer';
@@ -13,14 +12,12 @@ import { useClients, useClientMetrics, useDelinquentClients } from '@/hooks/useC
 import { useActingUser } from '@/contexts/ActingUserContext';
 import type { ClientPlanStatus } from '@/types/clients';
 
-type ViewMode = 'cards' | 'table';
-
 export default function Clients() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ClientPlanStatus | 'all'>('all');
   const [showNewClient, setShowNewClient] = useState(false);
   const [showDelinquentDrawer, setShowDelinquentDrawer] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [expanded, setExpanded] = useState(false);
   
   const { isImpersonating } = useActingUser();
   const { data: clients, isLoading } = useClients();
@@ -84,19 +81,21 @@ export default function Clients() {
           </SelectContent>
         </Select>
 
-        <ToggleGroup 
-          type="single" 
-          value={viewMode} 
-          onValueChange={(value) => value && setViewMode(value as ViewMode)}
-          className="border rounded-lg p-1"
-        >
-          <ToggleGroupItem value="cards" aria-label="Visualização em cards" className="px-3">
-            <LayoutGrid className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem value="table" aria-label="Visualização em tabela" className="px-3">
-            <Table className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={expanded ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setExpanded(!expanded)}
+                aria-label={expanded ? 'Simplificar tabela' : 'Expandir tabela'}
+              >
+                {expanded ? <Columns3 className="h-4 w-4" /> : <Columns4 className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{expanded ? 'Simplificar tabela' : 'Expandir tabela (Mapa de Oportunidades)'}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Client List */}
@@ -111,14 +110,8 @@ export default function Clients() {
           <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>Nenhum cliente encontrado</p>
         </div>
-      ) : viewMode === 'cards' ? (
-        <div className="space-y-4">
-          {filteredClients.map((client) => (
-            <ClientCard key={client.id} client={client} />
-          ))}
-        </div>
       ) : (
-        <ClientsTableView clients={filteredClients} isLoading={false} />
+        <ClientsTableView clients={filteredClients} isLoading={false} expanded={expanded} />
       )}
 
       <NewClientModal open={showNewClient} onOpenChange={setShowNewClient} />
