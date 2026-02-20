@@ -124,7 +124,7 @@ export function useTeamAnalytics(filters: TeamFilters) {
 
       // Parallel fetches
       const [profilesRes, rolesRes, hierarchiesRes, contractsRes, clientPlansRes] = await Promise.all([
-        supabase.from('profiles').select('user_id, full_name, position').in('user_id', targetUserIds),
+        supabase.from('profiles').select('user_id, full_name, position, is_active, deactivated_at').in('user_id', targetUserIds),
         supabase.from('user_roles').select('user_id, role').in('user_id', targetUserIds),
         supabase.from('user_hierarchy').select('user_id, manager_user_id').in('user_id', targetUserIds),
         supabase.from('contracts')
@@ -211,7 +211,15 @@ export function useTeamAnalytics(filters: TeamFilters) {
         .filter(m => m.planningContracts > 0 || m.insuranceContracts > 0 || m.creditContracts > 0 || m.othersContracts > 0 || m.clientCount > 0)
         .sort((a, b) => b.totalPB - a.totalPB);
 
-      const memberCount = memberMetricsMap.size;
+      // Count only members who were active during the filtered period
+      // A user was active if: still active OR deactivated after the period start
+      const memberCount = profiles.filter(p => {
+        if (p.is_active) return true;
+        if (p.deactivated_at) {
+          return new Date(p.deactivated_at) >= filters.dateFrom;
+        }
+        return false;
+      }).length;
 
       return {
         planningSales,
