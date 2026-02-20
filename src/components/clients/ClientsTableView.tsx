@@ -21,6 +21,7 @@ import type { ClientPlan } from '@/types/clients';
 interface ClientsTableViewProps {
   clients: ClientPlan[];
   isLoading: boolean;
+  expanded?: boolean;
 }
 
 // Credit categories matching useOpportunityMap
@@ -237,7 +238,7 @@ function SortableHeader({ label, sortKey, currentSort, onSort, className = '' }:
   );
 }
 
-export function ClientsTableView({ clients, isLoading }: ClientsTableViewProps) {
+export function ClientsTableView({ clients, isLoading, expanded = false }: ClientsTableViewProps) {
   const navigate = useNavigate();
   const contactIds = useMemo(() => [...new Set(clients.map(c => c.contact_id))], [clients]);
   const { data: healthScores } = useClientHealthScores(contactIds);
@@ -380,11 +381,15 @@ export function ClientsTableView({ clients, isLoading }: ClientsTableViewProps) 
                 <TableHead className="font-semibold text-center">Alertas</TableHead>
                 <SortableHeader label="Status" sortKey="status" currentSort={sortState} onSort={handleSort} className="text-center" />
                 <SortableHeader label="Valor" sortKey="value" currentSort={sortState} onSort={handleSort} className="text-right" />
-                <SortableHeader label="PA Ativo" sortKey="paAtivo" currentSort={sortState} onSort={handleSort} className="text-right" />
-                <SortableHeader label="Crédito" sortKey="credito" currentSort={sortState} onSort={handleSort} className="text-right" />
-                <SortableHeader label="Invest. XP" sortKey="investimentosXP" currentSort={sortState} onSort={handleSort} className="text-right" />
-                <SortableHeader label="Prunus" sortKey="prunus" currentSort={sortState} onSort={handleSort} className="text-right" />
-                <SortableHeader label="Previdência" sortKey="previdencia" currentSort={sortState} onSort={handleSort} className="text-right" />
+                {expanded && (
+                  <>
+                    <SortableHeader label="PA Ativo" sortKey="paAtivo" currentSort={sortState} onSort={handleSort} className="text-right" />
+                    <SortableHeader label="Crédito" sortKey="credito" currentSort={sortState} onSort={handleSort} className="text-right" />
+                    <SortableHeader label="Invest. XP" sortKey="investimentosXP" currentSort={sortState} onSort={handleSort} className="text-right" />
+                    <SortableHeader label="Prunus" sortKey="prunus" currentSort={sortState} onSort={handleSort} className="text-right" />
+                    <SortableHeader label="Previdência" sortKey="previdencia" currentSort={sortState} onSort={handleSort} className="text-right" />
+                  </>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -466,21 +471,25 @@ export function ClientsTableView({ clients, isLoading }: ClientsTableViewProps) 
                     <TableCell className="text-right font-medium whitespace-nowrap">
                       {formatCurrency(Number(client.contract_value))}
                     </TableCell>
-                    <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.paAtivo)}`}>
-                      {formatCurrencyOrNull(opp.paAtivo)}
-                    </TableCell>
-                    <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.credito)}`}>
-                      {formatCurrencyOrNull(opp.credito)}
-                    </TableCell>
-                    <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.investimentosXP)}`}>
-                      {formatCurrencyOrNull(opp.investimentosXP)}
-                    </TableCell>
-                    <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.prunus)}`}>
-                      {formatCurrencyOrNull(opp.prunus)}
-                    </TableCell>
-                    <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.previdencia)}`}>
-                      {formatCurrencyOrNull(opp.previdencia)}
-                    </TableCell>
+                    {expanded && (
+                      <>
+                        <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.paAtivo)}`}>
+                          {formatCurrencyOrNull(opp.paAtivo)}
+                        </TableCell>
+                        <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.credito)}`}>
+                          {formatCurrencyOrNull(opp.credito)}
+                        </TableCell>
+                        <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.investimentosXP)}`}>
+                          {formatCurrencyOrNull(opp.investimentosXP)}
+                        </TableCell>
+                        <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.prunus)}`}>
+                          {formatCurrencyOrNull(opp.prunus)}
+                        </TableCell>
+                        <TableCell className={`text-right whitespace-nowrap ${getCellClass(opp.previdencia)}`}>
+                          {formatCurrencyOrNull(opp.previdencia)}
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
                 );
               })}
