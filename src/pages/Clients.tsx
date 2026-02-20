@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { ClientMetrics } from '@/components/clients/ClientMetrics';
 import { ClientsTableView } from '@/components/clients/ClientsTableView';
+import { ClientsAdvancedFilters, EMPTY_FILTERS, type AdvancedFilters } from '@/components/clients/ClientsAdvancedFilters';
 import { NewClientModal } from '@/components/clients/NewClientModal';
 import { DelinquentClientsDrawer } from '@/components/clients/DelinquentClientsDrawer';
 import { useClients, useClientMetrics, useDelinquentClients } from '@/hooks/useClients';
@@ -25,6 +26,7 @@ export default function Clients() {
   const [expanded, setExpanded] = useState(false);
   const [selectedPlannerIds, setSelectedPlannerIds] = useState<string[]>([]);
   const [plannerSearch, setPlannerSearch] = useState('');
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>(EMPTY_FILTERS);
   
   const { isImpersonating } = useActingUser();
   const { role } = useAuth();
@@ -155,6 +157,9 @@ export default function Clients() {
           </Popover>
         )}
 
+        {/* Advanced filters */}
+        <ClientsAdvancedFilters filters={advancedFilters} onChange={setAdvancedFilters} />
+
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -190,6 +195,7 @@ export default function Clients() {
           isLoading={false} 
           expanded={expanded} 
           showOwner={!!isLeaderOrAbove}
+          advancedFilters={advancedFilters}
         />
       )}
 

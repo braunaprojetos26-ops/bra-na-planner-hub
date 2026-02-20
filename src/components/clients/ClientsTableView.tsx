@@ -17,12 +17,14 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { ClientPlan } from '@/types/clients';
+import type { AdvancedFilters } from './ClientsAdvancedFilters';
 
 interface ClientsTableViewProps {
   clients: ClientPlan[];
   isLoading: boolean;
   expanded?: boolean;
   showOwner?: boolean;
+  advancedFilters?: AdvancedFilters;
 }
 
 // Credit categories matching useOpportunityMap
@@ -239,7 +241,7 @@ function SortableHeader({ label, sortKey, currentSort, onSort, className = '' }:
   );
 }
 
-export function ClientsTableView({ clients, isLoading, expanded = false, showOwner = false }: ClientsTableViewProps) {
+export function ClientsTableView({ clients, isLoading, expanded = false, showOwner = false, advancedFilters }: ClientsTableViewProps) {
   const navigate = useNavigate();
   const contactIds = useMemo(() => [...new Set(clients.map(c => c.contact_id))], [clients]);
   const { data: healthScores } = useClientHealthScores(contactIds);
@@ -301,9 +303,67 @@ export function ClientsTableView({ clients, isLoading, expanded = false, showOwn
     };
   }), [clients, healthScores, oppMap, now]);
 
+  // Apply advanced filters
+  const filtered = useMemo(() => {
+    if (!advancedFilters) return enriched;
+    const f = advancedFilters;
+    return enriched.filter(item => {
+      // Cycle filter
+      if (f.cycles.length > 0 && !f.cycles.includes(item.currentMeetingNumber)) return false;
+      // Total meetings
+      if (f.totalMeetings.length > 0 && !f.totalMeetings.includes(item.client.total_meetings)) return false;
+      // Progress ranges
+      if (f.progressRanges.length > 0) {
+        const p = item.progressPercent;
+        const inRange = f.progressRanges.some(r => {
+          if (r === '0-25') return p >= 0 && p <= 25;
+          if (r === '26-50') return p >= 26 && p <= 50;
+          if (r === '51-75') return p >= 51 && p <= 75;
+          if (r === '76-100') return p >= 76 && p <= 100;
+          return false;
+        });
+        if (!inRange) return false;
+      }
+      // Health Score ranges
+      if (f.healthScoreRanges.length > 0) {
+        const hs = item.healthScore;
+        if (hs === null) return false;
+        const inRange = f.healthScoreRanges.some(r => {
+          if (r === 'otimo') return hs >= 80;
+          if (r === 'estavel') return hs >= 60 && hs < 80;
+          if (r === 'atencao') return hs >= 40 && hs < 60;
+          if (r === 'critico') return hs < 40;
+          return false;
+        });
+        if (!inRange) return false;
+      }
+      // Meeting status
+      if (f.meetingStatus === 'overdue' && !item.hasOverdueMeeting) return false;
+      if (f.meetingStatus === 'on_track' && item.hasOverdueMeeting) return false;
+      // Payment status
+      if (f.paymentStatus === 'overdue' && !item.hasOverduePayment) return false;
+      if (f.paymentStatus === 'on_track' && item.hasOverduePayment) return false;
+      // Product presence
+      const pp = f.productPresence;
+      const checkProduct = (key: string, val: number | null | boolean) => {
+        const filter = pp[key];
+        if (!filter) return true;
+        const hasIt = val !== null && val !== false && val !== 0;
+        return filter === 'has' ? hasIt : !hasIt;
+      };
+      if (!checkProduct('pa_ativo', item.opp.paAtivo)) return false;
+      if (!checkProduct('credito', item.opp.credito)) return false;
+      if (!checkProduct('investimentos_xp', item.opp.investimentosXP)) return false;
+      if (!checkProduct('prunus', item.opp.prunus)) return false;
+      if (!checkProduct('previdencia', item.opp.previdencia)) return false;
+
+      return true;
+    });
+  }, [enriched, advancedFilters]);
+
   const sorted = useMemo(() => {
     const dir = sortState.direction === 'asc' ? 1 : -1;
-    return [...enriched].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const getVal = (item: EnrichedClient): number | string | null => {
         switch (sortState.key) {
           case 'clientName': return item.client.contact?.full_name || '';
@@ -334,7 +394,7 @@ export function ClientsTableView({ clients, isLoading, expanded = false, showOwn
       if (typeof aVal === 'number' && typeof bVal === 'number') return (aVal - bVal) * dir;
       return 0;
     });
-  }, [enriched, sortState]);
+  }, [filtered, sortState]);
 
   if (isLoading) {
     return (
