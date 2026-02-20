@@ -1,96 +1,128 @@
 
-## Reestruturar Resultado de Equipe em 3 Sub-abas
+
+## Tela de Gestao de Investimentos e Chamados Dinamicos
 
 ### Resumo
 
-Dividir a secao de metricas da pagina Equipe em 3 sub-abas: **Resultados de Producao**, **Resultados de Esforcos** e **Resultados de Qualidade**, cada uma com metricas especificas.
+Criar um modulo completo de investimentos com: (1) tela exclusiva "Gestao de Investimentos" para o Guido e super admins, (2) chamados de investimento com campos dinamicos por tipo de acao, (3) SLA e prioridade configuravel por tipo de chamado, (4) secao de investimentos no perfil do cliente, e (5) historico unificado.
 
 ---
 
-### Aba 1: Resultados de Producao
+### 1. Novas Tabelas no Banco de Dados
 
-Cards de metricas com foco em PBs (primeiro) e depois faturamento:
+**`investment_ticket_types`** - Tipos de acao configuravel com SLA e prioridade
 
-**PBs (destaque principal):**
-- PB Geral + PB Geral por Cabeca
-- PB Planejamento + PB Planejamento por Cabeca
-- PB Seguros + PB Seguros por Cabeca
-- PB Credito + PB Credito por Cabeca
-- PB Outros + PB Outros por Cabeca
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | uuid | PK |
+| name | text | Nome do tipo (Aporte, Resgate, etc.) |
+| slug | text | Identificador unico |
+| fields_schema | jsonb | Campos dinamicos obrigatorios |
+| default_priority | text | Prioridade padrao |
+| sla_minutes | integer | SLA em minutos |
+| is_active | boolean | Ativo/inativo |
+| order_position | integer | Ordem de exibicao |
 
-**Faturamento:**
-- Faturamento Total
-- Vendas Planejamento (qtd + valor)
-- Vendas Seguros (qtd + valor)
-- Vendas Credito (qtd + valor)
-- Vendas Outros (qtd + valor)
+Dados iniciais (6 tipos):
+- **Aporte**: campos = valor, conta destino, observacoes
+- **Resgate**: campos = valor, conta origem, motivo, urgencia
+- **Transferencia**: campos = valor, conta origem, conta destino
+- **PDF de Carteira**: campos = periodo, tipo de relatorio
+- **Duvida sobre Investimentos**: campos = assunto, descricao detalhada
+- **Agendamento de Reuniao**: campos = data sugerida, pauta
 
-Categorias de produto mapeadas:
-- **Planejamento**: "Planejamento Financeiro"
-- **Seguros**: "Seguro de Vida", "Seguros (Corretora de Seguros)", "Plano de Saude"
-- **Credito**: "Home Equity", "Financiamento Imobiliario", "Financiamento Auto", "Carta Contemplada Auto", "Carta Contemplada Imobiliario", "Credito com Colateral XP", "Consorcio"
-- **Outros**: "Investimentos" e qualquer outra categoria nao mapeada
+**Alteracao em `tickets`** - Novos campos
 
-"Por cabeca" = valor total dividido pelo numero de membros da equipe filtrada.
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| ticket_type_id | uuid (nullable) | FK para investment_ticket_types |
+| dynamic_fields | jsonb | Dados dos campos dinamicos preenchidos |
+| sla_deadline | timestamptz (nullable) | Prazo calculado automaticamente |
+
+**`client_investment_data`** - Dados de investimentos do cliente (estrutura para integracao futura)
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | uuid | PK |
+| contact_id | uuid | FK para contacts |
+| data_type | text | Tipo: 'portfolio', 'allocation', 'contribution' |
+| data | jsonb | Dados flexiveis |
+| reference_date | date | Data de referencia |
+| updated_by | uuid | Quem atualizou |
+| created_at / updated_at | timestamptz | Timestamps |
+
+RLS: Leitura por usuarios que acessam o contato (mesma logica de contacts). Escrita por superadmin e operacoes_investimentos.
 
 ---
 
-### Aba 2: Resultados de Esforcos
+### 2. Tela "Gestao de Investimentos" (`/investments`)
 
-Dados vindos da lista de prospecao e dos funis:
+Acessivel apenas para usuarios com posicao `operacoes_investimentos` e superadmins.
 
-**Lista de Prospecao (contact_history):**
-- Contatos adicionados a lista (`added_to_prospection`)
-- Contatos convertidos para negociacao (`prospection_negotiation_started`)
-- Contatos perdidos (`prospection_no_contact`)
-- Taxa de conversao
+**Layout em abas:**
 
-**Analises Agendadas:**
-- Contar oportunidades marcadas como "won" no funil PROSPECAO - PLANEJAMENTO (id: `11111111-...`) estando na etapa "Reuniao Agendada" (id: `fa3c2495-...`). Fonte: tabela `opportunities` com `status = 'won'` e `current_stage_id` ou historico de `contact_history` com `stage_change`.
+- **Fila de Chamados**: Tabela com chamados de investimento ordenados por SLA (mais urgente primeiro). Colunas: cliente, tipo de acao, prioridade, SLA restante (com indicador visual vermelho/amarelo/verde), status, data de criacao. Clicar abre o TicketDetailModal existente.
 
-**Analises Feitas:**
-- Contar oportunidades que chegaram na etapa "Analise Feita" (id: `2f1f297e-...`) no funil VENDA - PLANEJAMENTO. Fonte: `contact_history` com `action = 'stage_change'` e `to_stage_id = '2f1f297e-...'`.
+- **Clientes**: Lista de todos os contatos com dados de investimento cadastrados. Permite buscar e acessar perfil de investimento de cada cliente para futuro cadastro de carteira/alocacao.
+
+- **Configuracoes**: Gerenciar tipos de chamado, SLA e prioridade padrao de cada tipo. Somente superadmin pode editar.
 
 ---
 
-### Aba 3: Resultados de Qualidade
+### 3. Chamados de Investimento com Campos Dinamicos
 
-Manter os placeholders existentes (NPS, Inadimplencia, Fat Perdido, Churn) que ja estao na tela, prontos para integracao futura.
+Quando o planejador seleciona departamento "Investimentos" no modal de novo chamado:
+
+1. Aparece um seletor de "Tipo de Acao" (Aporte, Resgate, etc.)
+2. Ao selecionar, campos obrigatorios especificos aparecem dinamicamente
+3. A prioridade e preenchida automaticamente pelo tipo (editavel)
+4. O SLA e calculado automaticamente: `created_at + sla_minutes`
+5. Os dados dos campos ficam em `dynamic_fields` (jsonb)
+
+---
+
+### 4. Secao de Investimentos no Perfil do Cliente
+
+Na pagina `/clients/:planId` (ClientDetail), adicionar uma nova secao "Investimentos" com:
+
+- **Resumo da Carteira**: Placeholder com mensagem "Integracao em breve" e dados basicos da tabela `client_investment_data`
+- **Historico de Chamados**: Lista dos chamados de investimento daquele contato, com tipo, status, data e resumo
+
+---
+
+### 5. Menu Lateral
+
+Adicionar item "Gestao de Investimentos" no sidebar, visivel apenas para:
+- Usuarios com `position = 'operacoes_investimentos'`
+- Usuarios com `role = 'superadmin'`
 
 ---
 
 ### Detalhes Tecnicos
 
+**Arquivos novos:**
+
+1. **`src/pages/InvestmentManagement.tsx`** - Pagina principal com 3 abas (Fila, Clientes, Config)
+2. **`src/hooks/useInvestmentTicketTypes.ts`** - CRUD de tipos de chamado de investimento
+3. **`src/hooks/useClientInvestments.ts`** - Dados de investimento do cliente
+4. **`src/components/investments/InvestmentQueue.tsx`** - Tabela de fila com SLA visual
+5. **`src/components/investments/InvestmentClientsTab.tsx`** - Aba de clientes com investimentos
+6. **`src/components/investments/InvestmentConfigTab.tsx`** - Config de tipos/SLA
+7. **`src/components/investments/InvestmentTicketFields.tsx`** - Campos dinamicos no modal
+8. **`src/components/clients/ClientInvestmentsSection.tsx`** - Secao no perfil do cliente
+
 **Arquivos modificados:**
 
-1. **`src/hooks/useTeamAnalytics.ts`**
-   - Expandir `TeamMetrics` com novos campos: `pbCredit`, `pbOthers`, `creditSales`, `creditValue`, `othersSales`, `othersValue`, `totalRevenue`, `memberCount`
-   - Adicionar interface `TeamEffortMetrics` com campos de prospecao e analises
-   - Processar contratos separando por 4 categorias (planejamento, seguros, credito, outros)
-   - Calcular PB por cabeca dividindo pelo total de membros
+1. **`src/components/tickets/NewTicketModal.tsx`** - Adicionar seletor de tipo e campos dinamicos quando dept=investimentos
+2. **`src/components/layout/AppSidebar.tsx`** - Adicionar item condicional "Gestao de Investimentos"
+3. **`src/App.tsx`** - Adicionar rota `/investments`
+4. **`src/pages/ClientDetail.tsx`** - Incluir ClientInvestmentsSection
+5. **`src/types/tickets.ts`** - Adicionar campos de tipo e SLA ao Ticket
+6. **`src/components/tickets/TicketDetailModal.tsx`** - Exibir campos dinamicos e SLA
 
-2. **`src/hooks/useTeamEfforts.ts`** (novo)
-   - Hook dedicado para buscar dados de esforcos
-   - Query em `contact_history` para eventos de prospecao filtrados por `changed_by IN targetUserIds` e periodo
-   - Query em `contact_history` para `stage_change` com `to_stage_id` correspondente a "Analise Feita" no periodo
-   - Query em `opportunities` para contar wins do funil PROSPECAO na etapa "Reuniao Agendada" no periodo
+**Migracao SQL:**
+- Criar tabelas `investment_ticket_types` e `client_investment_data`
+- Alterar `tickets` com colunas novas
+- Inserir 6 tipos iniciais
+- RLS para todas as tabelas
 
-3. **`src/components/team/TeamMetricsCards.tsx`**
-   - Substituir layout atual por `Tabs` com 3 abas
-   - Aba "Producao": cards de PB (com destaque) + faturamento
-   - Aba "Esforcos": cards de prospecao + analises
-   - Aba "Qualidade": placeholders existentes (NPS, inadimplencia, etc.)
-
-4. **`src/pages/Team.tsx`**
-   - Importar e usar `useTeamEfforts` passando os mesmos filtros
-   - Passar dados de esforcos para `TeamMetricsCards`
-
-**Dados necessarios para esforcos (queries):**
-
-```text
--- Prospecao: contact_history filtrado por changed_by IN teamIds e periodo
--- Analises agendadas: opportunities won no funil 11111111-... com from_stage = fa3c2495-...
--- Analises feitas: contact_history stage_change com to_stage_id = 2f1f297e-... no periodo
-```
-
-Nenhuma alteracao de banco de dados necessaria - todos os dados ja existem nas tabelas atuais.
