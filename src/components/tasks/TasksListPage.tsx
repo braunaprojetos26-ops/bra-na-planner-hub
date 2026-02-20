@@ -11,7 +11,8 @@ import {
   MoreHorizontal,
   CheckCircle2,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  CalendarCheck
 } from 'lucide-react';
 import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
@@ -41,6 +42,7 @@ const TASK_TYPE_ICONS: Record<TaskType, React.ComponentType<{ className?: string
   proposal: Send,
   document: FileText,
   whatsapp: MessageSquare,
+  scheduling_analysis: CalendarCheck,
   other: MoreHorizontal,
 };
 

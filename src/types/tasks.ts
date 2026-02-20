@@ -1,4 +1,4 @@
-export type TaskType = 'call' | 'email' | 'meeting' | 'follow_up' | 'proposal' | 'document' | 'whatsapp' | 'other';
+export type TaskType = 'call' | 'email' | 'meeting' | 'follow_up' | 'proposal' | 'document' | 'whatsapp' | 'scheduling_analysis' | 'other';
 export type TaskStatus = 'pending' | 'completed' | 'overdue';
 
 export interface Task {
@@ -60,6 +60,7 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   proposal: 'Envio de Proposta',
   document: 'Envio de Documento',
   whatsapp: 'WhatsApp',
+  scheduling_analysis: 'Agendamento de Análise',
   other: 'Outro',
 };
 

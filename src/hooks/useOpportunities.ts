@@ -418,6 +418,50 @@ export function useMarkOpportunityWon() {
         }
       }
 
+      // Auto-complete scheduling_analysis tasks when won from "Reunião Agendada" in "PROSPECÇÃO - PLANEJAMENTO"
+      const PROSPECCAO_PLANEJAMENTO_FUNNEL_ID = '11111111-1111-1111-1111-111111111111';
+      const REUNIAO_AGENDADA_STAGE_ID = 'fa3c2495-6fe4-43f0-84d0-913105bbdbb7';
+
+      if (
+        // We need to check the funnel - fetch it from the opportunity
+        fromStageId === REUNIAO_AGENDADA_STAGE_ID
+      ) {
+        // Get the opportunity's funnel and contact owner
+        const { data: oppData } = await supabase
+          .from('opportunities')
+          .select('current_funnel_id, contact:contacts!opportunities_contact_id_fkey(owner_id)')
+          .eq('id', opportunityId)
+          .single();
+
+        if (
+          oppData &&
+          oppData.current_funnel_id === PROSPECCAO_PLANEJAMENTO_FUNNEL_ID &&
+          oppData.contact?.owner_id
+        ) {
+          const ownerId = (oppData.contact as any).owner_id;
+
+          // Find pending/overdue scheduling_analysis tasks assigned to this owner
+          const { data: pendingTasks } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('assigned_to', ownerId)
+            .eq('task_type', 'scheduling_analysis')
+            .in('status', ['pending', 'overdue'])
+            .order('scheduled_at', { ascending: true })
+            .limit(1);
+
+          if (pendingTasks && pendingTasks.length > 0) {
+            await supabase
+              .from('tasks')
+              .update({
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+              })
+              .eq('id', pendingTasks[0].id);
+          }
+        }
+      }
+
       // Only create new opportunity if there's a next funnel
       if (nextFunnelId && nextStageId) {
         // Get the contact_id from the opportunity
@@ -461,6 +505,9 @@ export function useMarkOpportunityWon() {
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['contact-opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['team-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['all-user-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['team-task-stats'] });
       if (newOpportunity) {
         toast({ title: 'Oportunidade ganha! PBs calculados e nova oportunidade criada.' });
       } else {
