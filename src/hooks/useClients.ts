@@ -6,14 +6,14 @@ import { useToast } from '@/hooks/use-toast';
 import type { ClientPlan, ClientPlanFormData, ClientMetrics } from '@/types/clients';
 import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns';
 
-export function useClients(status?: ClientPlan['status']) {
+export function useClients(status?: ClientPlan['status'], ownerIds?: string[]) {
   const { user } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
 
   const targetUserId = isImpersonating && actingUser ? actingUser.id : null;
 
   return useQuery({
-    queryKey: ['clients', targetUserId, status],
+    queryKey: ['clients', targetUserId, status, ownerIds],
     queryFn: async () => {
       let query = supabase
         .from('client_plans')
@@ -26,6 +26,8 @@ export function useClients(status?: ClientPlan['status']) {
 
       if (targetUserId) {
         query = query.eq('owner_id', targetUserId);
+      } else if (ownerIds && ownerIds.length > 0) {
+        query = query.in('owner_id', ownerIds);
       }
 
       if (status) {
@@ -38,9 +40,23 @@ export function useClients(status?: ClientPlan['status']) {
 
       // Buscar contagem de contratos ativos e dados de pagamento para cada cliente
       const contactIds = [...new Set(data?.map(p => p.contact_id) || [])];
+      const ownerIdsSet = [...new Set(data?.map(p => p.owner_id) || [])];
+
+      // Fetch owner names
+      let ownerNameMap = new Map<string, string>();
+      if (ownerIdsSet.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', ownerIdsSet);
+        profiles?.forEach(p => ownerNameMap.set(p.user_id, p.full_name));
+      }
       
       if (contactIds.length === 0) {
-        return data as ClientPlan[];
+        return (data?.map(plan => ({
+          ...plan,
+          owner: { full_name: ownerNameMap.get(plan.owner_id) || '', email: '' },
+        })) || []) as ClientPlan[];
       }
 
       const { data: contractsData, error: contractError } = await supabase
@@ -58,7 +74,6 @@ export function useClients(status?: ClientPlan['status']) {
       contractsData?.forEach(c => {
         countMap.set(c.contact_id, (countMap.get(c.contact_id) || 0) + 1);
         
-        // Pegar dados de pagamento do contrato mais recente (primeira iteração ganha)
         if (!paymentMap.has(c.contact_id)) {
           const customData = c.custom_data as Record<string, unknown> | null;
           const paidInstallments = (customData?.paid_installments as number) || 0;
@@ -70,9 +85,9 @@ export function useClients(status?: ClientPlan['status']) {
         }
       });
 
-      // Adicionar contagem e dados de pagamento aos planos
       const plansWithData = data?.map(plan => ({
         ...plan,
+        owner: { full_name: ownerNameMap.get(plan.owner_id) || '', email: '' },
         productCount: countMap.get(plan.contact_id) || 0,
         paymentProgress: paymentMap.get(plan.contact_id) || null,
       })) || [];
