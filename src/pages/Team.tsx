@@ -3,6 +3,7 @@ import { startOfMonth, endOfMonth } from 'date-fns';
 import { Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamAnalytics, TeamFilters as TeamFiltersType } from '@/hooks/useTeamAnalytics';
+import { useTeamEfforts } from '@/hooks/useTeamEfforts';
 import { TeamFilters } from '@/components/team/TeamFilters';
 import { TeamMetricsCards } from '@/components/team/TeamMetricsCards';
 import { TeamMembersTable } from '@/components/team/TeamMembersTable';
@@ -19,15 +20,14 @@ export default function Team() {
   });
 
   const { data: metrics, isLoading } = useTeamAnalytics(filters);
+  const { data: efforts, isLoading: isLoadingEfforts } = useTeamEfforts(filters);
 
-  // Check access
   if (!role || !ALLOWED_ROLES.includes(role)) {
     return <Navigate to="/" replace />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">
@@ -35,20 +35,15 @@ export default function Team() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Equipe</h1>
-            <p className="text-muted-foreground text-sm">
-              Acompanhe a performance do seu time
-            </p>
+            <p className="text-muted-foreground text-sm">Acompanhe a performance do seu time</p>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
       <TeamFilters filters={filters} onFiltersChange={setFilters} />
 
-      {/* Metrics Cards */}
-      <TeamMetricsCards metrics={metrics} isLoading={isLoading} />
+      <TeamMetricsCards metrics={metrics} efforts={efforts} isLoading={isLoading} isLoadingEfforts={isLoadingEfforts} />
 
-      {/* Team Members Table */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Acompanhamento da Equipe</h3>
         <TeamMembersTable members={metrics?.members || []} isLoading={isLoading} />
