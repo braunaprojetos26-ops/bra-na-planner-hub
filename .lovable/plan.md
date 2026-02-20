@@ -1,74 +1,96 @@
 
-
-## Metas de Agendamento de Analise
+## Reestruturar Resultado de Equipe em 3 Sub-abas
 
 ### Resumo
 
-Adicionar o tipo de tarefa "Agendamento de Analise" ao sistema. Quando um lider cria essa tarefa para um planejador, ela aparece tanto em "Tarefas da Equipe" quanto na pagina "Tarefas" do planejador. A tarefa e automaticamente concluida quando o planejador marca uma venda (won) em uma oportunidade do funil "PROSPECÇÃO - PLANEJAMENTO" que esteja na etapa "Reuniao Agendada".
+Dividir a secao de metricas da pagina Equipe em 3 sub-abas: **Resultados de Producao**, **Resultados de Esforcos** e **Resultados de Qualidade**, cada uma com metricas especificas.
 
-### Alteracoes Necessarias
+---
 
-#### 1. Banco de dados - Adicionar novo valor ao enum `task_type`
+### Aba 1: Resultados de Producao
 
-Adicionar `scheduling_analysis` ao enum `task_type` existente via migracao SQL:
+Cards de metricas com foco em PBs (primeiro) e depois faturamento:
 
-```text
-ALTER TYPE task_type ADD VALUE 'scheduling_analysis';
-```
+**PBs (destaque principal):**
+- PB Geral + PB Geral por Cabeca
+- PB Planejamento + PB Planejamento por Cabeca
+- PB Seguros + PB Seguros por Cabeca
+- PB Credito + PB Credito por Cabeca
+- PB Outros + PB Outros por Cabeca
 
-#### 2. Frontend - Atualizar tipo e labels (`src/types/tasks.ts`)
+**Faturamento:**
+- Faturamento Total
+- Vendas Planejamento (qtd + valor)
+- Vendas Seguros (qtd + valor)
+- Vendas Credito (qtd + valor)
+- Vendas Outros (qtd + valor)
 
-- Adicionar `'scheduling_analysis'` ao type `TaskType`
-- Adicionar label `'Agendamento de Analise'` no mapa `TASK_TYPE_LABELS`
+Categorias de produto mapeadas:
+- **Planejamento**: "Planejamento Financeiro"
+- **Seguros**: "Seguro de Vida", "Seguros (Corretora de Seguros)", "Plano de Saude"
+- **Credito**: "Home Equity", "Financiamento Imobiliario", "Financiamento Auto", "Carta Contemplada Auto", "Carta Contemplada Imobiliario", "Credito com Colateral XP", "Consorcio"
+- **Outros**: "Investimentos" e qualquer outra categoria nao mapeada
 
-#### 3. Auto-completar tarefa ao marcar venda (`src/hooks/useOpportunities.ts`)
+"Por cabeca" = valor total dividido pelo numero de membros da equipe filtrada.
 
-No hook `useMarkOpportunityWon`, apos marcar a oportunidade como "won":
+---
 
-- Verificar se a oportunidade pertence ao funil "PROSPECÇÃO - PLANEJAMENTO" (id conhecido: `11111111-1111-1111-1111-111111111111`)
-- Verificar se o `from_stage_id` corresponde a etapa "Reuniao Agendada" (id: `fa3c2495-6fe4-43f0-84d0-913105bbdbb7`)
-- Se sim, buscar tarefas do tipo `scheduling_analysis` pendentes/atrasadas onde `assigned_to` = owner do contato da oportunidade
-- Marcar a primeira tarefa pendente encontrada como `completed` com `completed_at = now()`
-- Invalidar queries de tarefas (`team-tasks`, `all-user-tasks`, `team-task-stats`)
+### Aba 2: Resultados de Esforcos
 
-#### 4. Visibilidade na pagina Tarefas do planejador
+Dados vindos da lista de prospecao e dos funis:
 
-Ja funciona automaticamente. O hook `useAllUserTasks` busca tarefas com `or(created_by.eq.userId, assigned_to.eq.userId)`. Como o lider cria a tarefa com `assigned_to` = planejador, ela ja aparece na pagina de Tarefas do planejador.
+**Lista de Prospecao (contact_history):**
+- Contatos adicionados a lista (`added_to_prospection`)
+- Contatos convertidos para negociacao (`prospection_negotiation_started`)
+- Contatos perdidos (`prospection_no_contact`)
+- Taxa de conversao
 
-#### 5. Visibilidade em Tarefas da Equipe
+**Analises Agendadas:**
+- Contar oportunidades marcadas como "won" no funil PROSPECAO - PLANEJAMENTO (id: `11111111-...`) estando na etapa "Reuniao Agendada" (id: `fa3c2495-...`). Fonte: tabela `opportunities` com `status = 'won'` e `current_stage_id` ou historico de `contact_history` com `stage_change`.
 
-Ja funciona automaticamente. O hook `useTeamTasks` busca tarefas com `created_by = user.id` e `assigned_to IN teamMemberIds`, que e exatamente o caso.
+**Analises Feitas:**
+- Contar oportunidades que chegaram na etapa "Analise Feita" (id: `2f1f297e-...`) no funil VENDA - PLANEJAMENTO. Fonte: `contact_history` com `action = 'stage_change'` e `to_stage_id = '2f1f297e-...'`.
+
+---
+
+### Aba 3: Resultados de Qualidade
+
+Manter os placeholders existentes (NPS, Inadimplencia, Fat Perdido, Churn) que ja estao na tela, prontos para integracao futura.
+
+---
 
 ### Detalhes Tecnicos
 
-**Fluxo completo:**
+**Arquivos modificados:**
+
+1. **`src/hooks/useTeamAnalytics.ts`**
+   - Expandir `TeamMetrics` com novos campos: `pbCredit`, `pbOthers`, `creditSales`, `creditValue`, `othersSales`, `othersValue`, `totalRevenue`, `memberCount`
+   - Adicionar interface `TeamEffortMetrics` com campos de prospecao e analises
+   - Processar contratos separando por 4 categorias (planejamento, seguros, credito, outros)
+   - Calcular PB por cabeca dividindo pelo total de membros
+
+2. **`src/hooks/useTeamEfforts.ts`** (novo)
+   - Hook dedicado para buscar dados de esforcos
+   - Query em `contact_history` para eventos de prospecao filtrados por `changed_by IN targetUserIds` e periodo
+   - Query em `contact_history` para `stage_change` com `to_stage_id` correspondente a "Analise Feita" no periodo
+   - Query em `opportunities` para contar wins do funil PROSPECAO na etapa "Reuniao Agendada" no periodo
+
+3. **`src/components/team/TeamMetricsCards.tsx`**
+   - Substituir layout atual por `Tabs` com 3 abas
+   - Aba "Producao": cards de PB (com destaque) + faturamento
+   - Aba "Esforcos": cards de prospecao + analises
+   - Aba "Qualidade": placeholders existentes (NPS, inadimplencia, etc.)
+
+4. **`src/pages/Team.tsx`**
+   - Importar e usar `useTeamEfforts` passando os mesmos filtros
+   - Passar dados de esforcos para `TeamMetricsCards`
+
+**Dados necessarios para esforcos (queries):**
 
 ```text
-Lider cria tarefa "Agendamento de Analise"
-  -> assigned_to = planejador
-  -> task_type = scheduling_analysis
-  -> scheduled_at = data limite
-  |
-  v
-Tarefa aparece em:
-  - Tarefas da Equipe (para o lider)
-  - Tarefas (para o planejador)
-  |
-  v
-Planejador marca "Venda" em oportunidade
-  do funil PROSPECÇÃO - PLANEJAMENTO
-  na etapa "Reuniao Agendada"
-  |
-  v
-Sistema auto-completa a tarefa
-  de agendamento_analise pendente
-  do planejador
+-- Prospecao: contact_history filtrado por changed_by IN teamIds e periodo
+-- Analises agendadas: opportunities won no funil 11111111-... com from_stage = fa3c2495-...
+-- Analises feitas: contact_history stage_change com to_stage_id = 2f1f297e-... no periodo
 ```
 
-**Arquivos modificados:**
-- Migracao SQL (novo enum value)
-- `src/types/tasks.ts` (novo tipo + label)
-- `src/hooks/useOpportunities.ts` (logica de auto-complete no `useMarkOpportunityWon`)
-
-**Nenhuma alteracao de RLS necessaria** - as policies existentes ja cobrem o fluxo (lider cria, planejador visualiza via `assigned_to`).
-
+Nenhuma alteracao de banco de dados necessaria - todos os dados ja existem nas tabelas atuais.
