@@ -75,11 +75,18 @@ export function HierarchyNode({ node, level, onEditUser }: HierarchyNodeProps) {
         </button>
 
         {/* User icon */}
-        <User className="w-4 h-4 text-muted-foreground shrink-0" />
+        <User className={cn("w-4 h-4 shrink-0", node.is_active ? "text-muted-foreground" : "text-destructive/50")} />
+
+        {/* Inactive badge */}
+        {!node.is_active && (
+          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            Inativo
+          </Badge>
+        )}
 
         {/* Name - clickable for impersonation if not own profile */}
         {isOwnProfile ? (
-          <span className="font-medium text-sm flex-1">{node.full_name}</span>
+          <span className={cn("font-medium text-sm flex-1", !node.is_active && "text-muted-foreground line-through")}>{node.full_name}</span>
         ) : (
           <TooltipProvider>
             <Tooltip>

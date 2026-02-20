@@ -27,7 +27,6 @@ export function useHierarchy() {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, full_name, email, position, is_active')
-        .eq('is_active', true)
         .order('full_name');
 
       if (profilesError) throw profilesError;

@@ -2344,6 +2344,7 @@ export type Database = {
         Row: {
           cohort_date: string | null
           created_at: string
+          deactivated_at: string | null
           email: string
           full_name: string
           id: string
@@ -2356,6 +2357,7 @@ export type Database = {
         Insert: {
           cohort_date?: string | null
           created_at?: string
+          deactivated_at?: string | null
           email: string
           full_name: string
           id?: string
@@ -2368,6 +2370,7 @@ export type Database = {
         Update: {
           cohort_date?: string | null
           created_at?: string
+          deactivated_at?: string | null
           email?: string
           full_name?: string
           id?: string
@@ -3624,6 +3627,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      deactivate_user: {
+        Args: { _target_user_id: string; _transfer_to_user_id: string }
+        Returns: undefined
+      }
       get_accessible_user_ids: {
         Args: { _accessor_id: string }
         Returns: string[]
@@ -3657,6 +3664,7 @@ export type Database = {
         Returns: boolean
       }
       is_trainer: { Args: { _user_id: string }; Returns: boolean }
+      reactivate_user: { Args: { _target_user_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "planejador" | "lider" | "supervisor" | "gerente" | "superadmin"
