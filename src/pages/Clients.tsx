@@ -20,7 +20,7 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState<ClientPlanStatus | 'all'>('all');
   const [showNewClient, setShowNewClient] = useState(false);
   const [showDelinquentDrawer, setShowDelinquentDrawer] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   
   const { isImpersonating } = useActingUser();
   const { data: clients, isLoading } = useClients();
