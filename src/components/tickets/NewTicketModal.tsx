@@ -33,6 +33,8 @@ import { useCreateTicket } from '@/hooks/useTickets';
 import { useContacts } from '@/hooks/useContacts';
 import { useContracts } from '@/hooks/useContracts';
 import { TicketDepartment, TicketPriority, departmentLabels, priorityLabels, DEPARTMENTS_REQUIRING_CONTACT } from '@/types/tickets';
+import { InvestmentTicketFields } from '@/components/investments/InvestmentTicketFields';
+import type { InvestmentTicketType } from '@/hooks/useInvestmentTicketTypes';
 import { toast } from 'sonner';
 import { Check, ChevronsUpDown, User, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,6 +52,11 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
   const [contactId, setContactId] = useState<string | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
 
+  // Investment-specific state
+  const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<InvestmentTicketType | null>(null);
+  const [dynamicFields, setDynamicFields] = useState<Record<string, any>>({});
+
   const createTicket = useCreateTicket();
   const { data: contacts = [] } = useContacts();
   const { data: contracts = [] } = useContracts();
@@ -64,6 +71,26 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
   }, [contracts, contactId]);
 
   const isContactRequired = DEPARTMENTS_REQUIRING_CONTACT.includes(department);
+  const isInvestment = department === 'investimentos';
+
+  const handleDepartmentChange = (dept: TicketDepartment) => {
+    setDepartment(dept);
+    if (dept !== 'investimentos') {
+      setSelectedTypeId(null);
+      setSelectedType(null);
+      setDynamicFields({});
+    }
+  };
+
+  const handleTypeChange = (typeId: string, type: InvestmentTicketType) => {
+    setSelectedTypeId(typeId);
+    setSelectedType(type);
+    setDynamicFields({});
+  };
+
+  const handleDynamicFieldChange = (key: string, value: any) => {
+    setDynamicFields(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,13 +99,39 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
       toast.error('Para este departamento, é obrigatório selecionar um cliente.');
       return;
     }
-    
+
+    if (isInvestment && !selectedTypeId) {
+      toast.error('Selecione o tipo de ação para chamados de investimento.');
+      return;
+    }
+
+    // Validate required dynamic fields
+    if (isInvestment && selectedType) {
+      for (const field of selectedType.fields_schema) {
+        if (field.required && !dynamicFields[field.key]) {
+          toast.error(`O campo "${field.label}" é obrigatório.`);
+          return;
+        }
+      }
+    }
+
+    // Calculate SLA deadline
+    let slaDeadline: string | undefined;
+    if (isInvestment && selectedType) {
+      const deadline = new Date();
+      deadline.setMinutes(deadline.getMinutes() + selectedType.sla_minutes);
+      slaDeadline = deadline.toISOString();
+    }
+
     await createTicket.mutateAsync({
       title,
       description,
       department,
       priority,
       contact_id: contactId,
+      ticket_type_id: isInvestment ? selectedTypeId : undefined,
+      dynamic_fields: isInvestment ? dynamicFields : undefined,
+      sla_deadline: slaDeadline,
     });
 
     setTitle('');
@@ -86,6 +139,9 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
     setDepartment('administrativo');
     setPriority('normal');
     setContactId(null);
+    setSelectedTypeId(null);
+    setSelectedType(null);
+    setDynamicFields({});
     onOpenChange(false);
   };
 
@@ -110,7 +166,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
 
           <div className="space-y-2">
             <Label htmlFor="department">Departamento</Label>
-            <Select value={department} onValueChange={(v) => setDepartment(v as TicketDepartment)}>
+            <Select value={department} onValueChange={(v) => handleDepartmentChange(v as TicketDepartment)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -123,6 +179,17 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Investment dynamic fields */}
+          {isInvestment && (
+            <InvestmentTicketFields
+              selectedTypeId={selectedTypeId}
+              onTypeChange={handleTypeChange}
+              dynamicFields={dynamicFields}
+              onDynamicFieldChange={handleDynamicFieldChange}
+              onPriorityChange={setPriority}
+            />
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="priority">Prioridade</Label>

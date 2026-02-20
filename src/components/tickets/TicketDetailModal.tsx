@@ -123,6 +123,35 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
                 </Badge>
               </div>
 
+              {/* Dynamic fields display */}
+              {ticket.dynamic_fields && Object.keys(ticket.dynamic_fields).length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                  <h4 className="text-sm font-medium">Campos do Chamado</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(ticket.dynamic_fields).map(([key, value]) => (
+                      <div key={key} className="text-sm">
+                        <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                        <span className="font-medium">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SLA display */}
+              {ticket.sla_deadline && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">SLA:</span>
+                  <span className="font-medium">
+                    {format(new Date(ticket.sla_deadline), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </span>
+                  {new Date(ticket.sla_deadline) < new Date() && ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                    <Badge variant="destructive" className="text-xs">Vencido</Badge>
+                  )}
+                </div>
+              )}
+
               {/* Contact Info */}
               {ticket.contact && (
                 <div className="p-3 bg-muted rounded-lg">

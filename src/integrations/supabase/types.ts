@@ -79,6 +79,47 @@ export type Database = {
           },
         ]
       }
+      client_investment_data: {
+        Row: {
+          contact_id: string
+          created_at: string
+          data: Json
+          data_type: string
+          id: string
+          reference_date: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          data?: Json
+          data_type: string
+          id?: string
+          reference_date?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          data?: Json
+          data_type?: string
+          id?: string
+          reference_date?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_investment_data_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_plan_meetings: {
         Row: {
           completed_at: string | null
@@ -1202,6 +1243,45 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      investment_ticket_types: {
+        Row: {
+          created_at: string
+          default_priority: string
+          fields_schema: Json
+          id: string
+          is_active: boolean
+          name: string
+          order_position: number
+          sla_minutes: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_priority?: string
+          fields_schema?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          order_position?: number
+          sla_minutes?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_priority?: string
+          fields_schema?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_position?: number
+          sla_minutes?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       leadership_knowledge_base: {
         Row: {
@@ -2830,11 +2910,14 @@ export type Database = {
           created_by: string
           department: string
           description: string
+          dynamic_fields: Json | null
           id: string
           priority: string
           resolved_at: string | null
           resolved_by: string | null
+          sla_deadline: string | null
           status: string
+          ticket_type_id: string | null
           title: string
           updated_at: string
         }
@@ -2845,11 +2928,14 @@ export type Database = {
           created_by: string
           department: string
           description: string
+          dynamic_fields?: Json | null
           id?: string
           priority?: string
           resolved_at?: string | null
           resolved_by?: string | null
+          sla_deadline?: string | null
           status?: string
+          ticket_type_id?: string | null
           title: string
           updated_at?: string
         }
@@ -2860,11 +2946,14 @@ export type Database = {
           created_by?: string
           department?: string
           description?: string
+          dynamic_fields?: Json | null
           id?: string
           priority?: string
           resolved_at?: string | null
           resolved_by?: string | null
+          sla_deadline?: string | null
           status?: string
+          ticket_type_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -2874,6 +2963,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_ticket_type_id_fkey"
+            columns: ["ticket_type_id"]
+            isOneToOne: false
+            referencedRelation: "investment_ticket_types"
             referencedColumns: ["id"]
           },
         ]
