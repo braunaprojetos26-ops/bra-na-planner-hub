@@ -38,6 +38,10 @@ export interface CreateActivityData {
   urgency: string;
   target_positions: string[] | null;
   deadline: string;
+  is_perpetual?: boolean;
+  rule_type?: string;
+  rule_config?: Record<string, any>;
+  recurrence_interval?: string;
 }
 
 export function useCriticalActivities() {
@@ -136,20 +140,33 @@ export function useCriticalActivities() {
           urgency: data.urgency,
           target_positions: data.target_positions && data.target_positions.length > 0 ? data.target_positions : null,
           deadline: data.deadline,
+          is_perpetual: data.is_perpetual || false,
+          rule_type: data.rule_type || null,
+          rule_config: data.rule_config || {},
+          recurrence_interval: data.recurrence_interval || null,
         })
         .select()
         .single();
       if (error) throw error;
+
+      // For perpetual rule-based activities, don't distribute immediately
+      if (data.is_perpetual && data.rule_type !== 'manual_recurrence') {
+        return { activity, distributed_count: 0, is_perpetual: true };
+      }
 
       // Distribute to users (creates assignments + tasks)
       const { data: count, error: distErr } = await supabase
         .rpc('distribute_critical_activity', { p_activity_id: activity.id });
       if (distErr) throw distErr;
 
-      return { activity, distributed_count: count };
+      return { activity, distributed_count: count, is_perpetual: false };
     },
     onSuccess: (result) => {
-      toast.success(`Atividade criada e distribuída para ${result.distributed_count} usuário(s). Tarefas criadas na tela de Tarefas de cada usuário.`);
+      if (result.is_perpetual) {
+        toast.success('Atividade perpétua criada! Tarefas serão geradas automaticamente quando a condição for detectada.');
+      } else {
+        toast.success(`Atividade criada e distribuída para ${result.distributed_count} usuário(s).`);
+      }
       queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
     },
     onError: (error: Error) => {
