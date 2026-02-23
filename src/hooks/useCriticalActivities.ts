@@ -3,32 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export interface CriticalActivity {
-  id: string;
-  created_by: string;
-  title: string;
-  description: string | null;
-  urgency: string;
-  target_positions: string[] | null;
-  deadline: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CriticalActivityAssignment {
-  id: string;
-  activity_id: string;
-  user_id: string;
-  status: string;
-  completed_at: string | null;
-  created_at: string;
-  user_profile?: {
-    full_name: string;
-    position: string | null;
-  };
-}
-
 export interface ActivityWithStats {
   id: string;
   created_by: string;
@@ -45,6 +19,19 @@ export interface ActivityWithStats {
   completion_percentage: number;
 }
 
+export interface CriticalActivityAssignment {
+  id: string;
+  activity_id: string;
+  user_id: string;
+  status: string;
+  completed_at: string | null;
+  created_at: string;
+  user_profile?: {
+    full_name: string;
+    position: string | null;
+  };
+}
+
 export interface CreateActivityData {
   title: string;
   description?: string;
@@ -58,56 +45,6 @@ export function useCriticalActivities() {
   const queryClient = useQueryClient();
   const isAdmin = role === 'superadmin' || role === 'gerente';
 
-  // Fetch my assignments (for all users)
-  const myAssignmentsQuery = useQuery({
-    queryKey: ['critical-activity-assignments', 'mine'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('critical_activity_assignments')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as CriticalActivityAssignment[];
-    },
-    enabled: !!user,
-  });
-
-  // Fetch activities that I'm assigned to
-  const myActivitiesQuery = useQuery({
-    queryKey: ['critical-activities', 'mine'],
-    queryFn: async () => {
-      // First get my assignment activity_ids
-      const { data: assignments, error: aErr } = await supabase
-        .from('critical_activity_assignments')
-        .select('activity_id, status, completed_at')
-        .eq('user_id', user!.id);
-      if (aErr) throw aErr;
-
-      if (!assignments || assignments.length === 0) return [];
-
-      const activityIds = assignments.map(a => a.activity_id);
-      const { data: activities, error: actErr } = await supabase
-        .from('critical_activities')
-        .select('*')
-        .in('id', activityIds)
-        .eq('is_active', true)
-        .order('deadline', { ascending: true });
-      if (actErr) throw actErr;
-
-      // Merge assignment status
-      return (activities || []).map(act => {
-        const assignment = assignments.find(a => a.activity_id === act.id);
-        return {
-          ...act,
-          my_status: assignment?.status || 'pending',
-          my_completed_at: assignment?.completed_at || null,
-        };
-      });
-    },
-    enabled: !!user,
-  });
-
   // Admin: fetch all activities with stats
   const allActivitiesQuery = useQuery({
     queryKey: ['critical-activities', 'all'],
@@ -118,7 +55,6 @@ export function useCriticalActivities() {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Get stats for each activity
       const result: ActivityWithStats[] = [];
       for (const act of activities || []) {
         const { data: assignments } = await supabase
@@ -162,7 +98,6 @@ export function useCriticalActivities() {
           .order('status', { ascending: true });
         if (aErr) throw aErr;
 
-        // Get user profiles for assignments
         const userIds = (assignments || []).map(a => a.user_id);
         const { data: profiles } = await supabase
           .from('profiles')
@@ -206,7 +141,7 @@ export function useCriticalActivities() {
         .single();
       if (error) throw error;
 
-      // Distribute to users
+      // Distribute to users (creates assignments + tasks)
       const { data: count, error: distErr } = await supabase
         .rpc('distribute_critical_activity', { p_activity_id: activity.id });
       if (distErr) throw distErr;
@@ -214,44 +149,19 @@ export function useCriticalActivities() {
       return { activity, distributed_count: count };
     },
     onSuccess: (result) => {
-      toast.success(`Atividade criada e distribuída para ${result.distributed_count} usuário(s)`);
+      toast.success(`Atividade criada e distribuída para ${result.distributed_count} usuário(s). Tarefas criadas na tela de Tarefas de cada usuário.`);
       queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
-      queryClient.invalidateQueries({ queryKey: ['critical-activity-assignments'] });
     },
     onError: (error: Error) => {
       toast.error('Erro ao criar atividade: ' + error.message);
     },
   });
 
-  // Complete assignment
-  const completeAssignment = useMutation({
-    mutationFn: async (activityId: string) => {
-      const { error } = await supabase
-        .from('critical_activity_assignments')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('activity_id', activityId)
-        .eq('user_id', user!.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('Atividade marcada como concluída!');
-      queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
-      queryClient.invalidateQueries({ queryKey: ['critical-activity-assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['critical-activity-detail'] });
-    },
-    onError: (error: Error) => {
-      toast.error('Erro ao concluir atividade: ' + error.message);
-    },
-  });
-
   return {
-    myActivities: myActivitiesQuery.data || [],
-    myActivitiesLoading: myActivitiesQuery.isLoading,
     allActivities: allActivitiesQuery.data || [],
     allActivitiesLoading: allActivitiesQuery.isLoading,
     isAdmin,
     createActivity,
-    completeAssignment,
     useActivityDetail,
   };
 }
