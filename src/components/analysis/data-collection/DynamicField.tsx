@@ -195,6 +195,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
         // Labels em português para todos os tipos de lista
         const fieldLabels: Record<string, string> = {
           // Objetivos
+          goal_type: 'Tipo de Objetivo',
           name: 'Descrição',
           target_value_brl: 'Quanto precisa (R$)',
           target_date: 'Quando pretende',
@@ -215,6 +216,14 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           // Fluxo de caixa
           value_monthly_brl: 'Valor Mensal (R$)'
         };
+
+        // Override label for 'name' in goals_list context
+        const getFieldLabel = (key: string) => {
+          if (key === 'name' && field.key === 'goals_list') {
+            return 'Detalhes / Observações';
+          }
+          return fieldLabels[key] || key;
+        };
         
         // Verificar se é uma lista simples (nome + valor)
         if (isSimpleList(itemSchema)) {
@@ -225,7 +234,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
               {items.map((item, index) => (
                 <div key={index} className="flex items-center gap-2 group">
                   <Input
-                    placeholder="Nome"
+                    placeholder={getFieldLabel('name')}
                     value={(item.name as string) ?? ''}
                     onChange={(e) => {
                       const newItems = [...items];
@@ -273,7 +282,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
         // Ordem específica por tipo de lista
         const fieldOrderByType: Record<string, string[]> = {
           // Objetivos
-          goals_list: ['name', 'target_value_brl', 'target_date', 'priority', 'how'],
+          goals_list: ['goal_type', 'name', 'target_value_brl', 'target_date', 'priority', 'how'],
           // Filhos
           children: ['name', 'idade'],
           // Dívidas
@@ -311,7 +320,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           if (type === 'boolean') {
             return (
               <div key={key} className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{fieldLabels[key] || key}:</span>
+                <span className="text-sm text-muted-foreground">{getFieldLabel(key)}:</span>
                 <Switch
                   checked={Boolean(item[key])}
                   onCheckedChange={(checked) => {
@@ -326,7 +335,10 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           }
           
           if (type === 'select') {
-            const typeOptions = field.options?.typeOptions || [];
+            // Use goalTypeOptions for goal_type field, typeOptions for others
+            const selectOptions = key === 'goal_type' 
+              ? (field.options?.goalTypeOptions as string[] || [])
+              : (field.options?.typeOptions || []);
             return (
               <Select
                 key={key}
@@ -338,10 +350,10 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={fieldLabels[key] || key} />
+                  <SelectValue placeholder={getFieldLabel(key)} />
                 </SelectTrigger>
                 <SelectContent>
-                  {typeOptions.map((opt) => (
+                  {selectOptions.map((opt) => (
                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}
                 </SelectContent>
@@ -368,7 +380,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
             <Input
               key={key}
               type={type === 'number' ? 'number' : 'text'}
-              placeholder={fieldLabels[key] || key}
+              placeholder={getFieldLabel(key)}
               value={(item[key] as string | number) ?? ''}
               onChange={(e) => {
                 const newItems = [...listItems];
