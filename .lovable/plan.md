@@ -1,100 +1,88 @@
 
 
-## Tela de Gestao de Investimentos e Chamados Dinamicos
+## Atividades Criticas - Sistema de Tarefas em Massa
 
 ### Resumo
 
-Criar um modulo completo de investimentos com: (1) tela exclusiva "Gestao de Investimentos" para o Guido e super admins, (2) chamados de investimento com campos dinamicos por tipo de acao, (3) SLA e prioridade configuravel por tipo de chamado, (4) secao de investimentos no perfil do cliente, e (5) historico unificado.
+Criar um modulo "Atividades Criticas" que permite superadministradores e gerentes criarem atividades/tarefas em massa para todos os usuarios (ou filtrados por cargo). Cada atividade tem prazo maximo, nivel de urgencia e acompanhamento de progresso (quantos receberam, finalizaram, % de conclusao).
 
 ---
 
-### 1. Novas Tabelas no Banco de Dados
+### 1. Nova Tabela: `critical_activities`
 
-**`investment_ticket_types`** - Tipos de acao configuravel com SLA e prioridade
+Armazena a atividade critica criada pelo admin/gerente.
 
 | Coluna | Tipo | Descricao |
 |--------|------|-----------|
 | id | uuid | PK |
-| name | text | Nome do tipo (Aporte, Resgate, etc.) |
-| slug | text | Identificador unico |
-| fields_schema | jsonb | Campos dinamicos obrigatorios |
-| default_priority | text | Prioridade padrao |
-| sla_minutes | integer | SLA em minutos |
-| is_active | boolean | Ativo/inativo |
-| order_position | integer | Ordem de exibicao |
+| created_by | uuid | Quem criou |
+| title | text | Titulo da atividade |
+| description | text | Descricao detalhada |
+| urgency | text | Nivel: 'low', 'medium', 'high', 'critical' |
+| target_positions | jsonb | Array de cargos selecionados, ou null = todos |
+| deadline | timestamptz | Data/hora maxima para conclusao |
+| is_active | boolean | Se a atividade esta ativa |
+| created_at | timestamptz | Data de criacao |
+| updated_at | timestamptz | Data de atualizacao |
 
-Dados iniciais (6 tipos):
-- **Aporte**: campos = valor, conta destino, observacoes
-- **Resgate**: campos = valor, conta origem, motivo, urgencia
-- **Transferencia**: campos = valor, conta origem, conta destino
-- **PDF de Carteira**: campos = periodo, tipo de relatorio
-- **Duvida sobre Investimentos**: campos = assunto, descricao detalhada
-- **Agendamento de Reuniao**: campos = data sugerida, pauta
+RLS: Leitura para todos autenticados (precisam ver atividades atribuidas a eles). Escrita apenas para superadmin e gerente.
 
-**Alteracao em `tickets`** - Novos campos
+### 2. Nova Tabela: `critical_activity_assignments`
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| ticket_type_id | uuid (nullable) | FK para investment_ticket_types |
-| dynamic_fields | jsonb | Dados dos campos dinamicos preenchidos |
-| sla_deadline | timestamptz (nullable) | Prazo calculado automaticamente |
-
-**`client_investment_data`** - Dados de investimentos do cliente (estrutura para integracao futura)
+Registra cada usuario que recebeu a atividade e seu status individual.
 
 | Coluna | Tipo | Descricao |
 |--------|------|-----------|
 | id | uuid | PK |
-| contact_id | uuid | FK para contacts |
-| data_type | text | Tipo: 'portfolio', 'allocation', 'contribution' |
-| data | jsonb | Dados flexiveis |
-| reference_date | date | Data de referencia |
-| updated_by | uuid | Quem atualizou |
-| created_at / updated_at | timestamptz | Timestamps |
+| activity_id | uuid | FK para critical_activities |
+| user_id | uuid | Usuario atribuido |
+| status | text | 'pending', 'completed' |
+| completed_at | timestamptz | Quando finalizou |
+| created_at | timestamptz | Quando foi atribuido |
 
-RLS: Leitura por usuarios que acessam o contato (mesma logica de contacts). Escrita por superadmin e operacoes_investimentos.
-
----
-
-### 2. Tela "Gestao de Investimentos" (`/investments`)
-
-Acessivel apenas para usuarios com posicao `operacoes_investimentos` e superadmins.
-
-**Layout em abas:**
-
-- **Fila de Chamados**: Tabela com chamados de investimento ordenados por SLA (mais urgente primeiro). Colunas: cliente, tipo de acao, prioridade, SLA restante (com indicador visual vermelho/amarelo/verde), status, data de criacao. Clicar abre o TicketDetailModal existente.
-
-- **Clientes**: Lista de todos os contatos com dados de investimento cadastrados. Permite buscar e acessar perfil de investimento de cada cliente para futuro cadastro de carteira/alocacao.
-
-- **Configuracoes**: Gerenciar tipos de chamado, SLA e prioridade padrao de cada tipo. Somente superadmin pode editar.
+RLS: Usuarios veem suas proprias atribuicoes. Superadmin/gerente veem todas. Usuarios podem atualizar (marcar como concluido) suas proprias.
 
 ---
 
-### 3. Chamados de Investimento com Campos Dinamicos
+### 3. Nova Pagina: `/critical-activities`
 
-Quando o planejador seleciona departamento "Investimentos" no modal de novo chamado:
+Visivel no menu lateral para **todos os usuarios** (todos podem receber atividades criticas).
 
-1. Aparece um seletor de "Tipo de Acao" (Aporte, Resgate, etc.)
-2. Ao selecionar, campos obrigatorios especificos aparecem dinamicamente
-3. A prioridade e preenchida automaticamente pelo tipo (editavel)
-4. O SLA e calculado automaticamente: `created_at + sla_minutes`
-5. Os dados dos campos ficam em `dynamic_fields` (jsonb)
+**Visao do usuario comum (planejador):**
+- Lista de atividades criticas atribuidas a ele
+- Status de cada uma (pendente/concluida)
+- Indicador visual de urgencia e prazo restante
+- Botao para marcar como concluida
+
+**Visao do superadmin/gerente:**
+- Tudo acima + aba de gerenciamento
+- Botao "Nova Atividade Critica" com formulario:
+  - Titulo, descricao
+  - Nivel de urgencia (Baixa, Media, Alta, Critica)
+  - Data maxima (deadline)
+  - Seletor multi-cargo (checkboxes com todos os cargos do sistema, ou "Todos")
+- Lista de todas atividades criadas com metricas resumidas
+- Ao clicar em uma atividade, abre detalhe com:
+  - Total de usuarios que receberam
+  - Quantos ja finalizaram
+  - Quantos faltam
+  - Percentual de conclusao (barra de progresso)
+  - Lista nominal dos usuarios com status individual
 
 ---
 
-### 4. Secao de Investimentos no Perfil do Cliente
+### 4. Logica de Distribuicao
 
-Na pagina `/clients/:planId` (ClientDetail), adicionar uma nova secao "Investimentos" com:
-
-- **Resumo da Carteira**: Placeholder com mensagem "Integracao em breve" e dados basicos da tabela `client_investment_data`
-- **Historico de Chamados**: Lista dos chamados de investimento daquele contato, com tipo, status, data e resumo
+Ao criar uma atividade critica:
+1. O sistema busca todos os usuarios ativos (`profiles.is_active = true`) cujo cargo (`position`) esta na lista de `target_positions` (ou todos se nenhum cargo for selecionado)
+2. Cria um registro em `critical_activity_assignments` para cada usuario encontrado
+3. Isso e feito via database function (trigger ou funcao chamada pelo frontend) para garantir atomicidade
 
 ---
 
 ### 5. Menu Lateral
 
-Adicionar item "Gestao de Investimentos" no sidebar, visivel apenas para:
-- Usuarios com `position = 'operacoes_investimentos'`
-- Usuarios com `role = 'superadmin'`
+Adicionar item "Atividades Criticas" na secao "Principal" do sidebar, visivel para todos os usuarios, com icone AlertTriangle ou Zap.
 
 ---
 
@@ -102,27 +90,19 @@ Adicionar item "Gestao de Investimentos" no sidebar, visivel apenas para:
 
 **Arquivos novos:**
 
-1. **`src/pages/InvestmentManagement.tsx`** - Pagina principal com 3 abas (Fila, Clientes, Config)
-2. **`src/hooks/useInvestmentTicketTypes.ts`** - CRUD de tipos de chamado de investimento
-3. **`src/hooks/useClientInvestments.ts`** - Dados de investimento do cliente
-4. **`src/components/investments/InvestmentQueue.tsx`** - Tabela de fila com SLA visual
-5. **`src/components/investments/InvestmentClientsTab.tsx`** - Aba de clientes com investimentos
-6. **`src/components/investments/InvestmentConfigTab.tsx`** - Config de tipos/SLA
-7. **`src/components/investments/InvestmentTicketFields.tsx`** - Campos dinamicos no modal
-8. **`src/components/clients/ClientInvestmentsSection.tsx`** - Secao no perfil do cliente
+1. `src/pages/CriticalActivities.tsx` - Pagina principal com duas visoes (usuario vs admin)
+2. `src/hooks/useCriticalActivities.ts` - Hook com queries e mutations (criar atividade, listar, marcar como concluida, buscar detalhes com contagens)
+3. `src/components/critical-activities/NewActivityModal.tsx` - Modal de criacao com seletor de cargos
+4. `src/components/critical-activities/ActivityDetailModal.tsx` - Modal com progresso e lista de usuarios
+5. `src/components/critical-activities/ActivityCard.tsx` - Card de atividade com urgencia visual e prazo
 
 **Arquivos modificados:**
 
-1. **`src/components/tickets/NewTicketModal.tsx`** - Adicionar seletor de tipo e campos dinamicos quando dept=investimentos
-2. **`src/components/layout/AppSidebar.tsx`** - Adicionar item condicional "Gestao de Investimentos"
-3. **`src/App.tsx`** - Adicionar rota `/investments`
-4. **`src/pages/ClientDetail.tsx`** - Incluir ClientInvestmentsSection
-5. **`src/types/tickets.ts`** - Adicionar campos de tipo e SLA ao Ticket
-6. **`src/components/tickets/TicketDetailModal.tsx`** - Exibir campos dinamicos e SLA
+1. `src/components/layout/AppSidebar.tsx` - Novo item no menu
+2. `src/App.tsx` - Nova rota `/critical-activities`
 
 **Migracao SQL:**
-- Criar tabelas `investment_ticket_types` e `client_investment_data`
-- Alterar `tickets` com colunas novas
-- Inserir 6 tipos iniciais
-- RLS para todas as tabelas
+- Criar tabelas `critical_activities` e `critical_activity_assignments`
+- Criar funcao `distribute_critical_activity(activity_id uuid)` que popula os assignments com base nos cargos selecionados
+- RLS para ambas tabelas
 
