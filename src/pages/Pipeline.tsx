@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { differenceInHours, differenceInDays, isToday, startOfMonth, startOfYear, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Plus, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +11,7 @@ import { useActingUser } from '@/contexts/ActingUserContext';
 import { NewOpportunityModal } from '@/components/opportunities/NewOpportunityModal';
 import { OpportunitiesListView } from '@/components/opportunities/OpportunitiesListView';
 import { ProposalValueModal } from '@/components/opportunities/ProposalValueModal';
+import { ImportOpportunitiesModal } from '@/components/opportunities/ImportOpportunitiesModal';
 import { PipelineFilters } from '@/components/opportunities/PipelineFilters';
 import { OpportunityKanbanCard } from '@/components/opportunities/OpportunityKanbanCard';
 import { movingToProposalStage } from '@/lib/proposalStageValidation';
@@ -47,6 +48,7 @@ export default function Pipeline() {
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [draggedOpportunityId, setDraggedOpportunityId] = useState<string | null>(null);
   
   // New filter states
@@ -273,10 +275,16 @@ export default function Pipeline() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Negociações</h1>
         {!isReadOnly && (
-          <Button onClick={() => setShowNewOpportunityModal(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nova Negociação
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowImportModal(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
+            <Button onClick={() => setShowNewOpportunityModal(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Nova Negociação
+            </Button>
+          </div>
         )}
       </div>
 
@@ -413,6 +421,11 @@ export default function Pipeline() {
         onConfirm={handleProposalValueConfirm}
         isLoading={moveStage.isPending}
         stageName={pendingStageMove?.stageName}
+      />
+
+      <ImportOpportunitiesModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
       />
     </div>
   );
