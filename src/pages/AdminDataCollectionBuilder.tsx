@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { 
   Plus, 
   Save,
-  FileText
+  FileText,
+  X
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,7 @@ export default function AdminDataCollectionBuilder() {
     placeholder: '',
     is_required: false,
     options: '' as string,
+    goalTypeOptions: [] as string[],
   });
 
   // Mutations
@@ -239,6 +241,7 @@ export default function AdminDataCollectionBuilder() {
         placeholder: field.placeholder || '',
         is_required: field.is_required,
         options: field.options?.items?.join('\n') || '',
+        goalTypeOptions: (field.options?.goalTypeOptions as string[]) || [],
       });
     } else {
       setEditingField(null);
@@ -250,6 +253,7 @@ export default function AdminDataCollectionBuilder() {
         placeholder: '',
         is_required: false,
         options: '',
+        goalTypeOptions: [],
       });
     }
     setFieldModalOpen(true);
@@ -271,9 +275,23 @@ export default function AdminDataCollectionBuilder() {
         description: fieldForm.description || null,
         placeholder: fieldForm.placeholder || null,
         is_required: fieldForm.is_required,
-        options: fieldForm.options 
-          ? { items: fieldForm.options.split('\n').filter(Boolean) }
-          : null,
+        options: (() => {
+          const opts: Record<string, unknown> = {};
+          if (fieldForm.options) {
+            opts.items = fieldForm.options.split('\n').filter(Boolean);
+          }
+          if (fieldForm.goalTypeOptions.length > 0) {
+            opts.goalTypeOptions = fieldForm.goalTypeOptions;
+          }
+          // Preserve existing options like itemSchema
+          if (editingField?.options) {
+            const existing = editingField.options as Record<string, unknown>;
+            if (existing.itemSchema) opts.itemSchema = existing.itemSchema;
+            if (existing.typeOptions) opts.typeOptions = existing.typeOptions;
+            if (existing.interestTypeOptions) opts.interestTypeOptions = existing.interestTypeOptions;
+          }
+          return Object.keys(opts).length > 0 ? opts : null;
+        })(),
         order_position: editingField 
           ? editingField.order_position 
           : (section.fields?.length || 0),
@@ -582,6 +600,55 @@ export default function AdminDataCollectionBuilder() {
                   placeholder="Opção 1&#10;Opção 2&#10;Opção 3"
                   rows={4}
                 />
+              </div>
+            )}
+            {fieldForm.field_type === 'list' && fieldForm.goalTypeOptions.length > 0 && (
+              <div className="space-y-2">
+                <Label>Opções do Seletor de Tipo de Objetivo</Label>
+                <div className="flex flex-wrap gap-1">
+                  {fieldForm.goalTypeOptions.map((opt, idx) => (
+                    <Badge key={idx} variant="secondary" className="cursor-pointer gap-1" onClick={() => {
+                      setFieldForm(prev => ({
+                        ...prev,
+                        goalTypeOptions: prev.goalTypeOptions.filter((_, i) => i !== idx)
+                      }));
+                    }}>
+                      {opt}
+                      <X className="h-3 w-3" />
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nova opção..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = (e.target as HTMLInputElement).value.trim();
+                        if (val && !fieldForm.goalTypeOptions.includes(val)) {
+                          setFieldForm(prev => ({
+                            ...prev,
+                            goalTypeOptions: [...prev.goalTypeOptions, val]
+                          }));
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={(e) => {
+                    const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
+                    const val = input.value.trim();
+                    if (val && !fieldForm.goalTypeOptions.includes(val)) {
+                      setFieldForm(prev => ({
+                        ...prev,
+                        goalTypeOptions: [...prev.goalTypeOptions, val]
+                      }));
+                      input.value = '';
+                    }
+                  }}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
             <div className="flex items-center gap-2">
