@@ -247,16 +247,19 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           // Filhos
           idade: 'Idade',
           // Dívidas
-          cause: 'Causa',
+          debt_type: 'Tipo de Dívida',
+          cause: 'Causa da Dívida',
           outstanding_brl: 'Saldo Devedor (R$)',
           interest_type: 'Tipo de Juros',
+          interest_rate: 'Taxa de Juros (% a.m.)',
+          term_months: 'Prazo Restante (meses)',
           // Fluxo de caixa
           value_monthly_brl: 'Valor Mensal (R$)'
         };
 
         // Override label for 'name' in goals_list context
         const getFieldLabel = (key: string) => {
-          if (key === 'name' && field.key === 'goals_list') {
+          if (key === 'name' && (field.key === 'goals_list' || field.key === 'debts_list')) {
             return 'Detalhes / Observações';
           }
           return fieldLabels[key] || key;
@@ -323,7 +326,7 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           // Filhos
           children: ['name', 'idade'],
           // Dívidas
-          debts_list: ['name', 'cause', 'outstanding_brl', 'installment_monthly_brl', 'interest_type'],
+          debts_list: ['debt_type', 'name', 'cause', 'outstanding_brl', 'interest_rate', 'installment_monthly_brl', 'interest_type', 'term_months'],
           // Fluxo de caixa
           income: ['name', 'value_monthly_brl'],
           fixed_expenses: ['name', 'value_monthly_brl']
@@ -372,10 +375,19 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
           }
           
           if (type === 'select') {
-            // Use goalTypeOptions for goal_type field, typeOptions for others
-            const selectOptions = key === 'goal_type' 
-              ? (field.options?.goalTypeOptions as string[] || [])
-              : (field.options?.typeOptions || []);
+            // Determine which options array to use based on the field key
+            let selectOptions: string[] = [];
+            if (key === 'goal_type') {
+              selectOptions = (field.options?.goalTypeOptions as string[]) || [];
+            } else if (key === 'debt_type') {
+              selectOptions = (field.options?.debtTypeOptions as string[]) || [];
+            } else if (key === 'cause') {
+              selectOptions = (field.options?.debtCauseOptions as string[]) || [];
+            } else if (key === 'interest_type') {
+              selectOptions = (field.options?.interestTypeOptions as string[]) || [];
+            } else {
+              selectOptions = (field.options?.typeOptions as string[]) || [];
+            }
             return (
               <Select
                 key={key}

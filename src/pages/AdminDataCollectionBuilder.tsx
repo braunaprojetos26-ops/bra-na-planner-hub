@@ -104,6 +104,8 @@ export default function AdminDataCollectionBuilder() {
     is_required: false,
     options: '' as string,
     goalTypeOptions: [] as string[],
+    debtTypeOptions: [] as string[],
+    debtCauseOptions: [] as string[],
   });
 
   // Mutations
@@ -242,6 +244,8 @@ export default function AdminDataCollectionBuilder() {
         is_required: field.is_required,
         options: field.options?.items?.join('\n') || '',
         goalTypeOptions: (field.options?.goalTypeOptions as string[]) || [],
+        debtTypeOptions: (field.options?.debtTypeOptions as string[]) || [],
+        debtCauseOptions: (field.options?.debtCauseOptions as string[]) || [],
       });
     } else {
       setEditingField(null);
@@ -254,6 +258,8 @@ export default function AdminDataCollectionBuilder() {
         is_required: false,
         options: '',
         goalTypeOptions: [],
+        debtTypeOptions: [],
+        debtCauseOptions: [],
       });
     }
     setFieldModalOpen(true);
@@ -282,6 +288,12 @@ export default function AdminDataCollectionBuilder() {
           }
           if (fieldForm.goalTypeOptions.length > 0) {
             opts.goalTypeOptions = fieldForm.goalTypeOptions;
+          }
+          if (fieldForm.debtTypeOptions.length > 0) {
+            opts.debtTypeOptions = fieldForm.debtTypeOptions;
+          }
+          if (fieldForm.debtCauseOptions.length > 0) {
+            opts.debtCauseOptions = fieldForm.debtCauseOptions;
           }
           // Preserve existing options like itemSchema
           if (editingField?.options) {
@@ -650,6 +662,104 @@ export default function AdminDataCollectionBuilder() {
                   </Button>
                 </div>
               </div>
+            )}
+            {fieldForm.field_type === 'list' && (fieldForm.debtTypeOptions.length > 0 || fieldForm.debtCauseOptions.length > 0) && (
+              <>
+                <div className="space-y-2">
+                  <Label>Opções de Tipo de Dívida</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {fieldForm.debtTypeOptions.map((opt, idx) => (
+                      <Badge key={idx} variant="secondary" className="cursor-pointer gap-1" onClick={() => {
+                        setFieldForm(prev => ({
+                          ...prev,
+                          debtTypeOptions: prev.debtTypeOptions.filter((_, i) => i !== idx)
+                        }));
+                      }}>
+                        {opt}
+                        <X className="h-3 w-3" />
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nova opção de tipo..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val && !fieldForm.debtTypeOptions.includes(val)) {
+                            setFieldForm(prev => ({
+                              ...prev,
+                              debtTypeOptions: [...prev.debtTypeOptions, val]
+                            }));
+                            (e.target as HTMLInputElement).value = '';
+                          }
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={(e) => {
+                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
+                      const val = input.value.trim();
+                      if (val && !fieldForm.debtTypeOptions.includes(val)) {
+                        setFieldForm(prev => ({
+                          ...prev,
+                          debtTypeOptions: [...prev.debtTypeOptions, val]
+                        }));
+                        input.value = '';
+                      }
+                    }}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Opções de Causa da Dívida</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {fieldForm.debtCauseOptions.map((opt, idx) => (
+                      <Badge key={idx} variant="secondary" className="cursor-pointer gap-1" onClick={() => {
+                        setFieldForm(prev => ({
+                          ...prev,
+                          debtCauseOptions: prev.debtCauseOptions.filter((_, i) => i !== idx)
+                        }));
+                      }}>
+                        {opt}
+                        <X className="h-3 w-3" />
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nova opção de causa..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val && !fieldForm.debtCauseOptions.includes(val)) {
+                            setFieldForm(prev => ({
+                              ...prev,
+                              debtCauseOptions: [...prev.debtCauseOptions, val]
+                            }));
+                            (e.target as HTMLInputElement).value = '';
+                          }
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={(e) => {
+                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement);
+                      const val = input.value.trim();
+                      if (val && !fieldForm.debtCauseOptions.includes(val)) {
+                        setFieldForm(prev => ({
+                          ...prev,
+                          debtCauseOptions: [...prev.debtCauseOptions, val]
+                        }));
+                        input.value = '';
+                      }
+                    }}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
             <div className="flex items-center gap-2">
               <Switch
