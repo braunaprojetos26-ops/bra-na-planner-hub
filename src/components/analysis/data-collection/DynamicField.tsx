@@ -376,6 +376,22 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
             );
           }
           
+          if (type === 'date') {
+            return (
+              <Input
+                key={key}
+                type="date"
+                placeholder={getFieldLabel(key)}
+                value={(item[key] as string) ?? ''}
+                onChange={(e) => {
+                  const newItems = [...listItems];
+                  newItems[index] = { ...item, [key]: e.target.value };
+                  onChange(newItems);
+                }}
+              />
+            );
+          }
+          
           return (
             <Input
               key={key}
