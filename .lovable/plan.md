@@ -1,108 +1,66 @@
 
-
-## Atividades Criticas - Sistema de Tarefas em Massa
+## Objetivos Financeiros - Seletor de Tipo + Gerenciamento no Admin
 
 ### Resumo
 
-Criar um modulo "Atividades Criticas" que permite superadministradores e gerentes criarem atividades/tarefas em massa para todos os usuarios (ou filtrados por cargo). Cada atividade tem prazo maximo, nivel de urgencia e acompanhamento de progresso (quantos receberam, finalizaram, % de conclusao).
+Duas frentes de trabalho:
+
+1. **Coleta de dados (formulario)**: Adicionar campo `goal_type` (seletor) na lista de objetivos, com opcoes predefinidas, manter campo de texto livre para detalhes, e garantir data exata no `target_date`.
+
+2. **Admin / Configuracoes**: Permitir que o admin gerencie as opcoes do seletor de tipos de objetivo (adicionar/remover opcoes) diretamente no construtor de formularios.
 
 ---
 
-### 1. Nova Tabela: `critical_activities`
+### Mudancas no Banco de Dados
 
-Armazena a atividade critica criada pelo admin/gerente.
+**UPDATE no campo `goals_list`** (tabela `data_collection_fields`):
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid | PK |
-| created_by | uuid | Quem criou |
-| title | text | Titulo da atividade |
-| description | text | Descricao detalhada |
-| urgency | text | Nivel: 'low', 'medium', 'high', 'critical' |
-| target_positions | jsonb | Array de cargos selecionados, ou null = todos |
-| deadline | timestamptz | Data/hora maxima para conclusao |
-| is_active | boolean | Se a atividade esta ativa |
-| created_at | timestamptz | Data de criacao |
-| updated_at | timestamptz | Data de atualizacao |
+Atualizar o registro existente para:
+- Adicionar `goal_type: "select"` no `itemSchema`
+- Adicionar `goalTypeOptions` no campo `options` com as opcoes predefinidas:
+  - Reserva de Emergencia, Compra de Imovel, Compra de Automovel, Renda Passiva, Independencia Financeira, Faculdade / Educacao, Viagem, Casamento, Aposentadoria, Quitar Dividas, Abrir Negocio, Reforma da Casa, Troca de Carro, Protecao Familiar (Seguros), Educacao dos Filhos, Intercambio, Outros
 
-RLS: Leitura para todos autenticados (precisam ver atividades atribuidas a eles). Escrita apenas para superadmin e gerente.
-
-### 2. Nova Tabela: `critical_activity_assignments`
-
-Registra cada usuario que recebeu a atividade e seu status individual.
-
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid | PK |
-| activity_id | uuid | FK para critical_activities |
-| user_id | uuid | Usuario atribuido |
-| status | text | 'pending', 'completed' |
-| completed_at | timestamptz | Quando finalizou |
-| created_at | timestamptz | Quando foi atribuido |
-
-RLS: Usuarios veem suas proprias atribuicoes. Superadmin/gerente veem todas. Usuarios podem atualizar (marcar como concluido) suas proprias.
+Isso sera feito via ferramenta de insercao/update (nao migracao, pois e update de dados).
 
 ---
 
-### 3. Nova Pagina: `/critical-activities`
+### Mudancas no DynamicField.tsx
 
-Visivel no menu lateral para **todos os usuarios** (todos podem receber atividades criticas).
-
-**Visao do usuario comum (planejador):**
-- Lista de atividades criticas atribuidas a ele
-- Status de cada uma (pendente/concluida)
-- Indicador visual de urgencia e prazo restante
-- Botao para marcar como concluida
-
-**Visao do superadmin/gerente:**
-- Tudo acima + aba de gerenciamento
-- Botao "Nova Atividade Critica" com formulario:
-  - Titulo, descricao
-  - Nivel de urgencia (Baixa, Media, Alta, Critica)
-  - Data maxima (deadline)
-  - Seletor multi-cargo (checkboxes com todos os cargos do sistema, ou "Todos")
-- Lista de todas atividades criadas com metricas resumidas
-- Ao clicar em uma atividade, abre detalhe com:
-  - Total de usuarios que receberam
-  - Quantos ja finalizaram
-  - Quantos faltam
-  - Percentual de conclusao (barra de progresso)
-  - Lista nominal dos usuarios com status individual
+1. Adicionar `goal_type` no `fieldLabels` como "Tipo de Objetivo"
+2. Atualizar `fieldOrderByType.goals_list` para `['goal_type', 'name', 'target_value_brl', 'target_date', 'priority', 'how']`
+3. No `renderListField`, quando o campo for `select` e existir `goalTypeOptions` no field.options, usar essas opcoes (alem do ja existente `typeOptions`)
+4. Renomear label de `name` para "Detalhes / Observacoes" somente quando o campo pertence a `goals_list` (detectar pelo contexto)
 
 ---
 
-### 4. Logica de Distribuicao
+### Mudancas no AdminDataCollectionBuilder.tsx
 
-Ao criar uma atividade critica:
-1. O sistema busca todos os usuarios ativos (`profiles.is_active = true`) cujo cargo (`position`) esta na lista de `target_positions` (ou todos se nenhum cargo for selecionado)
-2. Cria um registro em `critical_activity_assignments` para cada usuario encontrado
-3. Isso e feito via database function (trigger ou funcao chamada pelo frontend) para garantir atomicidade
+Quando o admin edita um campo do tipo `list` que possui `goalTypeOptions` (ou qualquer campo de lista com sub-campos select), adicionar uma secao no modal de edicao de campo para:
 
----
+1. Exibir a lista atual de opcoes do seletor de tipos de objetivo
+2. Permitir adicionar novas opcoes (input + botao "Adicionar")
+3. Permitir remover opcoes existentes
+4. Salvar as opcoes atualizadas no campo `options.goalTypeOptions` do registro
 
-### 5. Menu Lateral
-
-Adicionar item "Atividades Criticas" na secao "Principal" do sidebar, visivel para todos os usuarios, com icone AlertTriangle ou Zap.
+Isso garante que o admin pode gerenciar os tipos de objetivo sem precisar mexer no banco diretamente.
 
 ---
 
 ### Detalhes Tecnicos
 
-**Arquivos novos:**
-
-1. `src/pages/CriticalActivities.tsx` - Pagina principal com duas visoes (usuario vs admin)
-2. `src/hooks/useCriticalActivities.ts` - Hook com queries e mutations (criar atividade, listar, marcar como concluida, buscar detalhes com contagens)
-3. `src/components/critical-activities/NewActivityModal.tsx` - Modal de criacao com seletor de cargos
-4. `src/components/critical-activities/ActivityDetailModal.tsx` - Modal com progresso e lista de usuarios
-5. `src/components/critical-activities/ActivityCard.tsx` - Card de atividade com urgencia visual e prazo
-
 **Arquivos modificados:**
 
-1. `src/components/layout/AppSidebar.tsx` - Novo item no menu
-2. `src/App.tsx` - Nova rota `/critical-activities`
+1. `src/components/analysis/data-collection/DynamicField.tsx`
+   - Adicionar `goal_type: 'Tipo de Objetivo'` em `fieldLabels`
+   - Atualizar label de `name` para exibir "Detalhes / Observacoes" quando em lista de objetivos
+   - Atualizar `fieldOrderByType.goals_list` para incluir `goal_type` como primeiro campo
+   - No `renderListField` para tipo `select`: verificar `field.options?.goalTypeOptions` alem de `typeOptions`
 
-**Migracao SQL:**
-- Criar tabelas `critical_activities` e `critical_activity_assignments`
-- Criar funcao `distribute_critical_activity(activity_id uuid)` que popula os assignments com base nos cargos selecionados
-- RLS para ambas tabelas
+2. `src/pages/AdminDataCollectionBuilder.tsx`
+   - Expandir o estado `fieldForm` para incluir `goalTypeOptions` (array de strings)
+   - No modal de edicao de campo, quando `field_type === 'list'`, mostrar secao para gerenciar opcoes do seletor de objetivos (goalTypeOptions)
+   - Ao carregar campo para edicao, popular `goalTypeOptions` a partir de `field.options.goalTypeOptions`
+   - Ao salvar, incluir `goalTypeOptions` dentro de `options`
 
+**Operacao de dados (UPDATE, nao migracao):**
+- Atualizar o registro `goals_list` em `data_collection_fields` para incluir `goal_type` no `itemSchema` e as opcoes iniciais em `goalTypeOptions`
