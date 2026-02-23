@@ -740,6 +740,80 @@ export type Database = {
           },
         ]
       }
+      critical_activities: {
+        Row: {
+          created_at: string
+          created_by: string
+          deadline: string
+          description: string | null
+          id: string
+          is_active: boolean
+          target_positions: Json | null
+          title: string
+          updated_at: string
+          urgency: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deadline: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          target_positions?: Json | null
+          title: string
+          updated_at?: string
+          urgency?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deadline?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          target_positions?: Json | null
+          title?: string
+          updated_at?: string
+          urgency?: string
+        }
+        Relationships: []
+      }
+      critical_activity_assignments: {
+        Row: {
+          activity_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "critical_activity_assignments_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "critical_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_collection_fields: {
         Row: {
           conditional_on: Json | null
@@ -3726,6 +3800,10 @@ export type Database = {
       deactivate_user: {
         Args: { _target_user_id: string; _transfer_to_user_id: string }
         Returns: undefined
+      }
+      distribute_critical_activity: {
+        Args: { p_activity_id: string }
+        Returns: number
       }
       get_accessible_user_ids: {
         Args: { _accessor_id: string }
