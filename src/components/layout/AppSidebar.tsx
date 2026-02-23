@@ -21,6 +21,7 @@ import {
   UserMinus,
   Star,
   TrendingUp,
+  AlertTriangle,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -50,6 +51,7 @@ const mainNavItems = [
   { title: 'Wiki', url: '/wiki', icon: BookOpen },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
   { title: 'Chamados', url: '/tickets', icon: Headphones },
+  { title: 'Atividades Críticas', url: '/critical-activities', icon: AlertTriangle },
 ];
 
 const analyticsSubItems = [
