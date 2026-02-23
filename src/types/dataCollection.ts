@@ -4,6 +4,7 @@ export type FieldType =
   | 'number' 
   | 'currency' 
   | 'select' 
+  | 'searchable_select'
   | 'multi_select' 
   | 'boolean' 
   | 'date' 
