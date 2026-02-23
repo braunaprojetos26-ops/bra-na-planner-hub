@@ -1196,6 +1196,62 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_milestones: {
+        Row: {
+          completed_at: string | null
+          contact_id: string
+          created_at: string
+          created_by: string
+          goal_index: number
+          goal_name: string
+          id: string
+          notes: string | null
+          status: string
+          target_date: string
+          target_value: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_id: string
+          created_at?: string
+          created_by: string
+          goal_index: number
+          goal_name: string
+          id?: string
+          notes?: string | null
+          status?: string
+          target_date: string
+          target_value?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          contact_id?: string
+          created_at?: string
+          created_by?: string
+          goal_index?: number
+          goal_name?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          target_date?: string
+          target_value?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_milestones_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       health_score_snapshots: {
         Row: {
           category: string
