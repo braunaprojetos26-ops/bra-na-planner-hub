@@ -1,6 +1,6 @@
 import { format, formatDistanceToNow, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertTriangle, Clock, CheckCircle2, Zap, AlertCircle, Info } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, Zap, AlertCircle, Info, Repeat, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,10 @@ interface ActivityCardProps {
     deadline: string;
     is_active: boolean;
     created_at: string;
+    is_perpetual?: boolean;
+    rule_type?: string | null;
+    recurrence_interval?: string | null;
+    last_run_at?: string | null;
     my_status?: string;
     my_completed_at?: string | null;
     // Admin stats
@@ -55,6 +59,12 @@ export function ActivityCard({ activity, onComplete, onViewDetail, isAdmin, isCo
             <UrgencyIcon className="h-3 w-3 mr-1" />
             {urgency.label}
           </Badge>
+          {activity.is_perpetual && (
+            <Badge variant="outline" className="shrink-0 border-primary text-primary">
+              <Repeat className="h-3 w-3 mr-1" />
+              Perpétua
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground">

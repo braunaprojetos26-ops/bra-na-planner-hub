@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.check-birthdays]
 verify_jwt = false
+
+[functions.evaluate-perpetual-activities]
+verify_jwt = false
