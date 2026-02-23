@@ -748,6 +748,11 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_perpetual: boolean
+          last_run_at: string | null
+          recurrence_interval: string | null
+          rule_config: Json | null
+          rule_type: string | null
           target_positions: Json | null
           title: string
           updated_at: string
@@ -760,6 +765,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_perpetual?: boolean
+          last_run_at?: string | null
+          recurrence_interval?: string | null
+          rule_config?: Json | null
+          rule_type?: string | null
           target_positions?: Json | null
           title: string
           updated_at?: string
@@ -772,6 +782,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_perpetual?: boolean
+          last_run_at?: string | null
+          recurrence_interval?: string | null
+          rule_config?: Json | null
+          rule_type?: string | null
           target_positions?: Json | null
           title?: string
           updated_at?: string
@@ -2031,6 +2046,58 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      perpetual_activity_triggers: {
+        Row: {
+          activity_id: string
+          contact_id: string
+          id: string
+          resolved_at: string | null
+          task_id: string | null
+          triggered_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          contact_id: string
+          id?: string
+          resolved_at?: string | null
+          task_id?: string | null
+          triggered_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          contact_id?: string
+          id?: string
+          resolved_at?: string | null
+          task_id?: string | null
+          triggered_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perpetual_activity_triggers_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "critical_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perpetual_activity_triggers_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perpetual_activity_triggers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       planner_behavioral_profiles: {
         Row: {
