@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,6 +72,18 @@ function formatScheduledDate(dateStr: string): string {
 
 export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
   const { completeTask, deleteTask } = useTasks();
+  const { actingUser } = useActingUser();
+  const currentUserId = actingUser?.id;
+
+  function getTaskTag(task: Task) {
+    if (task.title.startsWith('[Atividade Crítica]')) {
+      return { label: 'Atividade Crítica', className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' };
+    }
+    if (task.created_by !== currentUserId && task.assigned_to === currentUserId) {
+      return { label: 'Tarefa Líder', className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' };
+    }
+    return { label: 'Tarefa Própria', className: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' };
+  }
 
   if (isLoading) {
     return (
@@ -120,6 +133,7 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
             const TaskIcon = TASK_TYPE_ICONS[task.task_type];
             const isOverdue = task.status === 'overdue';
             const isCompleted = task.status === 'completed';
+            const tag = getTaskTag(task);
             
             return (
               <TableRow 
@@ -140,9 +154,14 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                       }`} />
                     </div>
                     <div>
-                      <p className={`font-medium ${isCompleted ? 'line-through' : ''}`}>
-                        {task.title}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-medium ${isCompleted ? 'line-through' : ''}`}>
+                          {task.title.replace('[Atividade Crítica] ', '')}
+                        </p>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium ${tag.className}`}>
+                          {tag.label}
+                        </Badge>
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {TASK_TYPE_LABELS[task.task_type]}
                       </p>
