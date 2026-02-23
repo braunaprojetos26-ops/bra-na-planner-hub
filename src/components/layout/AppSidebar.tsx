@@ -51,7 +51,6 @@ const mainNavItems = [
   { title: 'Wiki', url: '/wiki', icon: BookOpen },
   { title: 'Treinamentos', url: '/training', icon: GraduationCap },
   { title: 'Chamados', url: '/tickets', icon: Headphones },
-  { title: 'Atividades Críticas', url: '/critical-activities', icon: AlertTriangle },
 ];
 
 const analyticsSubItems = [
@@ -70,6 +69,7 @@ const teamSubItems = [
 
 const managementNavItems = [
   { title: 'Estrutura', url: '/structure', icon: Network },
+  { title: 'Atividades Críticas', url: '/critical-activities', icon: AlertTriangle },
 ];
 
 const adminNavItems = [
