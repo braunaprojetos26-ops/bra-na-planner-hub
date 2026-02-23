@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +9,7 @@ import { Plus, X } from 'lucide-react';
 import { DataCollectionField } from '@/types/dataCollection';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 
 interface DynamicFieldProps {
   field: DataCollectionField;
@@ -105,6 +107,41 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
             </SelectContent>
           </Select>
         );
+
+      case 'searchable_select': {
+        const selectOptions = (field.options?.items || []).map((item) => ({
+          value: item,
+          label: item,
+        }));
+        const currentValue = (value as string) || '';
+        const isOtherCustom = currentValue !== '' && currentValue !== 'Outros' && !field.options?.items?.includes(currentValue);
+        const showOtherInput = currentValue === 'Outros' || isOtherCustom;
+        
+        return (
+          <div className="space-y-2">
+            <SearchableSelect
+              value={isOtherCustom ? 'Outros' : currentValue}
+              onValueChange={(val) => {
+                if (val === 'Outros') {
+                  onChange('Outros');
+                } else {
+                  onChange(val);
+                }
+              }}
+              options={selectOptions}
+              placeholder="Selecione ou pesquise..."
+              searchPlaceholder="Pesquisar..."
+            />
+            {showOtherInput && (
+              <Input
+                value={currentValue === 'Outros' ? '' : currentValue}
+                onChange={(e) => onChange(e.target.value || 'Outros')}
+                placeholder="Digite a profissão..."
+              />
+            )}
+          </div>
+        );
+      }
 
       case 'multi_select':
         const selectedItems = (value as string[]) || [];
