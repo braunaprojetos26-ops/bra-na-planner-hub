@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Target, Plus, ChevronDown, ChevronRight, Flag, CheckCircle2, Circle, Trash2, CalendarIcon } from 'lucide-react';
+import { Target, Plus, ChevronDown, ChevronRight, Flag, CheckCircle2, Circle, CalendarIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ import {
   useGoalMilestones,
   useCreateMilestone,
   useUpdateMilestone,
-  useDeleteMilestone,
+  
   ClientGoal,
   GoalMilestone,
 } from '@/hooks/useClientGoals';
@@ -65,7 +65,7 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
   const { data: milestones = [], isLoading: milestonesLoading } = useGoalMilestones(contactId);
   const createMilestone = useCreateMilestone();
   const updateMilestone = useUpdateMilestone();
-  const deleteMilestone = useDeleteMilestone();
+  
 
   const [expandedGoals, setExpandedGoals] = useState<Set<number>>(new Set());
   const [addModalGoal, setAddModalGoal] = useState<ClientGoal | null>(null);
@@ -130,11 +130,6 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
     });
   };
 
-  const handleDeleteMilestone = (milestone: GoalMilestone) => {
-    deleteMilestone.mutate({ id: milestone.id, contactId }, {
-      onSuccess: () => toast.success('Marco removido'),
-    });
-  };
 
   const isLoading = goalsLoading || milestonesLoading;
 
@@ -270,14 +265,6 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
                                 )}
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
-                              onClick={() => handleDeleteMilestone(milestone)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
                           </div>
                         ))
                       )}
