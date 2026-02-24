@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
 
         // When filtering by user, we must go through deals (contacts don't have user field)
         if (rdUserId) {
+          // Step 1: Fetch all deals and filter by user
           const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
           const userDeals = allDeals.filter((d) => {
             const dealUser = d.user as Record<string, unknown> | undefined;
@@ -245,85 +246,57 @@ Deno.serve(async (req) => {
 
           console.log(`Found ${userDeals.length} deals for user ${rdUserId}`);
 
-          // Log first 3 deals' contact structures for debugging
-          for (let i = 0; i < Math.min(3, userDeals.length); i++) {
-            const d = userDeals[i];
-            console.log(`Deal ${i} contacts structure:`, JSON.stringify(d.contacts)?.substring(0, 500));
-            console.log(`Deal ${i} contact_ids:`, JSON.stringify((d as any).contact_ids || (d as any).contacts_ids));
-          }
-
-          // Extract unique contact identifiers from deals' contact arrays
-          // The deals list includes contacts with name/phone/email but NOT their _id
-          // So we collect identifiers to match against the full contacts list
-          const dealContactIdentifiers = new Set<string>();
-          const dealContactPhones = new Set<string>();
-          const dealContactEmails = new Set<string>();
-          const dealContactNames = new Set<string>();
-
-          for (const deal of userDeals) {
-            // Try multiple possible contact fields
-            const dealContacts = (deal.contacts || deal.contact || []) as Array<Record<string, unknown>>;
-            
-            for (const dc of dealContacts) {
-              // Collect contact _id if available
-              const contactId = (dc._id || dc.id) as string;
-              if (contactId) dealContactIdentifiers.add(contactId);
-
-              // Collect phones - try both array and direct formats
-              const phones = dc.phones as Array<{ phone: string }> || [];
-              for (const p of phones) {
-                if (p.phone) dealContactPhones.add(p.phone.replace(/\D/g, ""));
-              }
-              // Also check direct phone field
-              if (dc.phone) dealContactPhones.add(String(dc.phone).replace(/\D/g, ""));
-
-              // Collect emails - try both array and direct formats
-              const emails = dc.emails as Array<{ email: string }> || [];
-              for (const e of emails) {
-                if (e.email) dealContactEmails.add(e.email.toLowerCase());
-              }
-              if (dc.email) dealContactEmails.add(String(dc.email).toLowerCase());
-
-              // Collect names as fallback
-              const name = (dc.name as string || "").trim().toLowerCase();
-              if (name) dealContactNames.add(name);
+          // Step 2: Fetch each deal individually to get full contact info with _id
+          // The list endpoint returns contacts as empty arrays, but individual deals have full data
+          const contactIdsFromDeals = new Set<string>();
+          const batchSize = 10;
+          
+          for (let i = 0; i < userDeals.length; i += batchSize) {
+            const batch = userDeals.slice(i, i + batchSize);
+            const results = await Promise.all(
+              batch.map(async (deal) => {
+                try {
+                  const dealId = (deal._id || deal.id) as string;
+                  const fullDeal = await rdCrmGet(`/deals/${dealId}`);
+                  const dealContacts = (fullDeal.contacts || []) as Array<Record<string, unknown>>;
+                  return dealContacts.map((dc) => (dc._id || dc.id) as string).filter(Boolean);
+                } catch {
+                  return [];
+                }
+              })
+            );
+            for (const ids of results) {
+              for (const id of ids) contactIdsFromDeals.add(id);
             }
           }
 
-          console.log(`Deal contact identifiers: ${dealContactIdentifiers.size} IDs, ${dealContactPhones.size} phones, ${dealContactEmails.size} emails, ${dealContactNames.size} names`);
+          console.log(`Found ${contactIdsFromDeals.size} unique contact IDs from ${userDeals.length} deals`);
 
-          const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
+          // Step 3: Fetch only the specific contacts we need (by ID, in parallel)
+          const contactIdArray = Array.from(contactIdsFromDeals);
+          const contacts: Array<Record<string, unknown>> = [];
           
-          const filteredContacts = allContacts.filter((c) => {
-            const cId = (c._id || c.id) as string;
-            
-            // Match by contact ID directly
-            if (cId && dealContactIdentifiers.has(cId)) return true;
-
-            // Match by phone
-            const cPhones = c.phones as Array<{ phone: string }> || [];
-            for (const p of cPhones) {
-              if (p.phone && dealContactPhones.has(p.phone.replace(/\D/g, ""))) return true;
+          for (let i = 0; i < contactIdArray.length; i += batchSize) {
+            const batch = contactIdArray.slice(i, i + batchSize);
+            const results = await Promise.all(
+              batch.map(async (contactId) => {
+                try {
+                  return await rdCrmGet(`/contacts/${contactId}`);
+                } catch {
+                  return null;
+                }
+              })
+            );
+            for (const c of results) {
+              if (c) contacts.push(c as Record<string, unknown>);
             }
+          }
 
-            // Match by email
-            const cEmails = c.emails as Array<{ email: string }> || [];
-            for (const e of cEmails) {
-              if (e.email && dealContactEmails.has(e.email.toLowerCase())) return true;
-            }
-
-            // Match by exact name as last resort
-            const cName = ((c.name as string) || "").trim().toLowerCase();
-            if (cName && dealContactNames.has(cName)) return true;
-
-            return false;
-          });
+          console.log(`Fetched ${contacts.length} contacts by ID`);
           
-          console.log(`Filtered contacts: ${filteredContacts.length} of ${allContacts.length} (via ${userDeals.length} deals for user ${rdUserId})`);
-          
-          var contacts = filteredContacts;
+          var contactsToImport = contacts;
         } else {
-          var contacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
+          var contactsToImport = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
         }
 
         let imported = 0;
@@ -331,7 +304,7 @@ Deno.serve(async (req) => {
         let errors = 0;
         const errorDetails: Array<{ name: string; error: string }> = [];
 
-        for (const rdContact of contacts) {
+        for (const rdContact of contactsToImport) {
           try {
             const name = ((rdContact.name as string) || "").trim();
             const email = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
@@ -478,7 +451,7 @@ Deno.serve(async (req) => {
         }
 
         result = {
-          total_fetched: contacts.length,
+          total_fetched: contactsToImport.length,
           imported,
           skipped,
           errors,
