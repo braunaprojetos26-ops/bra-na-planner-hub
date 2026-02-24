@@ -245,6 +245,13 @@ Deno.serve(async (req) => {
 
           console.log(`Found ${userDeals.length} deals for user ${rdUserId}`);
 
+          // Log first 3 deals' contact structures for debugging
+          for (let i = 0; i < Math.min(3, userDeals.length); i++) {
+            const d = userDeals[i];
+            console.log(`Deal ${i} contacts structure:`, JSON.stringify(d.contacts)?.substring(0, 500));
+            console.log(`Deal ${i} contact_ids:`, JSON.stringify((d as any).contact_ids || (d as any).contacts_ids));
+          }
+
           // Extract unique contact identifiers from deals' contact arrays
           // The deals list includes contacts with name/phone/email but NOT their _id
           // So we collect identifiers to match against the full contacts list
@@ -254,23 +261,28 @@ Deno.serve(async (req) => {
           const dealContactNames = new Set<string>();
 
           for (const deal of userDeals) {
-            const dealContacts = deal.contacts as Array<Record<string, unknown>> || [];
+            // Try multiple possible contact fields
+            const dealContacts = (deal.contacts || deal.contact || []) as Array<Record<string, unknown>>;
+            
             for (const dc of dealContacts) {
               // Collect contact _id if available
               const contactId = (dc._id || dc.id) as string;
               if (contactId) dealContactIdentifiers.add(contactId);
 
-              // Collect phones
+              // Collect phones - try both array and direct formats
               const phones = dc.phones as Array<{ phone: string }> || [];
               for (const p of phones) {
                 if (p.phone) dealContactPhones.add(p.phone.replace(/\D/g, ""));
               }
+              // Also check direct phone field
+              if (dc.phone) dealContactPhones.add(String(dc.phone).replace(/\D/g, ""));
 
-              // Collect emails
+              // Collect emails - try both array and direct formats
               const emails = dc.emails as Array<{ email: string }> || [];
               for (const e of emails) {
                 if (e.email) dealContactEmails.add(e.email.toLowerCase());
               }
+              if (dc.email) dealContactEmails.add(String(dc.email).toLowerCase());
 
               // Collect names as fallback
               const name = (dc.name as string || "").trim().toLowerCase();

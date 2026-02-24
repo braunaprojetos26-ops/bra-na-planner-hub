@@ -173,8 +173,17 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
 
       setImportResult(result);
       setStep('done');
-    } catch {
-      setStep('select');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido durante a importação';
+      // Show error as a result instead of silently going back
+      setImportResult({
+        total_fetched: 0,
+        imported: 0,
+        skipped: 0,
+        errors: 1,
+        error_details: [{ name: 'Importação', error: errorMessage }],
+      });
+      setStep('done');
     }
   };
 
