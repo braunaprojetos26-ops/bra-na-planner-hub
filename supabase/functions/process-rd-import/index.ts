@@ -532,6 +532,7 @@ async function processDealsFromIds(
   let imported = 0;
   let skipped = 0;
   let errors = 0;
+  let contactsFound = 0;
   const errorDetails: Array<{ name: string; error: string }> = [];
 
   for (const dealId of dealIds) {
@@ -615,11 +616,12 @@ async function processDealsFromIds(
             const { data: found } = await supabase.from("contacts").select("id").ilike("full_name", contactName).limit(1);
             if (found?.length) localContactId = found[0].id;
           }
+        if (rdContacts.length > 0) contactsFound++;
         }
       }
 
       if (!localContactId) {
-        skipped++;
+        errors++;
         errorDetails.push({ name: dealName || dealId, error: "Contato não encontrado no sistema" });
         continue;
       }
@@ -672,6 +674,7 @@ async function processDealsFromIds(
 
   await updateJob(jobId, {
     status: "done",
+    contacts_found: contactsFound,
     contacts_imported: imported,
     contacts_skipped: skipped,
     contacts_errors: errors,
