@@ -1,89 +1,79 @@
 
-## Importacao em Massa de Negociacoes para o Kanban
+
+## Importacao Seletiva do RD CRM por Usuario
 
 ### Resumo
 
-Criar uma funcionalidade de importacao em massa de negociacoes (oportunidades) via planilha Excel/CSV, seguindo o mesmo padrao visual e tecnico ja existente na importacao de contatos (`ImportContactsModal`). As negociacoes serao vinculadas a contatos existentes atraves do telefone como identificador.
+Transformar a importacao atual (tudo de uma vez) em um fluxo seletivo onde voce:
+1. Ve a lista de usuarios do RD CRM
+2. Seleciona um usuario
+3. Importa apenas os contatos e/ou negociacoes desse usuario
+4. Opcionalmente cria uma conta no sistema para ele, ja vinculando como responsavel (owner) dos dados importados
 
 ---
 
 ### Fluxo do Usuario
 
-1. Na tela Pipeline (Negociacoes), clicar no botao "Importar Negociacoes"
-2. Baixar o modelo de planilha com as colunas necessarias
-3. Preencher a planilha com os dados das negociacoes
-4. Fazer upload do arquivo (drag-and-drop ou selecao)
-5. Revisar os dados parseados com indicacao de erros
-6. Confirmar a importacao
-7. Ver o resultado (sucesso/erros)
-
-### Colunas da Planilha Modelo
-
-| Coluna | Obrigatoria | Descricao |
-|--------|-------------|-----------|
-| Telefone do Contato | Sim | Usado para vincular ao contato existente |
-| Funil | Sim | Nome do funil (ex: "PROSPECCAO - PLANEJAMENTO") |
-| Etapa | Sim | Nome da etapa dentro do funil (ex: "Lead Recebido") |
-| Qualificacao | Nao | Numero de 1 a 5 |
-| Temperatura | Nao | Frio, Morno ou Quente |
-| Valor da Proposta | Nao | Valor numerico |
-| Anotacoes | Nao | Texto livre |
-
-### Validacoes na Importacao
-
-- Telefone do contato deve corresponder a um contato existente no sistema
-- Nome do funil deve corresponder a um funil ativo
-- Nome da etapa deve existir dentro do funil selecionado
-- Se o contato nao for encontrado, a linha e marcada com erro
-- Se funil/etapa nao forem encontrados, a linha e marcada com erro
-- Linhas com erro nao sao importadas, apenas as validas
+1. Na tela de configuracoes, ao clicar "Importar Contatos" ou "Importar Negociacoes", abre um dialog/modal
+2. O modal lista os usuarios do RD CRM (nome + e-mail)
+3. Voce seleciona um usuario
+4. Um checkbox "Criar usuario no sistema" aparece (marcado por padrao)
+   - Se marcado, o sistema cria a conta com o e-mail do RD e senha padrao `Brauna@2025` (o usuario devera trocar no primeiro acesso)
+   - Se o usuario ja existir no sistema (mesmo e-mail), ele sera usado como owner sem criar duplicata
+5. Ao confirmar, importa apenas os contatos/negociacoes vinculados aquele usuario do RD CRM
+6. Todos os contatos importados ficam com `owner_id` apontando para o usuario criado/encontrado
 
 ---
 
 ### Detalhes Tecnicos
 
-**Novos arquivos:**
+**1. Edge Function `rd-crm` - Novas actions:**
 
-1. `src/components/opportunities/ImportOpportunitiesModal.tsx`
-   - Modal com 3 etapas: upload, preview, resultado (mesmo padrao do `ImportContactsModal`)
-   - Parsing da planilha com XLSX
-   - Matching de contato por telefone (busca no banco)
-   - Matching de funil por nome
-   - Matching de etapa por nome dentro do funil
-   - Preview com tabela mostrando status de cada linha
-   - Botao de download do modelo
+- `list_users`: Chama `GET /users` na API do RD CRM para listar os usuarios ativos. Retorna id, nome e e-mail de cada um.
 
-2. `src/hooks/useImportOpportunities.ts`
-   - Hook de mutacao que recebe array de oportunidades parseadas
-   - Para cada oportunidade valida: insere na tabela `opportunities` e cria entrada no `opportunity_history`
-   - Retorna contagem de sucesso/erros
+- `import_contacts` (modificado): Recebe um parametro opcional `rd_user_id` para filtrar contatos daquele usuario. Recebe tambem `owner_user_id` para definir o owner dos contatos importados.
 
-**Arquivo modificado:**
+- `import_deals` (modificado): Mesma logica - recebe `rd_user_id` para filtrar negociacoes e `owner_user_id` para as oportunidades criadas.
 
-3. `src/pages/Pipeline.tsx`
-   - Adicionar botao "Importar" ao lado do botao "Nova Negociacao" no header
-   - Importar e renderizar o `ImportOpportunitiesModal`
-   - State para controlar abertura do modal
+- `create_system_user`: Recebe `email` e `full_name`. Usa `supabase.auth.admin.createUser()` com a service role key para criar o usuario com senha padrao `Brauna@2025` e `email_confirm: true` (ja confirmado). Retorna o `user_id` criado. O trigger `handle_new_user` ja existente cuida de criar o perfil e atribuir a role `planejador`. Se o e-mail ja existir, busca o usuario existente e retorna o id dele.
 
-**Logica de matching (no modal):**
+**2. Frontend - Novo componente `RDCRMImportDialog`:**
 
-- Ao processar o arquivo, buscar todos os contatos do usuario e todos os funis/etapas ativos
-- Fazer match local (em memoria) sem chamadas extras ao banco por linha
-- Telefone normalizado (so digitos) para comparacao
+- Modal que abre ao clicar nos botoes de importacao
+- Ao abrir, busca a lista de usuarios do RD CRM (`list_users`)
+- Exibe lista com radio buttons para selecionar um usuario
+- Checkbox "Criar usuario no sistema e definir como responsavel"
+- Botao "Importar" que:
+  1. Se checkbox marcado e usuario nao existe: chama `create_system_user`
+  2. Chama `import_contacts` ou `import_deals` com `rd_user_id` e `owner_user_id`
+- Exibe resultado da importacao (importados, ignorados, erros)
 
-**Insert de cada oportunidade:**
+**3. Hook `useRDCRM` atualizado:**
 
-```typescript
-{
-  contact_id: matchedContact.id,
-  current_funnel_id: matchedFunnel.id,
-  current_stage_id: matchedStage.id,
-  qualification: parsedQualification,
-  temperature: parsedTemperature,
-  notes: parsedNotes,
-  proposal_value: parsedProposalValue,
-  created_by: user.id,
-}
-```
+- Nova query `listUsers` para buscar usuarios do RD CRM
+- Mutations de importacao passam a receber `rd_user_id` e `owner_user_id`
+- Nova mutation `createSystemUser`
 
-Apos cada insert, registrar no `opportunity_history` com action `'created'` e notes `'Importado via planilha'`.
+**4. Componente `RDCRMConnectionCard` atualizado:**
+
+- Os botoes "Importar Contatos" e "Importar Negociacoes" abrem o novo dialog em vez do AlertDialog simples atual
+
+---
+
+### Sobre a senha padrao e primeiro acesso
+
+- A conta sera criada com senha `Brauna@2025` e e-mail ja confirmado
+- O usuario recebe uma notificacao ou instrucao para trocar a senha no primeiro login
+- Nao sera implementado um fluxo de "force password change" automatico neste momento, mas pode ser adicionado futuramente
+
+---
+
+### Arquivos que serao criados/modificados
+
+| Arquivo | Acao |
+|---|---|
+| `supabase/functions/rd-crm/index.ts` | Adicionar actions `list_users` e `create_system_user`; modificar `import_contacts` e `import_deals` para aceitar filtro por usuario e owner |
+| `src/components/settings/RDCRMImportDialog.tsx` | Novo componente - modal de selecao de usuario e importacao |
+| `src/hooks/useRDCRM.ts` | Adicionar `listUsers`, `createSystemUser`, e parametros nas mutations |
+| `src/components/settings/RDCRMConnectionCard.tsx` | Substituir AlertDialogs pelos novos dialogs de importacao |
+
