@@ -673,7 +673,7 @@ async function processDealsWithCheckpoint(
 
       const rdStatus = (deal.win as string);
       let oppStatus: string = "active";
-      if (rdStatus === "won") oppStatus = "converted";
+      if (rdStatus === "won") oppStatus = "won";
       else if (rdStatus === "lost") oppStatus = "lost";
 
       const { error: insertError } = await supabase
@@ -685,6 +685,7 @@ async function processDealsWithCheckpoint(
           created_by: createdBy,
           status: oppStatus,
           proposal_value: dealValue || null,
+          converted_at: oppStatus === "won" ? new Date().toISOString() : null,
           notes: `RD CRM Deal: ${dealId} | ${dealName}`,
         });
 

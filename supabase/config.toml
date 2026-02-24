@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.rd-crm]
 verify_jwt = false
+
+[functions.bulk-mark-won]
+verify_jwt = false
