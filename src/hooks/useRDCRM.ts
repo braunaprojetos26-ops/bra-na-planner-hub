@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +17,27 @@ interface ImportResult {
   error_details: Array<{ name: string; error: string }>;
 }
 
+export interface RDCRMUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface ImportParams {
+  rd_user_id?: string;
+  owner_user_id?: string;
+}
+
+interface CreateSystemUserParams {
+  email: string;
+  full_name: string;
+}
+
+interface CreateSystemUserResult {
+  user_id: string;
+  already_existed: boolean;
+}
+
 export function useRDCRM() {
   const { toast } = useToast();
   const updateSetting = useUpdateSystemSetting();
@@ -30,7 +50,6 @@ export function useRDCRM() {
 
   const isConnected = config.connected === true;
 
-  // Test connection
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('rd-crm', {
@@ -65,7 +84,6 @@ export function useRDCRM() {
     },
   });
 
-  // Disconnect
   const disconnectMutation = useMutation({
     mutationFn: async () => {
       const newConfig: RDCRMConfig = { connected: false };
@@ -83,11 +101,49 @@ export function useRDCRM() {
     },
   });
 
-  // Import contacts
-  const importContactsMutation = useMutation({
-    mutationFn: async (): Promise<ImportResult> => {
+  // List RD CRM users
+  const listUsersMutation = useMutation({
+    mutationFn: async (): Promise<RDCRMUser[]> => {
       const { data, error } = await supabase.functions.invoke('rd-crm', {
-        body: { action: 'import_contacts' },
+        body: { action: 'list_users' },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao listar usuários');
+      return data.data as RDCRMUser[];
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao listar usuários do RD CRM',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Create system user
+  const createSystemUserMutation = useMutation({
+    mutationFn: async (params: CreateSystemUserParams): Promise<CreateSystemUserResult> => {
+      const { data, error } = await supabase.functions.invoke('rd-crm', {
+        body: { action: 'create_system_user', ...params },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao criar usuário');
+      return data.data as CreateSystemUserResult;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao criar usuário no sistema',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Import contacts with optional filters
+  const importContactsMutation = useMutation({
+    mutationFn: async (params: ImportParams = {}): Promise<ImportResult> => {
+      const { data, error } = await supabase.functions.invoke('rd-crm', {
+        body: { action: 'import_contacts', ...params },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Falha na importação');
@@ -108,11 +164,11 @@ export function useRDCRM() {
     },
   });
 
-  // Import deals
+  // Import deals with optional filters
   const importDealsMutation = useMutation({
-    mutationFn: async (): Promise<ImportResult> => {
+    mutationFn: async (params: ImportParams = {}): Promise<ImportResult> => {
       const { data, error } = await supabase.functions.invoke('rd-crm', {
-        body: { action: 'import_deals' },
+        body: { action: 'import_deals', ...params },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Falha na importação');
@@ -141,10 +197,19 @@ export function useRDCRM() {
     isTesting: testConnectionMutation.isPending,
     disconnect: disconnectMutation.mutate,
     isDisconnecting: disconnectMutation.isPending,
-    importContacts: importContactsMutation.mutate,
+    // Users
+    listUsers: listUsersMutation.mutateAsync,
+    isListingUsers: listUsersMutation.isPending,
+    rdUsers: listUsersMutation.data,
+    // Create system user
+    createSystemUser: createSystemUserMutation.mutateAsync,
+    isCreatingUser: createSystemUserMutation.isPending,
+    // Contacts
+    importContacts: importContactsMutation.mutateAsync,
     isImportingContacts: importContactsMutation.isPending,
     importContactsResult: importContactsMutation.data,
-    importDeals: importDealsMutation.mutate,
+    // Deals
+    importDeals: importDealsMutation.mutateAsync,
     isImportingDeals: importDealsMutation.isPending,
     importDealsResult: importDealsMutation.data,
   };

@@ -44,8 +44,6 @@ async function fetchAllPages(endpoint: string, extraParams: Record<string, strin
   while (page <= maxPages) {
     const data = await rdCrmGet(endpoint, { ...extraParams, page: String(page), limit });
 
-    // The RD CRM API returns an object with total and items for contacts,
-    // and an array directly for deals depending on endpoint
     let items: unknown[];
     if (Array.isArray(data)) {
       items = data;
@@ -56,19 +54,24 @@ async function fetchAllPages(endpoint: string, extraParams: Record<string, strin
     } else if (Array.isArray(data?.data)) {
       items = data.data;
     } else {
-      // Try to use the response as-is if it's an array-like
       items = [];
     }
 
     if (items.length === 0) break;
     allItems.push(...items);
 
-    // If we got less than the limit, we've reached the end
     if (items.length < 200) break;
     page++;
   }
 
   return allItems;
+}
+
+function getServiceRoleClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 }
 
 Deno.serve(async (req) => {
@@ -77,7 +80,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -108,9 +110,47 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "test_connection": {
-        // Check token validity
         const data = await rdCrmGet("/token/check");
         result = data;
+        break;
+      }
+
+      case "list_users": {
+        const users = await rdCrmGet("/users");
+        const mapped = (Array.isArray(users) ? users : []).map((u: Record<string, unknown>) => ({
+          id: u._id || u.id,
+          name: u.name || "",
+          email: u.email || "",
+        }));
+        result = mapped;
+        break;
+      }
+
+      case "create_system_user": {
+        const { email, full_name } = payload;
+        if (!email) throw new Error("email é obrigatório");
+
+        const adminClient = getServiceRoleClient();
+
+        // Check if user already exists
+        const { data: existingUsers } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+        const existingUser = existingUsers?.users?.find(
+          (u) => u.email?.toLowerCase() === email.toLowerCase()
+        );
+
+        if (existingUser) {
+          result = { user_id: existingUser.id, already_existed: true };
+        } else {
+          const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+            email: email,
+            password: "Brauna@2025",
+            email_confirm: true,
+            user_metadata: { full_name: full_name || email },
+          });
+
+          if (createError) throw new Error(`Erro ao criar usuário: ${createError.message}`);
+          result = { user_id: newUser.user!.id, already_existed: false };
+        }
         break;
       }
 
@@ -145,8 +185,16 @@ Deno.serve(async (req) => {
       }
 
       case "import_contacts": {
-        // Fetch all contacts from RD CRM and import into local DB
-        const contacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
+        const rdUserId = payload.rd_user_id || null;
+        const ownerUserId = payload.owner_user_id || null;
+
+        // Build extra params for filtering by user
+        const extraParams: Record<string, string> = {};
+        if (rdUserId) {
+          extraParams.user_id = rdUserId;
+        }
+
+        const contacts = await fetchAllPages("/contacts", extraParams) as Array<Record<string, unknown>>;
 
         let imported = 0;
         let skipped = 0;
@@ -164,10 +212,8 @@ Deno.serve(async (req) => {
               continue;
             }
 
-            // Normalize phone for matching
             const normalizedPhone = phone.replace(/\D/g, "");
 
-            // Check if contact already exists by phone
             if (normalizedPhone) {
               const { data: existing } = await supabase
                 .from("contacts")
@@ -181,7 +227,6 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Check by email
             if (email) {
               const { data: existingByEmail } = await supabase
                 .from("contacts")
@@ -195,7 +240,6 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Insert new contact
             const { error: insertError } = await supabase
               .from("contacts")
               .insert({
@@ -206,6 +250,7 @@ Deno.serve(async (req) => {
                 source_detail: `RD CRM ID: ${rdContact._id || rdContact.id || ""}`,
                 notes: rdContact.title ? `Cargo: ${rdContact.title}` : null,
                 created_by: userId,
+                owner_id: ownerUserId || null,
               });
 
             if (insertError) {
@@ -234,10 +279,16 @@ Deno.serve(async (req) => {
       }
 
       case "import_deals": {
-        // Fetch all deals and map to opportunities
-        const deals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
+        const rdUserId = payload.rd_user_id || null;
+        const ownerUserId = payload.owner_user_id || null;
 
-        // Get local funnels and stages for mapping
+        const extraParams: Record<string, string> = {};
+        if (rdUserId) {
+          extraParams.user_id = rdUserId;
+        }
+
+        const deals = await fetchAllPages("/deals", extraParams) as Array<Record<string, unknown>>;
+
         const { data: localFunnels } = await supabase
           .from("funnels")
           .select("id, name")
@@ -267,7 +318,6 @@ Deno.serve(async (req) => {
             const dealValue = Number(deal.amount_total || deal.amount || 0);
             const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
 
-            // Find the local contact for this deal
             let localContactId: string | null = null;
 
             if (rdContactIds.length > 0) {
@@ -276,7 +326,6 @@ Deno.serve(async (req) => {
               const contactPhone = ((rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "").replace(/\D/g, "");
               const contactEmail = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
 
-              // Try to find by phone
               if (contactPhone) {
                 const { data: found } = await supabase
                   .from("contacts")
@@ -286,7 +335,6 @@ Deno.serve(async (req) => {
                 if (found?.length) localContactId = found[0].id;
               }
 
-              // Try by email
               if (!localContactId && contactEmail) {
                 const { data: found } = await supabase
                   .from("contacts")
@@ -296,7 +344,6 @@ Deno.serve(async (req) => {
                 if (found?.length) localContactId = found[0].id;
               }
 
-              // Try by name
               if (!localContactId && contactName) {
                 const { data: found } = await supabase
                   .from("contacts")
@@ -312,7 +359,6 @@ Deno.serve(async (req) => {
               continue;
             }
 
-            // Check if deal already imported (by notes containing RD CRM ID)
             const rdDealId = (deal._id || deal.id || "") as string;
             if (rdDealId) {
               const { data: existingOpp } = await supabase
@@ -328,7 +374,6 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Map deal status
             const rdStatus = (deal.win as string);
             let oppStatus: string = "active";
             if (rdStatus === "won") oppStatus = "converted";
@@ -343,7 +388,7 @@ Deno.serve(async (req) => {
                 proposal_value: dealValue || null,
                 notes: `RD CRM Deal: ${rdDealId} | ${dealName}`,
                 status: oppStatus,
-                created_by: userId,
+                created_by: ownerUserId || userId,
               });
 
             if (insertError) {
@@ -352,7 +397,6 @@ Deno.serve(async (req) => {
             } else {
               imported++;
 
-              // Add history entry
               await supabase.from("opportunity_history").insert({
                 opportunity_id: (await supabase
                   .from("opportunities")
