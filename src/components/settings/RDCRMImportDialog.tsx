@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRDCRM, type RDCRMUser } from '@/hooks/useRDCRM';
+import { useRDCRM, type RDCRMUser, type ImportJobStatus } from '@/hooks/useRDCRM';
 
 interface RDCRMImportDialogProps {
   open: boolean;
@@ -22,32 +22,14 @@ interface RDCRMImportDialogProps {
   type: 'contacts' | 'deals';
 }
 
-const CONTACT_STEPS = [
-  { label: 'Criando usuário no sistema...', duration: 3000 },
-  { label: 'Buscando negociações do RD CRM...', duration: 5000 },
-  { label: 'Identificando contatos vinculados...', duration: 4000 },
-  { label: 'Buscando dados completos dos contatos...', duration: 8000 },
-  { label: 'Verificando duplicatas no sistema...', duration: 4000 },
-  { label: 'Importando contatos...', duration: 10000 },
-  { label: 'Finalizando importação...', duration: 3000 },
-];
-
-const DEAL_STEPS = [
-  { label: 'Criando usuário no sistema...', duration: 3000 },
-  { label: 'Buscando negociações do RD CRM...', duration: 5000 },
-  { label: 'Verificando funis e etapas locais...', duration: 3000 },
-  { label: 'Vinculando contatos às negociações...', duration: 6000 },
-  { label: 'Importando negociações...', duration: 10000 },
-  { label: 'Finalizando importação...', duration: 3000 },
-];
-
-interface ImportResultFull {
-  total_fetched: number;
-  imported: number;
-  skipped: number;
-  errors: number;
-  error_details: Array<{ name: string; error: string }>;
-}
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Iniciando importação...',
+  fetching_deals: 'Buscando negociações do RD CRM...',
+  fetching_contacts: 'Buscando contatos vinculados...',
+  importing: 'Importando dados...',
+  done: 'Importação concluída!',
+  error: 'Erro na importação',
+};
 
 export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialogProps) {
   const {
@@ -55,32 +37,25 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
     isListingUsers,
     createSystemUser,
     isCreatingUser,
-    importContacts,
-    isImportingContacts,
-    importDeals,
-    isImportingDeals,
+    startImport,
+    isStartingImport,
+    pollJobStatus,
   } = useRDCRM();
 
   const [users, setUsers] = useState<RDCRMUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [createUser, setCreateUser] = useState(true);
-  const [importResult, setImportResult] = useState<ImportResultFull | null>(null);
   const [step, setStep] = useState<'select' | 'importing' | 'done'>('select');
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [progressValue, setProgressValue] = useState(0);
+  const [jobStatus, setJobStatus] = useState<ImportJobStatus | null>(null);
   const [showErrors, setShowErrors] = useState(false);
-  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const isImporting = isImportingContacts || isImportingDeals || isCreatingUser;
   const isContacts = type === 'contacts';
-  const steps = isContacts ? CONTACT_STEPS : DEAL_STEPS;
 
-  // Cleanup timers
+  // Cleanup polling on unmount
   useEffect(() => {
     return () => {
-      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
@@ -88,62 +63,15 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
     if (open) {
       setSelectedUserId('');
       setCreateUser(true);
-      setImportResult(null);
       setStep('select');
-      setCurrentStepIndex(0);
-      setProgressValue(0);
+      setJobStatus(null);
       setShowErrors(false);
       setUsers([]);
       listUsers().then(setUsers).catch(() => {});
+    } else {
+      if (pollRef.current) clearInterval(pollRef.current);
     }
   }, [open]);
-
-  // Animate through steps while importing
-  useEffect(() => {
-    if (step !== 'importing') return;
-
-    const advanceStep = () => {
-      setCurrentStepIndex((prev) => {
-        const next = prev + 1;
-        if (next < steps.length) {
-          stepTimerRef.current = setTimeout(advanceStep, steps[next].duration);
-          return next;
-        }
-        // Stay on last step
-        return prev;
-      });
-    };
-
-    // Start first step timer (skip user creation step if not creating)
-    const startIdx = createUser ? 0 : 1;
-    setCurrentStepIndex(startIdx);
-    stepTimerRef.current = setTimeout(advanceStep, steps[startIdx].duration);
-
-    // Animate progress bar smoothly
-    const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0);
-    const interval = 200;
-    const increment = (90 / (totalDuration / interval)); // max 90% while waiting
-    setProgressValue(0);
-    progressTimerRef.current = setInterval(() => {
-      setProgressValue((prev) => {
-        if (prev >= 90) return 90;
-        return prev + increment;
-      });
-    }, interval);
-
-    return () => {
-      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-    };
-  }, [step, createUser]);
-
-  // When done, jump progress to 100
-  useEffect(() => {
-    if (step === 'done') {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-      setProgressValue(100);
-    }
-  }, [step]);
 
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
@@ -162,32 +90,58 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
         ownerUserId = result.user_id;
       }
 
-      const params = {
+      // Start async import job
+      const jobId = await startImport({
         rd_user_id: selectedUserId,
+        import_type: type,
         owner_user_id: ownerUserId,
-      };
+      });
 
-      const result = isContacts
-        ? await importContacts(params)
-        : await importDeals(params);
+      // Start polling every 3 seconds
+      pollRef.current = setInterval(async () => {
+        try {
+          const status = await pollJobStatus(jobId);
+          setJobStatus(status);
 
-      setImportResult(result);
-      setStep('done');
+          if (status.status === 'done' || status.status === 'error') {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setStep('done');
+          }
+        } catch (err) {
+          console.error('Poll error:', err);
+        }
+      }, 3000);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido durante a importação';
-      // Show error as a result instead of silently going back
-      setImportResult({
-        total_fetched: 0,
-        imported: 0,
-        skipped: 0,
-        errors: 1,
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      setJobStatus({
+        id: '',
+        status: 'error',
+        deals_found: 0,
+        contacts_found: 0,
+        contacts_imported: 0,
+        contacts_skipped: 0,
+        contacts_errors: 1,
         error_details: [{ name: 'Importação', error: errorMessage }],
+        error_message: errorMessage,
       });
       setStep('done');
     }
   };
 
-  const currentStepLabel = steps[currentStepIndex]?.label || 'Processando...';
+  const progressValue = (() => {
+    if (!jobStatus) return 5;
+    switch (jobStatus.status) {
+      case 'pending': return 5;
+      case 'fetching_deals': return 20;
+      case 'fetching_contacts': return 45;
+      case 'importing': return 70;
+      case 'done': return 100;
+      case 'error': return 100;
+      default: return 10;
+    }
+  })();
+
+  const currentLabel = jobStatus ? (STATUS_LABELS[jobStatus.status] || 'Processando...') : 'Iniciando...';
 
   return (
     <Dialog open={open} onOpenChange={step === 'importing' ? undefined : onOpenChange}>
@@ -263,7 +217,7 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
               </Button>
               <Button
                 onClick={handleImport}
-                disabled={!selectedUserId || isImporting}
+                disabled={!selectedUserId || isCreatingUser || isStartingImport}
               >
                 Importar
               </Button>
@@ -279,8 +233,15 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
             <div className="w-full space-y-3">
               <Progress value={progressValue} className="h-2 w-full" />
               <p className="text-sm text-center text-muted-foreground animate-pulse">
-                {currentStepLabel}
+                {currentLabel}
               </p>
+              {jobStatus && jobStatus.deals_found > 0 && (
+                <p className="text-xs text-center text-muted-foreground/60">
+                  {jobStatus.deals_found} negociações encontradas
+                  {jobStatus.contacts_found > 0 && ` · ${jobStatus.contacts_found} contatos identificados`}
+                  {jobStatus.contacts_imported > 0 && ` · ${jobStatus.contacts_imported} importados`}
+                </p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground/60 text-center">
               Isso pode levar alguns minutos dependendo da quantidade de dados.
@@ -288,54 +249,58 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
           </div>
         )}
 
-        {step === 'done' && importResult && (
+        {step === 'done' && jobStatus && (
           <>
             <div className="space-y-4">
-              {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                  <p className="text-2xl font-bold text-foreground">{importResult.total_fetched}</p>
+                  <p className="text-2xl font-bold text-foreground">{jobStatus.contacts_found}</p>
                   <p className="text-xs text-muted-foreground">Encontrados no RD</p>
                 </div>
                 <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-3 text-center">
                   <div className="flex items-center justify-center gap-1.5 mb-0.5">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <p className="text-2xl font-bold text-green-600">{importResult.imported}</p>
+                    <p className="text-2xl font-bold text-green-600">{jobStatus.contacts_imported}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">Importados</p>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 text-center">
                   <div className="flex items-center justify-center gap-1.5 mb-0.5">
                     <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-2xl font-bold text-foreground">{importResult.skipped}</p>
+                    <p className="text-2xl font-bold text-foreground">{jobStatus.contacts_skipped}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">Já existentes</p>
                 </div>
-                {importResult.errors > 0 && (
+                {jobStatus.contacts_errors > 0 && (
                   <div className="rounded-lg border bg-destructive/10 border-destructive/20 p-3 text-center">
                     <div className="flex items-center justify-center gap-1.5 mb-0.5">
                       <XCircle className="h-4 w-4 text-destructive" />
-                      <p className="text-2xl font-bold text-destructive">{importResult.errors}</p>
+                      <p className="text-2xl font-bold text-destructive">{jobStatus.contacts_errors}</p>
                     </div>
                     <p className="text-xs text-muted-foreground">Erros</p>
                   </div>
                 )}
               </div>
 
-              {/* Error details */}
-              {importResult.error_details && importResult.error_details.length > 0 && (
+              {jobStatus.error_message && (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                  <p className="text-sm text-destructive font-medium">Erro: {jobStatus.error_message}</p>
+                </div>
+              )}
+
+              {jobStatus.error_details && jobStatus.error_details.length > 0 && (
                 <div className="rounded-lg border border-destructive/20 overflow-hidden">
                   <button
                     onClick={() => setShowErrors(!showErrors)}
                     className="w-full flex items-center justify-between px-3 py-2 bg-destructive/5 hover:bg-destructive/10 transition-colors text-sm font-medium text-destructive"
                   >
-                    <span>Detalhes dos erros ({importResult.error_details.length})</span>
+                    <span>Detalhes dos erros ({jobStatus.error_details.length})</span>
                     {showErrors ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {showErrors && (
                     <ScrollArea className="max-h-48">
                       <div className="divide-y divide-border">
-                        {importResult.error_details.map((err, i) => (
+                        {jobStatus.error_details.map((err, i) => (
                           <div key={i} className="px-3 py-2 text-xs">
                             <p className="font-medium text-foreground">{err.name || 'Sem nome'}</p>
                             <p className="text-destructive/80 mt-0.5">{err.error}</p>

@@ -234,423 +234,59 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case "import_contacts": {
-        const rdUserId = payload.rd_user_id || null;
+      case "start_import": {
+        const rdUserId = payload.rd_user_id;
+        const importType = payload.import_type || "contacts";
         const ownerUserId = payload.owner_user_id || null;
 
-        // Custom field IDs from RD CRM
-        const CF_IDS = {
-          cpf: "63db017f8623e3000bee5ad5",
-          rg: "63db01ac19c479000cf0fb85",
-          rg_issuer: "63db02f20392d2000ca550db",
-          rg_issue_date: "63db01c0fdb6440017de2107",
-          birth_date: "63db01cea2e76c001109e659",
-          profession: "63db01e1ebbe8a001e73944d",
-          marital_status: "63db023aed02ef0017030f24",
-          address: "63db024be8396e000fbc4049",
-          income: "63db025c0b4a460010e0dd00",
-        };
+        if (!rdUserId) throw new Error("rd_user_id é obrigatório");
 
-        function getCustomFieldValue(customFields: Array<Record<string, unknown>>, fieldId: string): string | null {
-          const field = customFields?.find((f) => f.custom_field_id === fieldId);
-          if (!field || !field.value) return null;
-          const val = field.value;
-          if (Array.isArray(val)) return val[0] as string || null;
-          return String(val).trim() || null;
-        }
+        // Create job record
+        const { data: job, error: jobError } = await supabase
+          .from("import_jobs")
+          .insert({
+            created_by: userId,
+            rd_user_id: rdUserId,
+            import_type: importType,
+            owner_user_id: ownerUserId,
+            status: "pending",
+          })
+          .select()
+          .single();
 
-        // --- NEW APPROACH: Fetch contacts via deals/{id}/contacts ---
+        if (jobError) throw new Error(`Erro ao criar job: ${jobError.message}`);
 
-        // Step 1: Fetch all deals for user
-        const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
-        let userDeals = allDeals;
-        if (rdUserId) {
-          userDeals = allDeals.filter((d) => {
-            const dealUser = d.user as Record<string, unknown> | undefined;
-            return (dealUser?._id || dealUser?.id) === rdUserId;
-          });
-        }
-        console.log(`Found ${userDeals.length} deals for user ${rdUserId}`);
+        // Fire-and-forget: trigger the worker function
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-        // Step 2: For each deal, fetch contacts via /deals/{deal_id}/contacts in batches
-        const BATCH_SIZE = 10;
-        const BATCH_DELAY_MS = 300;
-        const seenContactIds = new Set<string>();
-        const contactsToImport: Array<Record<string, unknown>> = [];
+        fetch(`${supabaseUrl}/functions/v1/process-rd-import`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceRoleKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jobId: job.id }),
+        }).catch((err) => {
+          console.error("Failed to trigger process-rd-import:", err);
+        });
 
-        for (let i = 0; i < userDeals.length; i += BATCH_SIZE) {
-          const batch = userDeals.slice(i, i + BATCH_SIZE);
-          const batchResults = await Promise.all(
-            batch.map(async (deal) => {
-              const dealId = (deal._id || deal.id) as string;
-              if (!dealId) return [];
-              try {
-                const data = await rdCrmGetWithRetry(`/deals/${dealId}/contacts`);
-                const contacts = (data as Record<string, unknown>)?.contacts || (Array.isArray(data) ? data : []);
-                return contacts as Array<Record<string, unknown>>;
-              } catch (err) {
-                console.error(`Error fetching contacts for deal ${dealId}: ${(err as Error).message}`);
-                return [];
-              }
-            })
-          );
-
-          for (const contacts of batchResults) {
-            for (const c of contacts) {
-              const cId = (c._id || c.id) as string;
-              if (cId && !seenContactIds.has(cId)) {
-                seenContactIds.add(cId);
-                contactsToImport.push(c);
-              }
-            }
-          }
-
-          // Delay between batches to avoid rate limits
-          if (i + BATCH_SIZE < userDeals.length) {
-            await sleep(BATCH_DELAY_MS);
-          }
-        }
-
-        console.log(`Found ${contactsToImport.length} unique contacts from ${userDeals.length} deals`);
-
-        // Step 3: For contacts that lack full data (custom fields), fetch individually
-        const fullContacts: Array<Record<string, unknown>> = [];
-        for (let i = 0; i < contactsToImport.length; i += BATCH_SIZE) {
-          const batch = contactsToImport.slice(i, i + BATCH_SIZE);
-          const batchResults = await Promise.all(
-            batch.map(async (c) => {
-              const cId = (c._id || c.id) as string;
-              // If contact already has custom fields, use as-is
-              if (c.contact_custom_fields && (c.contact_custom_fields as unknown[]).length > 0) {
-                return c;
-              }
-              // Otherwise fetch full contact data
-              try {
-                const full = await rdCrmGetWithRetry(`/contacts/${cId}`);
-                return full as Record<string, unknown>;
-              } catch {
-                return c; // Use partial data if fetch fails
-              }
-            })
-          );
-          fullContacts.push(...batchResults);
-          if (i + BATCH_SIZE < contactsToImport.length) {
-            await sleep(BATCH_DELAY_MS);
-          }
-        }
-
-        // Step 4: Import contacts into local DB
-        let imported = 0;
-        let skipped = 0;
-        let errors = 0;
-        const errorDetails: Array<{ name: string; error: string }> = [];
-
-        for (const rdContact of fullContacts) {
-          try {
-            const name = ((rdContact.name as string) || "").trim();
-            const email = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
-            const phone = (rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "";
-            const customFields = (rdContact.contact_custom_fields || []) as Array<Record<string, unknown>>;
-
-            if (!name && !phone) {
-              skipped++;
-              continue;
-            }
-
-            const normalizedPhone = phone.replace(/\D/g, "");
-
-            if (normalizedPhone) {
-              const { data: existing } = await supabase
-                .from("contacts")
-                .select("id")
-                .or(`phone.eq.${normalizedPhone},phone.eq.${phone}`)
-                .limit(1);
-
-              if (existing && existing.length > 0) {
-                skipped++;
-                continue;
-              }
-            }
-
-            if (email) {
-              const { data: existingByEmail } = await supabase
-                .from("contacts")
-                .select("id")
-                .eq("email", email)
-                .limit(1);
-
-              if (existingByEmail && existingByEmail.length > 0) {
-                skipped++;
-                continue;
-              }
-            }
-
-            // Extract custom fields
-            const cpf = getCustomFieldValue(customFields, CF_IDS.cpf);
-            const rg = getCustomFieldValue(customFields, CF_IDS.rg);
-            const rgIssuer = getCustomFieldValue(customFields, CF_IDS.rg_issuer);
-            const rgIssueDate = getCustomFieldValue(customFields, CF_IDS.rg_issue_date);
-            const birthDateCf = getCustomFieldValue(customFields, CF_IDS.birth_date);
-            const professionCf = getCustomFieldValue(customFields, CF_IDS.profession);
-            const maritalStatusCf = getCustomFieldValue(customFields, CF_IDS.marital_status);
-            const addressCf = getCustomFieldValue(customFields, CF_IDS.address);
-            const incomeCf = getCustomFieldValue(customFields, CF_IDS.income);
-
-            // Parse birth date
-            let birthDate: string | null = null;
-            const rawBirthDate = birthDateCf || (rdContact.birthday as string) || null;
-            if (rawBirthDate) {
-              if (rawBirthDate.includes("/")) {
-                const parts = rawBirthDate.split("/");
-                if (parts.length === 3) {
-                  birthDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-                }
-              } else {
-                birthDate = rawBirthDate.substring(0, 10);
-              }
-            }
-
-            // Parse RG issue date
-            let parsedRgIssueDate: string | null = null;
-            if (rgIssueDate) {
-              if (rgIssueDate.includes("/")) {
-                const parts = rgIssueDate.split("/");
-                if (parts.length === 3) {
-                  parsedRgIssueDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-                }
-              } else {
-                parsedRgIssueDate = rgIssueDate.substring(0, 10);
-              }
-            }
-
-            // Parse income
-            let income: number | null = null;
-            if (incomeCf) {
-              const cleaned = incomeCf.replace(/[^\d.,]/g, "").replace(",", ".");
-              const parsed = parseFloat(cleaned);
-              if (!isNaN(parsed)) income = parsed;
-            }
-
-            // Map marital status
-            let maritalStatus: string | null = null;
-            if (maritalStatusCf) {
-              const lower = maritalStatusCf.toLowerCase();
-              if (lower.includes("casado")) maritalStatus = "casado";
-              else if (lower.includes("solteiro")) maritalStatus = "solteiro";
-              else if (lower.includes("divorciado")) maritalStatus = "divorciado";
-              else if (lower.includes("separado")) maritalStatus = "separado";
-              else if (lower.includes("viúvo") || lower.includes("viuvo")) maritalStatus = "viuvo";
-              else if (lower.includes("união") || lower.includes("uniao")) maritalStatus = "uniao_estavel";
-              else maritalStatus = maritalStatusCf;
-            }
-
-            const profession = professionCf || (rdContact.title as string) || null;
-
-            const rdId = (rdContact._id || rdContact.id || "") as string;
-            const noteParts: string[] = [`RD CRM ID: ${rdId}`];
-            if (rdContact.title && !professionCf) {
-              noteParts.push(`Cargo RD: ${rdContact.title}`);
-            }
-
-            const { error: insertError } = await supabase
-              .from("contacts")
-              .insert({
-                full_name: name || "Sem nome",
-                phone: normalizedPhone || "0000000000",
-                email: email,
-                cpf: cpf,
-                rg: rg,
-                rg_issuer: rgIssuer,
-                rg_issue_date: parsedRgIssueDate,
-                birth_date: birthDate,
-                profession: profession,
-                marital_status: maritalStatus,
-                address: addressCf,
-                income: income,
-                source: "rd_crm",
-                source_detail: `RD CRM ID: ${rdId}`,
-                notes: noteParts.join(" | "),
-                created_by: userId,
-                owner_id: ownerUserId || null,
-              });
-
-            if (insertError) {
-              errors++;
-              errorDetails.push({ name, error: insertError.message });
-            } else {
-              imported++;
-            }
-          } catch (e) {
-            errors++;
-            errorDetails.push({
-              name: (rdContact.name as string) || "unknown",
-              error: e.message,
-            });
-          }
-        }
-
-        result = {
-          total_fetched: fullContacts.length,
-          imported,
-          skipped,
-          errors,
-          error_details: errorDetails.slice(0, 20),
-        };
+        result = { job_id: job.id };
         break;
       }
 
-      case "import_deals": {
-        const rdUserId = payload.rd_user_id || null;
-        const ownerUserId = payload.owner_user_id || null;
+      case "get_import_status": {
+        const jobId = payload.job_id;
+        if (!jobId) throw new Error("job_id é obrigatório");
 
-        const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
-        
-        // Filter deals by user on the server side
-        let deals = allDeals;
-        if (rdUserId) {
-          deals = allDeals.filter((d) => {
-            const dealUser = d.user as Record<string, unknown> | undefined;
-            return (dealUser?._id || dealUser?.id) === rdUserId;
-          });
-          console.log(`Filtered deals: ${deals.length} of ${allDeals.length} for user ${rdUserId}`);
-        }
+        const { data: job, error: jobError } = await supabase
+          .from("import_jobs")
+          .select("*")
+          .eq("id", jobId)
+          .single();
 
-        const { data: localFunnels } = await supabase
-          .from("funnels")
-          .select("id, name")
-          .eq("is_active", true)
-          .order("order_position");
-
-        const { data: localStages } = await supabase
-          .from("funnel_stages")
-          .select("id, name, funnel_id, order_position")
-          .order("order_position");
-
-        if (!localFunnels?.length || !localStages?.length) {
-          throw new Error("Nenhum funil ou etapa cadastrado no sistema. Cadastre primeiro.");
-        }
-
-        const defaultFunnel = localFunnels[0];
-        const defaultStage = localStages.find((s) => s.funnel_id === defaultFunnel.id) || localStages[0];
-
-        let imported = 0;
-        let skipped = 0;
-        let errors = 0;
-        const errorDetails: Array<{ name: string; error: string }> = [];
-
-        for (const deal of deals) {
-          try {
-            const dealName = (deal.name as string) || "";
-            const dealValue = Number(deal.amount_total || deal.amount || 0);
-            const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
-
-            let localContactId: string | null = null;
-
-            if (rdContactIds.length > 0) {
-              const rdContact = rdContactIds[0];
-              const contactName = (rdContact.name as string) || "";
-              const contactPhone = ((rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "").replace(/\D/g, "");
-              const contactEmail = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
-
-              if (contactPhone) {
-                const { data: found } = await supabase
-                  .from("contacts")
-                  .select("id")
-                  .or(`phone.eq.${contactPhone}`)
-                  .limit(1);
-                if (found?.length) localContactId = found[0].id;
-              }
-
-              if (!localContactId && contactEmail) {
-                const { data: found } = await supabase
-                  .from("contacts")
-                  .select("id")
-                  .eq("email", contactEmail)
-                  .limit(1);
-                if (found?.length) localContactId = found[0].id;
-              }
-
-              if (!localContactId && contactName) {
-                const { data: found } = await supabase
-                  .from("contacts")
-                  .select("id")
-                  .ilike("full_name", contactName)
-                  .limit(1);
-                if (found?.length) localContactId = found[0].id;
-              }
-            }
-
-            if (!localContactId) {
-              skipped++;
-              continue;
-            }
-
-            const rdDealId = (deal._id || deal.id || "") as string;
-            if (rdDealId) {
-              const { data: existingOpp } = await supabase
-                .from("opportunities")
-                .select("id")
-                .eq("contact_id", localContactId)
-                .ilike("notes", `%RD CRM Deal: ${rdDealId}%`)
-                .limit(1);
-
-              if (existingOpp?.length) {
-                skipped++;
-                continue;
-              }
-            }
-
-            const rdStatus = (deal.win as string);
-            let oppStatus: string = "active";
-            if (rdStatus === "won") oppStatus = "converted";
-            else if (rdStatus === "lost") oppStatus = "lost";
-
-            const { error: insertError } = await supabase
-              .from("opportunities")
-              .insert({
-                contact_id: localContactId,
-                current_funnel_id: defaultFunnel.id,
-                current_stage_id: defaultStage.id,
-                proposal_value: dealValue || null,
-                notes: `RD CRM Deal: ${rdDealId} | ${dealName}`,
-                status: oppStatus,
-                created_by: ownerUserId || userId,
-              });
-
-            if (insertError) {
-              errors++;
-              errorDetails.push({ name: dealName, error: insertError.message });
-            } else {
-              imported++;
-
-              await supabase.from("opportunity_history").insert({
-                opportunity_id: (await supabase
-                  .from("opportunities")
-                  .select("id")
-                  .eq("contact_id", localContactId)
-                  .ilike("notes", `%RD CRM Deal: ${rdDealId}%`)
-                  .single()).data?.id || "",
-                action: "created",
-                changed_by: userId,
-                notes: "Importado do RD Station CRM",
-              });
-            }
-          } catch (e) {
-            errors++;
-            errorDetails.push({
-              name: (deal.name as string) || "unknown",
-              error: e.message,
-            });
-          }
-        }
-
-        result = {
-          total_fetched: deals.length,
-          imported,
-          skipped,
-          errors,
-          error_details: errorDetails.slice(0, 20),
-        };
+        if (jobError) throw new Error(`Job não encontrado: ${jobError.message}`);
+        result = job;
         break;
       }
 
