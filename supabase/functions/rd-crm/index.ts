@@ -236,36 +236,79 @@ Deno.serve(async (req) => {
         }
 
         // When filtering by user, we must go through deals (contacts don't have user field)
-        let contactIds: Set<string> | null = null;
         if (rdUserId) {
           const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
           const userDeals = allDeals.filter((d) => {
             const dealUser = d.user as Record<string, unknown> | undefined;
             return (dealUser?._id || dealUser?.id) === rdUserId;
           });
-          contactIds = new Set<string>();
+
+          console.log(`Found ${userDeals.length} deals for user ${rdUserId}`);
+
+          // Extract unique contact identifiers from deals' contact arrays
+          // The deals list includes contacts with name/phone/email but NOT their _id
+          // So we collect identifiers to match against the full contacts list
+          const dealContactIdentifiers = new Set<string>();
+          const dealContactPhones = new Set<string>();
+          const dealContactEmails = new Set<string>();
+          const dealContactNames = new Set<string>();
+
           for (const deal of userDeals) {
             const dealContacts = deal.contacts as Array<Record<string, unknown>> || [];
-            // Contact IDs are not in the deal list, but we can match by name+phone later
-            // Actually, deals in the list endpoint don't include contact _id. 
-            // We need to fetch each deal individually to get contact IDs.
-            // Alternative: fetch all contacts and match against deal contact names/phones
+            for (const dc of dealContacts) {
+              // Collect contact _id if available
+              const contactId = (dc._id || dc.id) as string;
+              if (contactId) dealContactIdentifiers.add(contactId);
+
+              // Collect phones
+              const phones = dc.phones as Array<{ phone: string }> || [];
+              for (const p of phones) {
+                if (p.phone) dealContactPhones.add(p.phone.replace(/\D/g, ""));
+              }
+
+              // Collect emails
+              const emails = dc.emails as Array<{ email: string }> || [];
+              for (const e of emails) {
+                if (e.email) dealContactEmails.add(e.email.toLowerCase());
+              }
+
+              // Collect names as fallback
+              const name = (dc.name as string || "").trim().toLowerCase();
+              if (name) dealContactNames.add(name);
+            }
           }
-          // Better approach: fetch all contacts, then for each contact check if any of their deals belong to the user
-          // Contacts in the list endpoint include their deals (with _id)
-          // Deals in the list endpoint include user info
-          // So: get deal IDs for the user, then filter contacts that have those deal IDs
-          const userDealIds = new Set(userDeals.map((d) => (d._id || d.id) as string));
-          
+
+          console.log(`Deal contact identifiers: ${dealContactIdentifiers.size} IDs, ${dealContactPhones.size} phones, ${dealContactEmails.size} emails, ${dealContactNames.size} names`);
+
           const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
+          
           const filteredContacts = allContacts.filter((c) => {
-            const contactDeals = c.deals as Array<Record<string, unknown>> || [];
-            return contactDeals.some((d) => userDealIds.has((d._id || d.id) as string));
+            const cId = (c._id || c.id) as string;
+            
+            // Match by contact ID directly
+            if (cId && dealContactIdentifiers.has(cId)) return true;
+
+            // Match by phone
+            const cPhones = c.phones as Array<{ phone: string }> || [];
+            for (const p of cPhones) {
+              if (p.phone && dealContactPhones.has(p.phone.replace(/\D/g, ""))) return true;
+            }
+
+            // Match by email
+            const cEmails = c.emails as Array<{ email: string }> || [];
+            for (const e of cEmails) {
+              if (e.email && dealContactEmails.has(e.email.toLowerCase())) return true;
+            }
+
+            // Match by exact name as last resort
+            const cName = ((c.name as string) || "").trim().toLowerCase();
+            if (cName && dealContactNames.has(cName)) return true;
+
+            return false;
           });
           
           console.log(`Filtered contacts: ${filteredContacts.length} of ${allContacts.length} (via ${userDeals.length} deals for user ${rdUserId})`);
           
-          // Process filtered contacts
           var contacts = filteredContacts;
         } else {
           var contacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
