@@ -246,53 +246,75 @@ Deno.serve(async (req) => {
 
           console.log(`Found ${userDeals.length} deals for user ${rdUserId}`);
 
-          // Step 2: Fetch each deal individually to get full contact info with _id
-          // The list endpoint returns contacts as empty arrays, but individual deals have full data
-          const contactIdsFromDeals = new Set<string>();
-          const batchSize = 10;
-          
-          for (let i = 0; i < userDeals.length; i += batchSize) {
-            const batch = userDeals.slice(i, i + batchSize);
-            const results = await Promise.all(
-              batch.map(async (deal) => {
-                try {
-                  const dealId = (deal._id || deal.id) as string;
-                  const fullDeal = await rdCrmGet(`/deals/${dealId}`);
-                  const dealContacts = (fullDeal.contacts || []) as Array<Record<string, unknown>>;
-                  return dealContacts.map((dc) => (dc._id || dc.id) as string).filter(Boolean);
-                } catch {
-                  return [];
+          // Step 2: Extract contact identifiers from deals' contact arrays
+          // The deal list DOES include contacts with name/phone/email (but no _id)
+          const dealContactPhones = new Set<string>();
+          const dealContactEmails = new Set<string>();
+          const dealContactNames = new Set<string>();
+
+          for (const deal of userDeals) {
+            const dealContacts = (deal.contacts || []) as Array<Record<string, unknown>>;
+            for (const dc of dealContacts) {
+              // Phones
+              const phones = (dc.phones || []) as Array<{ phone: string }>;
+              for (const p of phones) {
+                if (p.phone) {
+                  const normalized = p.phone.replace(/\D/g, "");
+                  if (normalized) dealContactPhones.add(normalized);
                 }
-              })
-            );
-            for (const ids of results) {
-              for (const id of ids) contactIdsFromDeals.add(id);
+              }
+              // Emails
+              const emails = (dc.emails || []) as Array<{ email: string }>;
+              for (const e of emails) {
+                if (e.email) dealContactEmails.add(e.email.toLowerCase().trim());
+              }
+              // Names
+              const name = ((dc.name as string) || "").trim().toLowerCase();
+              if (name) dealContactNames.add(name);
             }
           }
 
-          console.log(`Found ${contactIdsFromDeals.size} unique contact IDs from ${userDeals.length} deals`);
+          console.log(`Extracted from deals: ${dealContactPhones.size} phones, ${dealContactEmails.size} emails, ${dealContactNames.size} names`);
+          // Log a few sample phones for debugging
+          const samplePhones = Array.from(dealContactPhones).slice(0, 5);
+          console.log(`Sample deal phones: ${JSON.stringify(samplePhones)}`);
 
-          // Step 3: Fetch only the specific contacts we need (by ID, in parallel)
-          const contactIdArray = Array.from(contactIdsFromDeals);
-          const contacts: Array<Record<string, unknown>> = [];
+          // Step 3: Fetch all contacts and match
+          const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
           
-          for (let i = 0; i < contactIdArray.length; i += batchSize) {
-            const batch = contactIdArray.slice(i, i + batchSize);
-            const results = await Promise.all(
-              batch.map(async (contactId) => {
-                try {
-                  return await rdCrmGet(`/contacts/${contactId}`);
-                } catch {
-                  return null;
-                }
-              })
-            );
-            for (const c of results) {
-              if (c) contacts.push(c as Record<string, unknown>);
-            }
-          }
+          // Log a few sample contact phones for comparison
+          const sampleContactPhones = allContacts.slice(0, 5).map((c) => {
+            const ph = (c.phones as Array<{ phone: string }>) || [];
+            return ph.map((p) => p.phone?.replace(/\D/g, ""));
+          });
+          console.log(`Sample contact phones from list: ${JSON.stringify(sampleContactPhones)}`);
 
-          console.log(`Fetched ${contacts.length} contacts by ID`);
+          const filteredContacts = allContacts.filter((c) => {
+            // Match by phone
+            const cPhones = (c.phones || []) as Array<{ phone: string }>;
+            for (const p of cPhones) {
+              if (p.phone) {
+                const normalized = p.phone.replace(/\D/g, "");
+                if (normalized && dealContactPhones.has(normalized)) return true;
+              }
+            }
+
+            // Match by email
+            const cEmails = (c.emails || []) as Array<{ email: string }>;
+            for (const e of cEmails) {
+              if (e.email && dealContactEmails.has(e.email.toLowerCase().trim())) return true;
+            }
+
+            // Match by exact name as last resort
+            const cName = ((c.name as string) || "").trim().toLowerCase();
+            if (cName && dealContactNames.has(cName)) return true;
+
+            return false;
+          });
+          
+          console.log(`Filtered contacts: ${filteredContacts.length} of ${allContacts.length} (via ${userDeals.length} deals for user ${rdUserId})`);
+          
+          var contactsToImport = filteredContacts;
           
           var contactsToImport = contacts;
         } else {
