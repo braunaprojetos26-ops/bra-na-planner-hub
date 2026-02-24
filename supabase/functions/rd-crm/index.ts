@@ -115,6 +115,31 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "get_contact_sample": {
+        // Fetch a contact that has custom fields populated
+        const contactsPage = await rdCrmGet("/contacts", { page: "1", limit: "20" });
+        const contactsList = contactsPage?.contacts || [];
+        // Find one with custom fields
+        const withCustom = contactsList.find((c: Record<string, unknown>) => {
+          const cf = c.contact_custom_fields as unknown[];
+          return cf && cf.length > 0;
+        }) || contactsList[0];
+        if (withCustom) {
+          const fullContact = await rdCrmGet(`/contacts/${withCustom._id}`);
+          result = fullContact;
+        } else {
+          result = contactsList[0] || null;
+        }
+        break;
+      }
+
+      case "list_custom_fields": {
+        const cfFor = payload.cf_for || "contact";
+        const data = await rdCrmGet("/custom_fields", { "for": cfFor });
+        result = data;
+        break;
+      }
+
       case "list_users": {
         const data = await rdCrmGet("/users");
         const usersArray = Array.isArray(data) ? data : (data?.users || []);
@@ -189,17 +214,61 @@ Deno.serve(async (req) => {
         const rdUserId = payload.rd_user_id || null;
         const ownerUserId = payload.owner_user_id || null;
 
-        const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
-        
-        // Filter contacts by user on the server side since the API doesn't support user_id filter
-        let contacts = allContacts;
+        // Custom field IDs from RD CRM
+        const CF_IDS = {
+          cpf: "63db017f8623e3000bee5ad5",
+          rg: "63db01ac19c479000cf0fb85",
+          rg_issuer: "63db02f20392d2000ca550db",
+          rg_issue_date: "63db01c0fdb6440017de2107",
+          birth_date: "63db01cea2e76c001109e659",
+          profession: "63db01e1ebbe8a001e73944d",
+          marital_status: "63db023aed02ef0017030f24",
+          address: "63db024be8396e000fbc4049",
+          income: "63db025c0b4a460010e0dd00",
+        };
+
+        function getCustomFieldValue(customFields: Array<Record<string, unknown>>, fieldId: string): string | null {
+          const field = customFields?.find((f) => f.custom_field_id === fieldId);
+          if (!field || !field.value) return null;
+          const val = field.value;
+          if (Array.isArray(val)) return val[0] as string || null;
+          return String(val).trim() || null;
+        }
+
+        // When filtering by user, we must go through deals (contacts don't have user field)
+        let contactIds: Set<string> | null = null;
         if (rdUserId) {
-          contacts = allContacts.filter((c) => {
-            const contactUser = c.user as Record<string, unknown> | undefined;
-            const contactUserId = contactUser?._id || contactUser?.id || c.user_id;
-            return contactUserId === rdUserId;
+          const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
+          const userDeals = allDeals.filter((d) => {
+            const dealUser = d.user as Record<string, unknown> | undefined;
+            return (dealUser?._id || dealUser?.id) === rdUserId;
           });
-          console.log(`Filtered contacts: ${contacts.length} of ${allContacts.length} for user ${rdUserId}`);
+          contactIds = new Set<string>();
+          for (const deal of userDeals) {
+            const dealContacts = deal.contacts as Array<Record<string, unknown>> || [];
+            // Contact IDs are not in the deal list, but we can match by name+phone later
+            // Actually, deals in the list endpoint don't include contact _id. 
+            // We need to fetch each deal individually to get contact IDs.
+            // Alternative: fetch all contacts and match against deal contact names/phones
+          }
+          // Better approach: fetch all contacts, then for each contact check if any of their deals belong to the user
+          // Contacts in the list endpoint include their deals (with _id)
+          // Deals in the list endpoint include user info
+          // So: get deal IDs for the user, then filter contacts that have those deal IDs
+          const userDealIds = new Set(userDeals.map((d) => (d._id || d.id) as string));
+          
+          const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
+          const filteredContacts = allContacts.filter((c) => {
+            const contactDeals = c.deals as Array<Record<string, unknown>> || [];
+            return contactDeals.some((d) => userDealIds.has((d._id || d.id) as string));
+          });
+          
+          console.log(`Filtered contacts: ${filteredContacts.length} of ${allContacts.length} (via ${userDeals.length} deals for user ${rdUserId})`);
+          
+          // Process filtered contacts
+          var contacts = filteredContacts;
+        } else {
+          var contacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
         }
 
         let imported = 0;
@@ -209,9 +278,10 @@ Deno.serve(async (req) => {
 
         for (const rdContact of contacts) {
           try {
-            const name = (rdContact.name as string) || "";
+            const name = ((rdContact.name as string) || "").trim();
             const email = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
             const phone = (rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "";
+            const customFields = (rdContact.contact_custom_fields || []) as Array<Record<string, unknown>>;
 
             if (!name && !phone) {
               skipped++;
@@ -246,15 +316,93 @@ Deno.serve(async (req) => {
               }
             }
 
+            // Extract custom fields
+            const cpf = getCustomFieldValue(customFields, CF_IDS.cpf);
+            const rg = getCustomFieldValue(customFields, CF_IDS.rg);
+            const rgIssuer = getCustomFieldValue(customFields, CF_IDS.rg_issuer);
+            const rgIssueDate = getCustomFieldValue(customFields, CF_IDS.rg_issue_date);
+            const birthDateCf = getCustomFieldValue(customFields, CF_IDS.birth_date);
+            const professionCf = getCustomFieldValue(customFields, CF_IDS.profession);
+            const maritalStatusCf = getCustomFieldValue(customFields, CF_IDS.marital_status);
+            const addressCf = getCustomFieldValue(customFields, CF_IDS.address);
+            const incomeCf = getCustomFieldValue(customFields, CF_IDS.income);
+
+            // Parse birth date (could be "02/11/1962" or ISO format)
+            let birthDate: string | null = null;
+            const rawBirthDate = birthDateCf || (rdContact.birthday as string) || null;
+            if (rawBirthDate) {
+              if (rawBirthDate.includes("/")) {
+                const parts = rawBirthDate.split("/");
+                if (parts.length === 3) {
+                  birthDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+                }
+              } else {
+                birthDate = rawBirthDate.substring(0, 10);
+              }
+            }
+
+            // Parse RG issue date
+            let parsedRgIssueDate: string | null = null;
+            if (rgIssueDate) {
+              if (rgIssueDate.includes("/")) {
+                const parts = rgIssueDate.split("/");
+                if (parts.length === 3) {
+                  parsedRgIssueDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+                }
+              } else {
+                parsedRgIssueDate = rgIssueDate.substring(0, 10);
+              }
+            }
+
+            // Parse income
+            let income: number | null = null;
+            if (incomeCf) {
+              const cleaned = incomeCf.replace(/[^\d.,]/g, "").replace(",", ".");
+              const parsed = parseFloat(cleaned);
+              if (!isNaN(parsed)) income = parsed;
+            }
+
+            // Map marital status to our system values
+            let maritalStatus: string | null = null;
+            if (maritalStatusCf) {
+              const lower = maritalStatusCf.toLowerCase();
+              if (lower.includes("casado")) maritalStatus = "casado";
+              else if (lower.includes("solteiro")) maritalStatus = "solteiro";
+              else if (lower.includes("divorciado")) maritalStatus = "divorciado";
+              else if (lower.includes("separado")) maritalStatus = "separado";
+              else if (lower.includes("viúvo") || lower.includes("viuvo")) maritalStatus = "viuvo";
+              else if (lower.includes("união") || lower.includes("uniao")) maritalStatus = "uniao_estavel";
+              else maritalStatus = maritalStatusCf;
+            }
+
+            // Use profession from custom field or title
+            const profession = professionCf || (rdContact.title as string) || null;
+
+            // Build notes with RD CRM ID
+            const rdId = (rdContact._id || rdContact.id || "") as string;
+            const noteParts: string[] = [`RD CRM ID: ${rdId}`];
+            if (rdContact.title && !professionCf) {
+              noteParts.push(`Cargo RD: ${rdContact.title}`);
+            }
+
             const { error: insertError } = await supabase
               .from("contacts")
               .insert({
                 full_name: name || "Sem nome",
                 phone: normalizedPhone || "0000000000",
                 email: email,
+                cpf: cpf,
+                rg: rg,
+                rg_issuer: rgIssuer,
+                rg_issue_date: parsedRgIssueDate,
+                birth_date: birthDate,
+                profession: profession,
+                marital_status: maritalStatus,
+                address: addressCf,
+                income: income,
                 source: "rd_crm",
-                source_detail: `RD CRM ID: ${rdContact._id || rdContact.id || ""}`,
-                notes: rdContact.title ? `Cargo: ${rdContact.title}` : null,
+                source_detail: `RD CRM ID: ${rdId}`,
+                notes: noteParts.join(" | "),
                 created_by: userId,
                 owner_id: ownerUserId || null,
               });
@@ -295,8 +443,7 @@ Deno.serve(async (req) => {
         if (rdUserId) {
           deals = allDeals.filter((d) => {
             const dealUser = d.user as Record<string, unknown> | undefined;
-            const dealUserId = dealUser?._id || dealUser?.id || d.user_id;
-            return dealUserId === rdUserId;
+            return (dealUser?._id || dealUser?.id) === rdUserId;
           });
           console.log(`Filtered deals: ${deals.length} of ${allDeals.length} for user ${rdUserId}`);
         }
