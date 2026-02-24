@@ -1,79 +1,59 @@
 
 
-## Importacao Seletiva do RD CRM por Usuario
+## Plano: Marcar 33 negociações como vendidas + criar contratos + corrigir importador
 
-### Resumo
+### Contexto
 
-Transformar a importacao atual (tudo de uma vez) em um fluxo seletivo onde voce:
-1. Ve a lista de usuarios do RD CRM
-2. Seleciona um usuario
-3. Importa apenas os contatos e/ou negociacoes desse usuario
-4. Opcionalmente cria uma conta no sistema para ele, ja vinculando como responsavel (owner) dos dados importados
+Existem 33 oportunidades ativas no estágio "Planejamento Pago" do funil "VENDA - PLANEJAMENTO", todas do Abraão Lima Velozo. Cada uma já possui o valor do contrato em `proposal_value`. Todas já possuem oportunidades correspondentes no funil "MONTAGEM - PLANEJAMENTO" (importadas do RD), então não podemos duplicá-las.
 
----
+### O que será feito
 
-### Fluxo do Usuario
+**1. Edge function `bulk-mark-won`**
 
-1. Na tela de configuracoes, ao clicar "Importar Contatos" ou "Importar Negociacoes", abre um dialog/modal
-2. O modal lista os usuarios do RD CRM (nome + e-mail)
-3. Voce seleciona um usuario
-4. Um checkbox "Criar usuario no sistema" aparece (marcado por padrao)
-   - Se marcado, o sistema cria a conta com o e-mail do RD e senha padrao `Brauna@2025` (o usuario devera trocar no primeiro acesso)
-   - Se o usuario ja existir no sistema (mesmo e-mail), ele sera usado como owner sem criar duplicata
-5. Ao confirmar, importa apenas os contatos/negociacoes vinculados aquele usuario do RD CRM
-6. Todos os contatos importados ficam com `owner_id` apontando para o usuario criado/encontrado
+Função que processa as 33 oportunidades em lote:
 
----
+Para cada oportunidade:
+- Cria um contrato vinculado ao produto "Planejamento Financeiro Completo" usando o `proposal_value` como `contract_value`
+- PBs calculados pela fórmula do produto: `contract_value / 100`
+- Payment type: `mensal` (padrão)
+- Status do contrato: `active`
+- Marca a oportunidade como `won` (status = 'won', converted_at = now)
+- Registra no `opportunity_history` com action 'won'
+- **Não cria** nova oportunidade em MONTAGEM (já existem)
 
-### Detalhes Tecnicos
+Parâmetros de entrada: funnel_id, stage_id (para filtrar quais oportunidades processar)
 
-**1. Edge Function `rd-crm` - Novas actions:**
+**2. Correção no importador RD (`process-rd-import`)**
 
-- `list_users`: Chama `GET /users` na API do RD CRM para listar os usuarios ativos. Retorna id, nome e e-mail de cada um.
+Linha 676 atual:
+```
+if (rdStatus === "won") oppStatus = "converted";  // BUG: "converted" não é status válido
+```
 
-- `import_contacts` (modificado): Recebe um parametro opcional `rd_user_id` para filtrar contatos daquele usuario. Recebe tambem `owner_user_id` para definir o owner dos contatos importados.
+Corrigido para:
+```
+if (rdStatus === "won") oppStatus = "won";
+```
 
-- `import_deals` (modificado): Mesma logica - recebe `rd_user_id` para filtrar negociacoes e `owner_user_id` para as oportunidades criadas.
+Também adiciona `converted_at` quando o deal é won.
 
-- `create_system_user`: Recebe `email` e `full_name`. Usa `supabase.auth.admin.createUser()` com a service role key para criar o usuario com senha padrao `Brauna@2025` e `email_confirm: true` (ja confirmado). Retorna o `user_id` criado. O trigger `handle_new_user` ja existente cuida de criar o perfil e atribuir a role `planejador`. Se o e-mail ja existir, busca o usuario existente e retorna o id dele.
+### Detalhes técnicos
 
-**2. Frontend - Novo componente `RDCRMImportDialog`:**
+```text
+Dados confirmados:
+- Produto: Planejamento Financeiro Completo (4b900185-...)
+- PB fórmula: {valor_total}/100
+- Funil VENDA: VENDA - PLANEJAMENTO
+- Estágio: Planejamento Pago
+- Owner: Abraão (b16ff462-...)
+- 33 oportunidades, todas com proposal_value preenchido
+- Todas já têm oportunidade espelho em MONTAGEM - PLANEJAMENTO
+```
 
-- Modal que abre ao clicar nos botoes de importacao
-- Ao abrir, busca a lista de usuarios do RD CRM (`list_users`)
-- Exibe lista com radio buttons para selecionar um usuario
-- Checkbox "Criar usuario no sistema e definir como responsavel"
-- Botao "Importar" que:
-  1. Se checkbox marcado e usuario nao existe: chama `create_system_user`
-  2. Chama `import_contacts` ou `import_deals` com `rd_user_id` e `owner_user_id`
-- Exibe resultado da importacao (importados, ignorados, erros)
+### Execução
 
-**3. Hook `useRDCRM` atualizado:**
-
-- Nova query `listUsers` para buscar usuarios do RD CRM
-- Mutations de importacao passam a receber `rd_user_id` e `owner_user_id`
-- Nova mutation `createSystemUser`
-
-**4. Componente `RDCRMConnectionCard` atualizado:**
-
-- Os botoes "Importar Contatos" e "Importar Negociacoes" abrem o novo dialog em vez do AlertDialog simples atual
-
----
-
-### Sobre a senha padrao e primeiro acesso
-
-- A conta sera criada com senha `Brauna@2025` e e-mail ja confirmado
-- O usuario recebe uma notificacao ou instrucao para trocar a senha no primeiro login
-- Nao sera implementado um fluxo de "force password change" automatico neste momento, mas pode ser adicionado futuramente
-
----
-
-### Arquivos que serao criados/modificados
-
-| Arquivo | Acao |
-|---|---|
-| `supabase/functions/rd-crm/index.ts` | Adicionar actions `list_users` e `create_system_user`; modificar `import_contacts` e `import_deals` para aceitar filtro por usuario e owner |
-| `src/components/settings/RDCRMImportDialog.tsx` | Novo componente - modal de selecao de usuario e importacao |
-| `src/hooks/useRDCRM.ts` | Adicionar `listUsers`, `createSystemUser`, e parametros nas mutations |
-| `src/components/settings/RDCRMConnectionCard.tsx` | Substituir AlertDialogs pelos novos dialogs de importacao |
+1. Criar e fazer deploy da edge function `bulk-mark-won`
+2. Corrigir o mapeamento de status no `process-rd-import`
+3. Executar a função para processar as 33 oportunidades
+4. Confirmar os resultados via consulta ao banco
 
