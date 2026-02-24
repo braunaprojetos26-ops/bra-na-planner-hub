@@ -547,6 +547,11 @@ async function processDealsFromIds(
       const dealName = (deal.name as string) || "";
       const dealValue = Number(deal.amount_total || deal.amount || 0);
       const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
+      
+      // Debug: log first 3 deals structure
+      if (imported + skipped + errors < 3) {
+        console.log(`[DEBUG] Deal "${dealName}" contacts field:`, JSON.stringify(rdContactIds?.map((c: Record<string, unknown>) => ({ id: c._id || c.id, name: c.name, phones: c.phones, emails: c.emails })).slice(0, 2)));
+      }
 
       // --- Map funnel & stage by name ---
       const rdPipeline = deal.deal_pipeline as Record<string, unknown> | null;
