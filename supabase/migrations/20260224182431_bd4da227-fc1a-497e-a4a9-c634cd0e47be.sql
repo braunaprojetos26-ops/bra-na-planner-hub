@@ -1,1 +1,0 @@
-ALTER TABLE public.import_jobs ADD COLUMN checkpoint_data jsonb DEFAULT NULL;

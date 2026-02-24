@@ -36,66 +36,39 @@ async function rdCrmGet(endpoint: string, params: Record<string, string> = {}) {
   return await res.json();
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function rdCrmGetWithRetry(endpoint: string, params: Record<string, string> = {}, retries = 2): Promise<unknown> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await rdCrmGet(endpoint, params);
-    } catch (err) {
-      const msg = (err as Error).message || "";
-      if ((msg.includes("504") || msg.includes("429")) && attempt < retries) {
-        console.log(`Retry ${attempt + 1} for ${endpoint} after error: ${msg}`);
-        await sleep(2000 * (attempt + 1));
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error("Max retries reached");
-}
-
 async function fetchAllPages(endpoint: string, extraParams: Record<string, string> = {}, maxPages = 50) {
   const allItems: unknown[] = [];
   let page = 1;
-  const limit = "100";
+  const limit = "200";
 
   while (page <= maxPages) {
-    const data = await rdCrmGetWithRetry(endpoint, { ...extraParams, page: String(page), limit });
+    const data = await rdCrmGet(endpoint, { ...extraParams, page: String(page), limit });
 
+    // The RD CRM API returns an object with total and items for contacts,
+    // and an array directly for deals depending on endpoint
     let items: unknown[];
     if (Array.isArray(data)) {
       items = data;
-    } else if ((data as Record<string, unknown>)?.contacts) {
-      items = (data as Record<string, unknown>).contacts as unknown[];
-    } else if ((data as Record<string, unknown>)?.deals) {
-      items = (data as Record<string, unknown>).deals as unknown[];
-    } else if (Array.isArray((data as Record<string, unknown>)?.data)) {
-      items = (data as Record<string, unknown>).data as unknown[];
+    } else if (data?.contacts) {
+      items = data.contacts;
+    } else if (data?.deals) {
+      items = data.deals;
+    } else if (Array.isArray(data?.data)) {
+      items = data.data;
     } else {
+      // Try to use the response as-is if it's an array-like
       items = [];
     }
 
     if (items.length === 0) break;
     allItems.push(...items);
 
-    if (items.length < 100) break;
+    // If we got less than the limit, we've reached the end
+    if (items.length < 200) break;
     page++;
-
-    // Small delay between pages to avoid rate limits
-    await sleep(500);
   }
 
   return allItems;
-}
-
-function getServiceRoleClient() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
 }
 
 Deno.serve(async (req) => {
@@ -104,6 +77,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -134,73 +108,9 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "test_connection": {
+        // Check token validity
         const data = await rdCrmGet("/token/check");
         result = data;
-        break;
-      }
-
-      case "get_contact_sample": {
-        // Fetch a contact that has custom fields populated
-        const contactsPage = await rdCrmGet("/contacts", { page: "1", limit: "20" });
-        const contactsList = contactsPage?.contacts || [];
-        // Find one with custom fields
-        const withCustom = contactsList.find((c: Record<string, unknown>) => {
-          const cf = c.contact_custom_fields as unknown[];
-          return cf && cf.length > 0;
-        }) || contactsList[0];
-        if (withCustom) {
-          const fullContact = await rdCrmGet(`/contacts/${withCustom._id}`);
-          result = fullContact;
-        } else {
-          result = contactsList[0] || null;
-        }
-        break;
-      }
-
-      case "list_custom_fields": {
-        const cfFor = payload.cf_for || "contact";
-        const data = await rdCrmGet("/custom_fields", { "for": cfFor });
-        result = data;
-        break;
-      }
-
-      case "list_users": {
-        const data = await rdCrmGet("/users");
-        const usersArray = Array.isArray(data) ? data : (data?.users || []);
-        const mapped = usersArray.map((u: Record<string, unknown>) => ({
-          id: u._id || u.id,
-          name: u.name || "",
-          email: u.email || "",
-        }));
-        result = mapped;
-        break;
-      }
-
-      case "create_system_user": {
-        const { email, full_name } = payload;
-        if (!email) throw new Error("email é obrigatório");
-
-        const adminClient = getServiceRoleClient();
-
-        // Check if user already exists
-        const { data: existingUsers } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-        const existingUser = existingUsers?.users?.find(
-          (u) => u.email?.toLowerCase() === email.toLowerCase()
-        );
-
-        if (existingUser) {
-          result = { user_id: existingUser.id, already_existed: true };
-        } else {
-          const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-            email: email,
-            password: "Brauna@2025",
-            email_confirm: true,
-            user_metadata: { full_name: full_name || email },
-          });
-
-          if (createError) throw new Error(`Erro ao criar usuário: ${createError.message}`);
-          result = { user_id: newUser.user!.id, already_existed: false };
-        }
         break;
       }
 
@@ -234,60 +144,243 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case "start_import": {
-        const rdUserId = payload.rd_user_id;
-        const importType = payload.import_type || "contacts";
-        const ownerUserId = payload.owner_user_id || null;
+      case "import_contacts": {
+        // Fetch all contacts from RD CRM and import into local DB
+        const contacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
 
-        if (!rdUserId) throw new Error("rd_user_id é obrigatório");
+        let imported = 0;
+        let skipped = 0;
+        let errors = 0;
+        const errorDetails: Array<{ name: string; error: string }> = [];
 
-        // Create job record
-        const { data: job, error: jobError } = await supabase
-          .from("import_jobs")
-          .insert({
-            created_by: userId,
-            rd_user_id: rdUserId,
-            import_type: importType,
-            owner_user_id: ownerUserId,
-            status: "pending",
-          })
-          .select()
-          .single();
+        for (const rdContact of contacts) {
+          try {
+            const name = (rdContact.name as string) || "";
+            const email = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
+            const phone = (rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "";
 
-        if (jobError) throw new Error(`Erro ao criar job: ${jobError.message}`);
+            if (!name && !phone) {
+              skipped++;
+              continue;
+            }
 
-        // Fire-and-forget: trigger the worker function
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            // Normalize phone for matching
+            const normalizedPhone = phone.replace(/\D/g, "");
 
-        fetch(`${supabaseUrl}/functions/v1/process-rd-import`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${serviceRoleKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jobId: job.id }),
-        }).catch((err) => {
-          console.error("Failed to trigger process-rd-import:", err);
-        });
+            // Check if contact already exists by phone
+            if (normalizedPhone) {
+              const { data: existing } = await supabase
+                .from("contacts")
+                .select("id")
+                .or(`phone.eq.${normalizedPhone},phone.eq.${phone}`)
+                .limit(1);
 
-        result = { job_id: job.id };
+              if (existing && existing.length > 0) {
+                skipped++;
+                continue;
+              }
+            }
+
+            // Check by email
+            if (email) {
+              const { data: existingByEmail } = await supabase
+                .from("contacts")
+                .select("id")
+                .eq("email", email)
+                .limit(1);
+
+              if (existingByEmail && existingByEmail.length > 0) {
+                skipped++;
+                continue;
+              }
+            }
+
+            // Insert new contact
+            const { error: insertError } = await supabase
+              .from("contacts")
+              .insert({
+                full_name: name || "Sem nome",
+                phone: normalizedPhone || "0000000000",
+                email: email,
+                source: "rd_crm",
+                source_detail: `RD CRM ID: ${rdContact._id || rdContact.id || ""}`,
+                notes: rdContact.title ? `Cargo: ${rdContact.title}` : null,
+                created_by: userId,
+              });
+
+            if (insertError) {
+              errors++;
+              errorDetails.push({ name, error: insertError.message });
+            } else {
+              imported++;
+            }
+          } catch (e) {
+            errors++;
+            errorDetails.push({
+              name: (rdContact.name as string) || "unknown",
+              error: e.message,
+            });
+          }
+        }
+
+        result = {
+          total_fetched: contacts.length,
+          imported,
+          skipped,
+          errors,
+          error_details: errorDetails.slice(0, 20),
+        };
         break;
       }
 
-      case "get_import_status": {
-        const jobId = payload.job_id;
-        if (!jobId) throw new Error("job_id é obrigatório");
+      case "import_deals": {
+        // Fetch all deals and map to opportunities
+        const deals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
 
-        const { data: job, error: jobError } = await supabase
-          .from("import_jobs")
-          .select("id, status, deals_found, contacts_found, contacts_imported, contacts_skipped, contacts_errors, error_details, error_message, created_at, updated_at")
-          .eq("id", jobId)
-          .maybeSingle();
+        // Get local funnels and stages for mapping
+        const { data: localFunnels } = await supabase
+          .from("funnels")
+          .select("id, name")
+          .eq("is_active", true)
+          .order("order_position");
 
-        if (jobError) throw new Error(`Erro ao buscar job: ${jobError.message}`);
-        if (!job) throw new Error("Job não encontrado");
-        result = job;
+        const { data: localStages } = await supabase
+          .from("funnel_stages")
+          .select("id, name, funnel_id, order_position")
+          .order("order_position");
+
+        if (!localFunnels?.length || !localStages?.length) {
+          throw new Error("Nenhum funil ou etapa cadastrado no sistema. Cadastre primeiro.");
+        }
+
+        const defaultFunnel = localFunnels[0];
+        const defaultStage = localStages.find((s) => s.funnel_id === defaultFunnel.id) || localStages[0];
+
+        let imported = 0;
+        let skipped = 0;
+        let errors = 0;
+        const errorDetails: Array<{ name: string; error: string }> = [];
+
+        for (const deal of deals) {
+          try {
+            const dealName = (deal.name as string) || "";
+            const dealValue = Number(deal.amount_total || deal.amount || 0);
+            const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
+
+            // Find the local contact for this deal
+            let localContactId: string | null = null;
+
+            if (rdContactIds.length > 0) {
+              const rdContact = rdContactIds[0];
+              const contactName = (rdContact.name as string) || "";
+              const contactPhone = ((rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "").replace(/\D/g, "");
+              const contactEmail = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
+
+              // Try to find by phone
+              if (contactPhone) {
+                const { data: found } = await supabase
+                  .from("contacts")
+                  .select("id")
+                  .or(`phone.eq.${contactPhone}`)
+                  .limit(1);
+                if (found?.length) localContactId = found[0].id;
+              }
+
+              // Try by email
+              if (!localContactId && contactEmail) {
+                const { data: found } = await supabase
+                  .from("contacts")
+                  .select("id")
+                  .eq("email", contactEmail)
+                  .limit(1);
+                if (found?.length) localContactId = found[0].id;
+              }
+
+              // Try by name
+              if (!localContactId && contactName) {
+                const { data: found } = await supabase
+                  .from("contacts")
+                  .select("id")
+                  .ilike("full_name", contactName)
+                  .limit(1);
+                if (found?.length) localContactId = found[0].id;
+              }
+            }
+
+            if (!localContactId) {
+              skipped++;
+              continue;
+            }
+
+            // Check if deal already imported (by notes containing RD CRM ID)
+            const rdDealId = (deal._id || deal.id || "") as string;
+            if (rdDealId) {
+              const { data: existingOpp } = await supabase
+                .from("opportunities")
+                .select("id")
+                .eq("contact_id", localContactId)
+                .ilike("notes", `%RD CRM Deal: ${rdDealId}%`)
+                .limit(1);
+
+              if (existingOpp?.length) {
+                skipped++;
+                continue;
+              }
+            }
+
+            // Map deal status
+            const rdStatus = (deal.win as string);
+            let oppStatus: string = "active";
+            if (rdStatus === "won") oppStatus = "converted";
+            else if (rdStatus === "lost") oppStatus = "lost";
+
+            const { error: insertError } = await supabase
+              .from("opportunities")
+              .insert({
+                contact_id: localContactId,
+                current_funnel_id: defaultFunnel.id,
+                current_stage_id: defaultStage.id,
+                proposal_value: dealValue || null,
+                notes: `RD CRM Deal: ${rdDealId} | ${dealName}`,
+                status: oppStatus,
+                created_by: userId,
+              });
+
+            if (insertError) {
+              errors++;
+              errorDetails.push({ name: dealName, error: insertError.message });
+            } else {
+              imported++;
+
+              // Add history entry
+              await supabase.from("opportunity_history").insert({
+                opportunity_id: (await supabase
+                  .from("opportunities")
+                  .select("id")
+                  .eq("contact_id", localContactId)
+                  .ilike("notes", `%RD CRM Deal: ${rdDealId}%`)
+                  .single()).data?.id || "",
+                action: "created",
+                changed_by: userId,
+                notes: "Importado do RD Station CRM",
+              });
+            }
+          } catch (e) {
+            errors++;
+            errorDetails.push({
+              name: (deal.name as string) || "unknown",
+              error: e.message,
+            });
+          }
+        }
+
+        result = {
+          total_fetched: deals.length,
+          imported,
+          skipped,
+          errors,
+          error_details: errorDetails.slice(0, 20),
+        };
         break;
       }
 
