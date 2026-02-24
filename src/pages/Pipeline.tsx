@@ -292,6 +292,7 @@ export default function Pipeline() {
       <PipelineFilters
         opportunities={opportunities}
         funnels={funnels}
+        filteredCount={filteredOpportunities.length}
         selectedFunnelId={selectedFunnelId}
         selectedStatus={selectedStatus}
         selectedOwnerId={selectedOwnerId}
