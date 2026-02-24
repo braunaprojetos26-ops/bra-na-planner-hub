@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.rd-station]
 verify_jwt = false
+
+[functions.rd-crm]
+verify_jwt = false
