@@ -55,16 +55,19 @@ async function reinvokeSelf(jobId: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   console.log(`[process-rd-import] Re-invoking self for job ${jobId}`);
-  fetch(`${supabaseUrl}/functions/v1/process-rd-import`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${serviceRoleKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ jobId }),
-  }).catch((err) => {
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/process-rd-import`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ jobId }),
+    });
+    console.log(`[process-rd-import] Re-invoke response: ${res.status}`);
+  } catch (err) {
     console.error("Failed to re-invoke self:", err);
-  });
+  }
 }
 
 // Custom field IDs from RD CRM
