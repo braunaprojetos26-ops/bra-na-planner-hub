@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error evaluating perpetual activities:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -91,7 +91,7 @@ async function handleInadimplente(supabase: any, activity: any) {
       continue;
     }
 
-    const contact = contactMap.get(contract.contact_id);
+    const contact: any = contactMap.get(contract.contact_id);
     if (!contact) continue;
 
     const userId = contact.owner_id || contract.owner_id;
@@ -183,7 +183,7 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
   );
 
   for (const score of uniqueScores) {
-    const contact = contactMap.get(score.contact_id);
+    const contact: any = contactMap.get(score.contact_id);
     if (!contact) continue;
 
     const userId = contact.owner_id || score.owner_id;
@@ -274,7 +274,7 @@ async function handleContratoVencendo(supabase: any, activity: any) {
   );
 
   for (const contract of filtered) {
-    const contact = contactMap.get(contract.contact_id);
+    const contact: any = contactMap.get(contract.contact_id);
     if (!contact) continue;
 
     const userId = contact.owner_id || contract.owner_id;
