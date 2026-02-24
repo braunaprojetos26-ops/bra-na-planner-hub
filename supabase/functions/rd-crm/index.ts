@@ -116,8 +116,9 @@ Deno.serve(async (req) => {
       }
 
       case "list_users": {
-        const users = await rdCrmGet("/users");
-        const mapped = (Array.isArray(users) ? users : []).map((u: Record<string, unknown>) => ({
+        const data = await rdCrmGet("/users");
+        const usersArray = Array.isArray(data) ? data : (data?.users || []);
+        const mapped = usersArray.map((u: Record<string, unknown>) => ({
           id: u._id || u.id,
           name: u.name || "",
           email: u.email || "",
