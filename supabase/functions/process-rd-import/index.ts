@@ -484,6 +484,21 @@ Deno.serve(async (req) => {
   });
 });
 
+function normalize(str: string): string {
+  return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+function findBestMatch(rdName: string, locals: Array<{ id: string; name: string }>): { id: string; name: string } | null {
+  const norm = normalize(rdName);
+  // Exact match first
+  const exact = locals.find((l) => normalize(l.name) === norm);
+  if (exact) return exact;
+  // Contains match
+  const contains = locals.find((l) => normalize(l.name).includes(norm) || norm.includes(normalize(l.name)));
+  if (contains) return contains;
+  return null;
+}
+
 async function processDealsFromIds(
   jobId: string,
   dealIds: string[],
@@ -521,12 +536,10 @@ async function processDealsFromIds(
 
   for (const dealId of dealIds) {
     if (isNearTimeout(startTime)) {
-      // For simplicity, mark as done with partial results
       break;
     }
 
     try {
-      // Fetch deal details
       const res = await rateLimitedFetch(`${BASE}/deals/${dealId}?token=${TOKEN}`);
       if (!res.ok) { skipped++; continue; }
       const deal = await res.json() as Record<string, unknown>;
@@ -535,6 +548,31 @@ async function processDealsFromIds(
       const dealValue = Number(deal.amount_total || deal.amount || 0);
       const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
 
+      // --- Map funnel & stage by name ---
+      const rdPipeline = deal.deal_pipeline as Record<string, unknown> | null;
+      const rdStage = deal.deal_stage as Record<string, unknown> | null;
+      const rdPipelineName = (rdPipeline?.name as string) || "";
+      const rdStageName = (rdStage?.name as string) || "";
+
+      let targetFunnelId = defaultFunnel.id;
+      let targetStageId = defaultStage.id;
+
+      if (rdPipelineName) {
+        const matchedFunnel = findBestMatch(rdPipelineName, localFunnels);
+        if (matchedFunnel) {
+          targetFunnelId = matchedFunnel.id;
+          // Find matching stage within this funnel
+          const funnelStages = localStages.filter((s) => s.funnel_id === matchedFunnel.id);
+          if (rdStageName && funnelStages.length > 0) {
+            const matchedStage = findBestMatch(rdStageName, funnelStages);
+            targetStageId = matchedStage ? matchedStage.id : funnelStages[0].id;
+          } else {
+            targetStageId = funnelStages[0]?.id || defaultStage.id;
+          }
+        }
+      }
+
+      // --- Find local contact ---
       let localContactId: string | null = null;
 
       if (rdContactIds.length > 0) {
@@ -543,12 +581,14 @@ async function processDealsFromIds(
         const contactEmail = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
         const contactName = (rdContact.name as string) || "";
 
-        if (contactPhone) {
+        // Search by phone (including email: placeholder)
+        if (contactPhone && contactPhone.length >= 8) {
           const { data: found } = await supabase.from("contacts").select("id").or(`phone.eq.${contactPhone}`).limit(1);
           if (found?.length) localContactId = found[0].id;
         }
+        // Search by email (both in email field and email: placeholder in phone)
         if (!localContactId && contactEmail) {
-          const { data: found } = await supabase.from("contacts").select("id").eq("email", contactEmail).limit(1);
+          const { data: found } = await supabase.from("contacts").select("id").or(`email.eq.${contactEmail},phone.eq.email:${contactEmail}`).limit(1);
           if (found?.length) localContactId = found[0].id;
         }
         if (!localContactId && contactName) {
@@ -557,8 +597,13 @@ async function processDealsFromIds(
         }
       }
 
-      if (!localContactId) { skipped++; continue; }
+      if (!localContactId) {
+        skipped++;
+        errorDetails.push({ name: dealName || dealId, error: "Contato não encontrado no sistema" });
+        continue;
+      }
 
+      // Check duplicate
       const { data: existingOpp } = await supabase
         .from("opportunities").select("id")
         .eq("contact_id", localContactId)
@@ -575,8 +620,8 @@ async function processDealsFromIds(
         .from("opportunities")
         .insert({
           contact_id: localContactId,
-          current_funnel_id: defaultFunnel.id,
-          current_stage_id: defaultStage.id,
+          current_funnel_id: targetFunnelId,
+          current_stage_id: targetStageId,
           created_by: createdBy,
           status: oppStatus,
           proposal_value: dealValue || null,
@@ -592,6 +637,15 @@ async function processDealsFromIds(
     } catch (e) {
       errors++;
       errorDetails.push({ name: dealId, error: (e as Error).message });
+    }
+
+    // Progress update every 5 records
+    if ((imported + skipped + errors) % 5 === 0) {
+      await updateJob(jobId, {
+        contacts_imported: imported,
+        contacts_skipped: skipped,
+        contacts_errors: errors,
+      });
     }
   }
 
