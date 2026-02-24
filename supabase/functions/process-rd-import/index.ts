@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
           });
         }
 
-        const res = await rateLimitedFetch(`${BASE}/deals?token=${TOKEN}&limit=200&page=${page}`);
+        const res = await rateLimitedFetch(`${BASE}/deals?token=${TOKEN}&limit=200&page=${page}&user_id=${rdUserId}`);
         if (!res.ok) {
           const errText = await res.text();
           throw new Error(`Failed to fetch deals page ${page}: ${res.status} ${errText}`);
@@ -185,13 +185,10 @@ Deno.serve(async (req) => {
         const deals = data?.deals || (Array.isArray(data) ? data : []);
         if (deals.length === 0) break;
 
-        // Filter by user and store ONLY IDs
+        // All deals are already filtered by user_id, store ONLY IDs
         for (const d of deals) {
-          const dealUser = d.user as Record<string, unknown> | undefined;
-          if ((dealUser?._id || dealUser?.id) === rdUserId) {
-            const dealId = (d._id || d.id) as string;
-            if (dealId) userDealIds.push(dealId);
-          }
+          const dealId = (d._id || d.id) as string;
+          if (dealId) userDealIds.push(dealId);
         }
 
         if (deals.length < 200) break;
