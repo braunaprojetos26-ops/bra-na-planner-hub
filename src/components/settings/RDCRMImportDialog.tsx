@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Loader2, Users, Handshake, UserPlus, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Loader2, Users, Handshake, UserPlus, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp, Phone, Mail, Copy } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -288,29 +288,69 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
                 </div>
               )}
 
-              {jobStatus.error_details && jobStatus.error_details.length > 0 && (
-                <div className="rounded-lg border border-destructive/20 overflow-hidden">
-                  <button
-                    onClick={() => setShowErrors(!showErrors)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-destructive/5 hover:bg-destructive/10 transition-colors text-sm font-medium text-destructive"
-                  >
-                    <span>Detalhes dos erros ({jobStatus.error_details.length})</span>
-                    {showErrors ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
-                  {showErrors && (
-                    <div className="max-h-60 overflow-y-auto border-t border-border">
-                      <div className="divide-y divide-border">
-                        {jobStatus.error_details.map((err, i) => (
-                          <div key={i} className="px-3 py-2 text-xs">
-                            <p className="font-medium text-foreground">{err.name || 'Sem nome'}</p>
-                            <p className="text-destructive/80 mt-0.5">{err.error}</p>
-                          </div>
-                        ))}
+              {jobStatus.error_details && jobStatus.error_details.length > 0 && (() => {
+                // Group errors by type
+                const grouped = jobStatus.error_details.reduce<Record<string, Array<{ name: string; error: string }>>>((acc, err) => {
+                  let category = 'Outros erros';
+                  if (err.error.includes('contacts_phone_key')) category = 'Telefone duplicado';
+                  else if (err.error.includes('Sem telefone e sem e-mail')) category = 'Sem dados de contato';
+                  else if (err.error.includes('contacts_email_key') || err.error.includes('email')) category = 'E-mail duplicado';
+                  if (!acc[category]) acc[category] = [];
+                  acc[category].push(err);
+                  return acc;
+                }, {});
+                
+                const categoryIcons: Record<string, typeof Phone> = {
+                  'Telefone duplicado': Phone,
+                  'Sem dados de contato': AlertTriangle,
+                  'E-mail duplicado': Mail,
+                  'Outros erros': XCircle,
+                };
+                
+                const categoryColors: Record<string, string> = {
+                  'Telefone duplicado': 'text-amber-600',
+                  'Sem dados de contato': 'text-muted-foreground',
+                  'E-mail duplicado': 'text-blue-600',
+                  'Outros erros': 'text-destructive',
+                };
+
+                return (
+                  <div className="rounded-lg border border-destructive/20 overflow-hidden">
+                    <button
+                      onClick={() => setShowErrors(!showErrors)}
+                      className="w-full flex items-center justify-between px-3 py-2 bg-destructive/5 hover:bg-destructive/10 transition-colors text-sm font-medium text-destructive"
+                    >
+                      <span>Detalhes dos erros ({jobStatus.error_details.length})</span>
+                      {showErrors ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                    {showErrors && (
+                      <div className="max-h-72 overflow-y-auto border-t border-border">
+                        {Object.entries(grouped).map(([category, items]) => {
+                          const Icon = categoryIcons[category] || XCircle;
+                          const colorClass = categoryColors[category] || 'text-destructive';
+                          return (
+                            <div key={category}>
+                              <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 sticky top-0 border-b border-border">
+                                <Icon className={`h-3.5 w-3.5 ${colorClass}`} />
+                                <span className={`text-xs font-semibold ${colorClass}`}>{category}</span>
+                                <span className="text-xs text-muted-foreground ml-auto">{items.length} contato{items.length > 1 ? 's' : ''}</span>
+                              </div>
+                              <div className="divide-y divide-border">
+                                {items.map((err, i) => (
+                                  <div key={i} className="px-3 py-1.5 text-xs flex items-center gap-2">
+                                    <Copy className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                                    <span className="font-medium text-foreground truncate">{err.name || 'Sem nome'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <DialogFooter>

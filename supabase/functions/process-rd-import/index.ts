@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
             contact_ids: contactIds,
             contact_index: contactIndex,
             imported, skipped, errors,
-            error_details: errorDetails.slice(0, 20),
+            error_details: errorDetails.slice(0, 100),
           };
           await updateJob(jobId, {
             checkpoint_data: checkpoint as unknown as Record<string, unknown>,
@@ -302,16 +302,18 @@ Deno.serve(async (req) => {
           const phone = (rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "";
           const customFields = (rdContact.contact_custom_fields || []) as Array<Record<string, unknown>>;
 
-          if (!name && !phone) {
+          if (!name && !phone && !email) {
             skipped++;
             contactIndex++;
             continue;
           }
 
           const normalizedPhone = phone.replace(/\D/g, "");
+          // Skip placeholder phones
+          const hasValidPhone = normalizedPhone && normalizedPhone !== "0000000000" && normalizedPhone.length >= 8;
 
-          // Check duplicates
-          if (normalizedPhone) {
+          // Check duplicates by phone
+          if (hasValidPhone) {
             const { data: existing } = await supabase
               .from("contacts")
               .select("id")
@@ -393,11 +395,25 @@ Deno.serve(async (req) => {
           const noteParts: string[] = [`RD CRM ID: ${rdId}`];
           if (rdContact.title && !professionCf) noteParts.push(`Cargo RD: ${rdContact.title}`);
 
+          // Use email as phone fallback when no valid phone exists
+          let phoneToInsert = hasValidPhone ? normalizedPhone : "";
+          if (!phoneToInsert && email) {
+            // Use email hash as unique phone placeholder to avoid constraint violations
+            phoneToInsert = `email:${email}`;
+          }
+          if (!phoneToInsert) {
+            // No phone and no email — skip this contact
+            errors++;
+            errorDetails.push({ name: name || cId, error: "Sem telefone e sem e-mail — impossível criar contato" });
+            contactIndex++;
+            continue;
+          }
+
           const { error: insertError } = await supabase
             .from("contacts")
             .insert({
               full_name: name || "Sem nome",
-              phone: normalizedPhone || "0000000000",
+              phone: phoneToInsert,
               email,
               cpf,
               rg,
@@ -442,7 +458,7 @@ Deno.serve(async (req) => {
         contacts_imported: imported,
         contacts_skipped: skipped,
         contacts_errors: errors,
-        error_details: errorDetails.slice(0, 20),
+        error_details: errorDetails,
         checkpoint_data: null,
       });
 
@@ -584,7 +600,7 @@ async function processDealsFromIds(
     contacts_imported: imported,
     contacts_skipped: skipped,
     contacts_errors: errors,
-    error_details: errorDetails.slice(0, 20),
+    error_details: errorDetails,
     checkpoint_data: null,
   });
 }
