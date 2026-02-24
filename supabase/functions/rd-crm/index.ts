@@ -189,13 +189,18 @@ Deno.serve(async (req) => {
         const rdUserId = payload.rd_user_id || null;
         const ownerUserId = payload.owner_user_id || null;
 
-        // Build extra params for filtering by user
-        const extraParams: Record<string, string> = {};
+        const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
+        
+        // Filter contacts by user on the server side since the API doesn't support user_id filter
+        let contacts = allContacts;
         if (rdUserId) {
-          extraParams.user_id = rdUserId;
+          contacts = allContacts.filter((c) => {
+            const contactUser = c.user as Record<string, unknown> | undefined;
+            const contactUserId = contactUser?._id || contactUser?.id || c.user_id;
+            return contactUserId === rdUserId;
+          });
+          console.log(`Filtered contacts: ${contacts.length} of ${allContacts.length} for user ${rdUserId}`);
         }
-
-        const contacts = await fetchAllPages("/contacts", extraParams) as Array<Record<string, unknown>>;
 
         let imported = 0;
         let skipped = 0;
@@ -283,12 +288,18 @@ Deno.serve(async (req) => {
         const rdUserId = payload.rd_user_id || null;
         const ownerUserId = payload.owner_user_id || null;
 
-        const extraParams: Record<string, string> = {};
+        const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
+        
+        // Filter deals by user on the server side
+        let deals = allDeals;
         if (rdUserId) {
-          extraParams.user_id = rdUserId;
+          deals = allDeals.filter((d) => {
+            const dealUser = d.user as Record<string, unknown> | undefined;
+            const dealUserId = dealUser?._id || dealUser?.id || d.user_id;
+            return dealUserId === rdUserId;
+          });
+          console.log(`Filtered deals: ${deals.length} of ${allDeals.length} for user ${rdUserId}`);
         }
-
-        const deals = await fetchAllPages("/deals", extraParams) as Array<Record<string, unknown>>;
 
         const { data: localFunnels } = await supabase
           .from("funnels")
