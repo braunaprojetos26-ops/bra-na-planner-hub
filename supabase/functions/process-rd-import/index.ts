@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RD_CRM_BASE_URL = "https://crm.rdstation.com/api/v1";
 const RATE_LIMIT_DELAY = 600;
-const MAX_EXECUTION_MS = 120_000; // 120s safety margin (timeout is 150s)
+const MAX_EXECUTION_MS = 120_000; // 120s safety margin
 
 function getToken(): string {
   const token = Deno.env.get("RD_CRM_API_TOKEN");
@@ -94,20 +94,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// LIGHTWEIGHT checkpoint - only stores IDs and indexes, NEVER full objects
 interface CheckpointData {
   phase: "fetching_deals" | "fetching_contacts" | "fetching_details" | "importing";
-  // For fetching_deals: page we left off at + accumulated deals
   deals_page?: number;
-  all_deals?: Array<Record<string, unknown>>;
-  user_deals?: Array<Record<string, unknown>>;
-  // For fetching_contacts: index of deal we're processing
+  // Store only deal IDs, not full objects
+  user_deal_ids?: string[];
   deal_index?: number;
-  contact_map?: Record<string, Record<string, unknown>>;
-  // For fetching_details: index of contact we're fetching
+  // Store only contact IDs found so far
+  contact_ids?: string[];
   contact_index?: number;
-  unique_contacts?: Array<Record<string, unknown>>;
-  full_contacts?: Array<Record<string, unknown>>;
-  // For importing: index of contact being imported
+  // Import progress
   import_index?: number;
   imported?: number;
   skipped?: number;
@@ -137,11 +134,19 @@ Deno.serve(async (req) => {
     .from("import_jobs")
     .select("*")
     .eq("id", jobId)
-    .single();
+    .maybeSingle();
 
   if (jobError || !job) {
+    console.error(`[process-rd-import] Job ${jobId} not found`);
     return new Response(JSON.stringify({ error: "Job not found" }), {
       status: 404,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // If already done or errored, skip
+  if (job.status === "done" || job.status === "error") {
+    return new Response(JSON.stringify({ ok: true, already_done: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -153,18 +158,17 @@ Deno.serve(async (req) => {
   let checkpoint: CheckpointData = (job.checkpoint_data as CheckpointData) || { phase: "fetching_deals" };
 
   try {
-    // ===== PHASE 1: Fetch deals =====
+    // ===== PHASE 1: Fetch deals and get IDs =====
     if (checkpoint.phase === "fetching_deals") {
       await updateJob(jobId, { status: "fetching_deals" });
       console.log(`[process-rd-import] Job ${jobId}: fetching deals for user ${rdUserId}`);
 
-      const allDeals: Array<Record<string, unknown>> = checkpoint.all_deals || [];
       let page = checkpoint.deals_page || 1;
+      const userDealIds: string[] = [];
 
       while (page <= 50) {
         if (isNearTimeout(startTime)) {
-          // Save checkpoint and re-invoke
-          checkpoint = { phase: "fetching_deals", deals_page: page, all_deals: allDeals };
+          checkpoint = { phase: "fetching_deals", deals_page: page, user_deal_ids: userDealIds };
           await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
           await reinvokeSelf(jobId);
           return new Response(JSON.stringify({ ok: true, checkpoint: true }), {
@@ -180,40 +184,43 @@ Deno.serve(async (req) => {
         const data = await res.json();
         const deals = data?.deals || (Array.isArray(data) ? data : []);
         if (deals.length === 0) break;
-        allDeals.push(...deals);
+
+        // Filter by user and store ONLY IDs
+        for (const d of deals) {
+          const dealUser = d.user as Record<string, unknown> | undefined;
+          if ((dealUser?._id || dealUser?.id) === rdUserId) {
+            const dealId = (d._id || d.id) as string;
+            if (dealId) userDealIds.push(dealId);
+          }
+        }
+
         if (deals.length < 200) break;
         page++;
       }
 
-      // Filter by user
-      const userDeals = allDeals.filter((d) => {
-        const dealUser = d.user as Record<string, unknown> | undefined;
-        return (dealUser?._id || dealUser?.id) === rdUserId;
-      });
+      await updateJob(jobId, { deals_found: userDealIds.length });
+      console.log(`[process-rd-import] Found ${userDealIds.length} user deals`);
 
-      await updateJob(jobId, { deals_found: userDeals.length });
-      console.log(`[process-rd-import] Found ${userDeals.length} deals (of ${allDeals.length} total)`);
-
-      // Advance to next phase
       checkpoint = {
         phase: "fetching_contacts",
-        user_deals: userDeals,
+        user_deal_ids: userDealIds,
         deal_index: 0,
-        contact_map: {},
+        contact_ids: [],
       };
       await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
     }
 
-    // ===== PHASE 2: Fetch contacts from deals =====
+    // ===== PHASE 2: Fetch contact IDs from deals =====
     if (checkpoint.phase === "fetching_contacts" && importType === "contacts") {
       await updateJob(jobId, { status: "fetching_contacts" });
-      const userDeals = checkpoint.user_deals || [];
-      const contactMap: Record<string, Record<string, unknown>> = checkpoint.contact_map || {};
+      const dealIds = checkpoint.user_deal_ids || [];
+      const contactIds: string[] = [...(checkpoint.contact_ids || [])];
+      const contactIdSet = new Set(contactIds);
       let dealIndex = checkpoint.deal_index || 0;
 
-      while (dealIndex < userDeals.length) {
+      while (dealIndex < dealIds.length) {
         if (isNearTimeout(startTime)) {
-          checkpoint = { phase: "fetching_contacts", user_deals: userDeals, deal_index: dealIndex, contact_map: contactMap };
+          checkpoint = { phase: "fetching_contacts", user_deal_ids: dealIds, deal_index: dealIndex, contact_ids: [...contactIdSet] };
           await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
           await reinvokeSelf(jobId);
           return new Response(JSON.stringify({ ok: true, checkpoint: true }), {
@@ -221,78 +228,27 @@ Deno.serve(async (req) => {
           });
         }
 
-        const deal = userDeals[dealIndex];
-        const dealId = (deal._id || deal.id) as string;
-        if (dealId) {
-          const res = await rateLimitedFetch(`${BASE}/deals/${dealId}/contacts?token=${TOKEN}`);
-          if (res.ok) {
-            const data = await res.json();
-            const contacts = data?.contacts || (Array.isArray(data) ? data : []);
-            for (const c of contacts as Array<Record<string, unknown>>) {
-              const cId = (c._id || c.id) as string;
-              if (cId && !contactMap[cId]) {
-                contactMap[cId] = c;
-              }
-            }
+        const dealId = dealIds[dealIndex];
+        const res = await rateLimitedFetch(`${BASE}/deals/${dealId}/contacts?token=${TOKEN}`);
+        if (res.ok) {
+          const data = await res.json();
+          const contacts = data?.contacts || (Array.isArray(data) ? data : []);
+          for (const c of contacts as Array<Record<string, unknown>>) {
+            const cId = (c._id || c.id) as string;
+            if (cId) contactIdSet.add(cId);
           }
         }
         dealIndex++;
       }
 
-      const uniqueContacts = Object.values(contactMap);
-      await updateJob(jobId, { contacts_found: uniqueContacts.length });
-      console.log(`[process-rd-import] Found ${uniqueContacts.length} unique contacts`);
+      const uniqueContactIds = [...contactIdSet];
+      await updateJob(jobId, { contacts_found: uniqueContactIds.length });
+      console.log(`[process-rd-import] Found ${uniqueContactIds.length} unique contacts`);
 
       checkpoint = {
         phase: "fetching_details",
-        unique_contacts: uniqueContacts,
+        contact_ids: uniqueContactIds,
         contact_index: 0,
-        full_contacts: [],
-      };
-      await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
-    }
-
-    // ===== PHASE 3: Fetch full contact details =====
-    if (checkpoint.phase === "fetching_details" && importType === "contacts") {
-      const uniqueContacts = checkpoint.unique_contacts || [];
-      const fullContacts: Array<Record<string, unknown>> = checkpoint.full_contacts || [];
-      let contactIndex = checkpoint.contact_index || 0;
-
-      while (contactIndex < uniqueContacts.length) {
-        if (isNearTimeout(startTime)) {
-          checkpoint = { phase: "fetching_details", unique_contacts: uniqueContacts, contact_index: contactIndex, full_contacts: fullContacts };
-          await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
-          await reinvokeSelf(jobId);
-          return new Response(JSON.stringify({ ok: true, checkpoint: true }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const contact = uniqueContacts[contactIndex];
-        const cId = (contact._id || contact.id) as string;
-        const existingCf = contact.contact_custom_fields as unknown[] | undefined;
-
-        if (existingCf && existingCf.length > 0) {
-          fullContacts.push(contact);
-        } else {
-          try {
-            const res = await rateLimitedFetch(`${BASE}/contacts/${cId}?token=${TOKEN}`);
-            if (res.ok) {
-              fullContacts.push(await res.json() as Record<string, unknown>);
-            } else {
-              fullContacts.push(contact);
-            }
-          } catch {
-            fullContacts.push(contact);
-          }
-        }
-        contactIndex++;
-      }
-
-      checkpoint = {
-        phase: "importing",
-        full_contacts: fullContacts,
-        import_index: 0,
         imported: 0,
         skipped: 0,
         errors: 0,
@@ -301,19 +257,25 @@ Deno.serve(async (req) => {
       await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
     }
 
-    // ===== PHASE 4: Import into local DB =====
-    if (checkpoint.phase === "importing" && importType === "contacts") {
+    // ===== PHASE 3+4 Combined: Fetch full details & import one by one =====
+    if (checkpoint.phase === "fetching_details" && importType === "contacts") {
       await updateJob(jobId, { status: "importing" });
-      const fullContacts = checkpoint.full_contacts || [];
-      let importIndex = checkpoint.import_index || 0;
+      const contactIds = checkpoint.contact_ids || [];
+      let contactIndex = checkpoint.contact_index || 0;
       let imported = checkpoint.imported || 0;
       let skipped = checkpoint.skipped || 0;
       let errors = checkpoint.errors || 0;
       const errorDetails: Array<{ name: string; error: string }> = checkpoint.error_details || [];
 
-      while (importIndex < fullContacts.length) {
+      while (contactIndex < contactIds.length) {
         if (isNearTimeout(startTime)) {
-          checkpoint = { phase: "importing", full_contacts: fullContacts, import_index: importIndex, imported, skipped, errors, error_details: errorDetails };
+          checkpoint = {
+            phase: "fetching_details",
+            contact_ids: contactIds,
+            contact_index: contactIndex,
+            imported, skipped, errors,
+            error_details: errorDetails.slice(0, 20),
+          };
           await updateJob(jobId, {
             checkpoint_data: checkpoint as unknown as Record<string, unknown>,
             contacts_imported: imported,
@@ -326,8 +288,18 @@ Deno.serve(async (req) => {
           });
         }
 
-        const rdContact = fullContacts[importIndex];
+        const cId = contactIds[contactIndex];
+
         try {
+          // Fetch full contact
+          const res = await rateLimitedFetch(`${BASE}/contacts/${cId}?token=${TOKEN}`);
+          if (!res.ok) {
+            skipped++;
+            contactIndex++;
+            continue;
+          }
+
+          const rdContact = await res.json() as Record<string, unknown>;
           const name = ((rdContact.name as string) || "").trim();
           const email = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
           const phone = (rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "";
@@ -335,13 +307,13 @@ Deno.serve(async (req) => {
 
           if (!name && !phone) {
             skipped++;
-            importIndex++;
+            contactIndex++;
             continue;
           }
 
           const normalizedPhone = phone.replace(/\D/g, "");
 
-          // Check duplicates by phone
+          // Check duplicates
           if (normalizedPhone) {
             const { data: existing } = await supabase
               .from("contacts")
@@ -350,12 +322,11 @@ Deno.serve(async (req) => {
               .limit(1);
             if (existing && existing.length > 0) {
               skipped++;
-              importIndex++;
+              contactIndex++;
               continue;
             }
           }
 
-          // Check duplicates by email
           if (email) {
             const { data: existingByEmail } = await supabase
               .from("contacts")
@@ -364,7 +335,7 @@ Deno.serve(async (req) => {
               .limit(1);
             if (existingByEmail && existingByEmail.length > 0) {
               skipped++;
-              importIndex++;
+              contactIndex++;
               continue;
             }
           }
@@ -385,9 +356,7 @@ Deno.serve(async (req) => {
           if (rawBirthDate) {
             if (rawBirthDate.includes("/")) {
               const parts = rawBirthDate.split("/");
-              if (parts.length === 3) {
-                birthDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-              }
+              if (parts.length === 3) birthDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
             } else {
               birthDate = rawBirthDate.substring(0, 10);
             }
@@ -397,9 +366,7 @@ Deno.serve(async (req) => {
           if (rgIssueDate) {
             if (rgIssueDate.includes("/")) {
               const parts = rgIssueDate.split("/");
-              if (parts.length === 3) {
-                parsedRgIssueDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-              }
+              if (parts.length === 3) parsedRgIssueDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
             } else {
               parsedRgIssueDate = rgIssueDate.substring(0, 10);
             }
@@ -425,11 +392,9 @@ Deno.serve(async (req) => {
           }
 
           const profession = professionCf || (rdContact.title as string) || null;
-          const rdId = (rdContact._id || rdContact.id || "") as string;
+          const rdId = cId;
           const noteParts: string[] = [`RD CRM ID: ${rdId}`];
-          if (rdContact.title && !professionCf) {
-            noteParts.push(`Cargo RD: ${rdContact.title}`);
-          }
+          if (rdContact.title && !professionCf) noteParts.push(`Cargo RD: ${rdContact.title}`);
 
           const { error: insertError } = await supabase
             .from("contacts")
@@ -461,13 +426,10 @@ Deno.serve(async (req) => {
           }
         } catch (e) {
           errors++;
-          errorDetails.push({
-            name: (rdContact.name as string) || "unknown",
-            error: (e as Error).message,
-          });
+          errorDetails.push({ name: cId, error: (e as Error).message });
         }
 
-        importIndex++;
+        contactIndex++;
 
         if ((imported + skipped + errors) % 5 === 0) {
           await updateJob(jobId, {
@@ -490,10 +452,11 @@ Deno.serve(async (req) => {
       console.log(`[process-rd-import] Job ${jobId} done: ${imported} imported, ${skipped} skipped, ${errors} errors`);
     }
 
-    // ===== DEALS IMPORT (no checkpoint needed, simpler) =====
-    if (importType === "deals" && checkpoint.phase !== "importing") {
-      const userDeals = checkpoint.user_deals || [];
-      await processDeals(jobId, userDeals, ownerUserId, createdBy, supabase);
+    // ===== DEALS IMPORT =====
+    if (importType === "deals" && checkpoint.phase === "fetching_contacts") {
+      // For deals, we need to re-fetch the deals since we only stored IDs
+      const dealIds = checkpoint.user_deal_ids || [];
+      await processDealsFromIds(jobId, dealIds, ownerUserId, createdBy, supabase, TOKEN, BASE, startTime);
     }
   } catch (err) {
     console.error(`[process-rd-import] Job ${jobId} error:`, (err as Error).message);
@@ -508,12 +471,15 @@ Deno.serve(async (req) => {
   });
 });
 
-async function processDeals(
+async function processDealsFromIds(
   jobId: string,
-  deals: Array<Record<string, unknown>>,
+  dealIds: string[],
   ownerUserId: string | null,
   createdBy: string,
-  supabase: ReturnType<typeof getServiceRoleClient>
+  supabase: ReturnType<typeof getServiceRoleClient>,
+  TOKEN: string,
+  BASE: string,
+  startTime: number
 ) {
   await updateJob(jobId, { status: "importing" });
 
@@ -540,8 +506,18 @@ async function processDeals(
   let errors = 0;
   const errorDetails: Array<{ name: string; error: string }> = [];
 
-  for (const deal of deals) {
+  for (const dealId of dealIds) {
+    if (isNearTimeout(startTime)) {
+      // For simplicity, mark as done with partial results
+      break;
+    }
+
     try {
+      // Fetch deal details
+      const res = await rateLimitedFetch(`${BASE}/deals/${dealId}?token=${TOKEN}`);
+      if (!res.ok) { skipped++; continue; }
+      const deal = await res.json() as Record<string, unknown>;
+
       const dealName = (deal.name as string) || "";
       const dealValue = Number(deal.amount_total || deal.amount || 0);
       const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
@@ -555,52 +531,27 @@ async function processDeals(
         const contactName = (rdContact.name as string) || "";
 
         if (contactPhone) {
-          const { data: found } = await supabase
-            .from("contacts")
-            .select("id")
-            .or(`phone.eq.${contactPhone}`)
-            .limit(1);
+          const { data: found } = await supabase.from("contacts").select("id").or(`phone.eq.${contactPhone}`).limit(1);
           if (found?.length) localContactId = found[0].id;
         }
-
         if (!localContactId && contactEmail) {
-          const { data: found } = await supabase
-            .from("contacts")
-            .select("id")
-            .eq("email", contactEmail)
-            .limit(1);
+          const { data: found } = await supabase.from("contacts").select("id").eq("email", contactEmail).limit(1);
           if (found?.length) localContactId = found[0].id;
         }
-
         if (!localContactId && contactName) {
-          const { data: found } = await supabase
-            .from("contacts")
-            .select("id")
-            .ilike("full_name", contactName)
-            .limit(1);
+          const { data: found } = await supabase.from("contacts").select("id").ilike("full_name", contactName).limit(1);
           if (found?.length) localContactId = found[0].id;
         }
       }
 
-      if (!localContactId) {
-        skipped++;
-        continue;
-      }
+      if (!localContactId) { skipped++; continue; }
 
-      const rdDealId = (deal._id || deal.id || "") as string;
-      if (rdDealId) {
-        const { data: existingOpp } = await supabase
-          .from("opportunities")
-          .select("id")
-          .eq("contact_id", localContactId)
-          .ilike("notes", `%RD CRM Deal: ${rdDealId}%`)
-          .limit(1);
-
-        if (existingOpp?.length) {
-          skipped++;
-          continue;
-        }
-      }
+      const { data: existingOpp } = await supabase
+        .from("opportunities").select("id")
+        .eq("contact_id", localContactId)
+        .ilike("notes", `%RD CRM Deal: ${dealId}%`)
+        .limit(1);
+      if (existingOpp?.length) { skipped++; continue; }
 
       const rdStatus = (deal.win as string);
       let oppStatus: string = "active";
@@ -616,7 +567,7 @@ async function processDeals(
           created_by: createdBy,
           status: oppStatus,
           proposal_value: dealValue || null,
-          notes: `RD CRM Deal: ${rdDealId} | ${dealName}`,
+          notes: `RD CRM Deal: ${dealId} | ${dealName}`,
         });
 
       if (insertError) {
@@ -627,10 +578,7 @@ async function processDeals(
       }
     } catch (e) {
       errors++;
-      errorDetails.push({
-        name: (deal.name as string) || "unknown",
-        error: (e as Error).message,
-      });
+      errorDetails.push({ name: dealId, error: (e as Error).message });
     }
   }
 
@@ -642,6 +590,4 @@ async function processDeals(
     error_details: errorDetails.slice(0, 20),
     checkpoint_data: null,
   });
-
-  console.log(`[process-rd-import] Job ${jobId} deals done: ${imported} imported, ${skipped} skipped, ${errors} errors`);
 }
