@@ -11,7 +11,6 @@ const RD_BASE_URL = "https://api.rd.services";
 function getApiKey(): string {
   const apiKey = Deno.env.get("RD_STATION_API_KEY");
   if (!apiKey) throw new Error("RD_STATION_API_KEY not configured");
-  console.log("API Key length:", apiKey.length, "starts with:", apiKey.substring(0, 8));
   return apiKey;
 }
 
