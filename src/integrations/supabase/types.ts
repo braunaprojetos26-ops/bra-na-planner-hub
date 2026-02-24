@@ -1348,6 +1348,60 @@ export type Database = {
           },
         ]
       }
+      import_jobs: {
+        Row: {
+          contacts_errors: number | null
+          contacts_found: number | null
+          contacts_imported: number | null
+          contacts_skipped: number | null
+          created_at: string
+          created_by: string
+          deals_found: number | null
+          error_details: Json | null
+          error_message: string | null
+          id: string
+          import_type: string
+          owner_user_id: string | null
+          rd_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contacts_errors?: number | null
+          contacts_found?: number | null
+          contacts_imported?: number | null
+          contacts_skipped?: number | null
+          created_at?: string
+          created_by: string
+          deals_found?: number | null
+          error_details?: Json | null
+          error_message?: string | null
+          id?: string
+          import_type?: string
+          owner_user_id?: string | null
+          rd_user_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contacts_errors?: number | null
+          contacts_found?: number | null
+          contacts_imported?: number | null
+          contacts_skipped?: number | null
+          created_at?: string
+          created_by?: string
+          deals_found?: number | null
+          error_details?: Json | null
+          error_message?: string | null
+          id?: string
+          import_type?: string
+          owner_user_id?: string | null
+          rd_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       institutional_presentations: {
         Row: {
           created_at: string
