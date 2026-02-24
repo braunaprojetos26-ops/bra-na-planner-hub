@@ -298,7 +298,7 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
                     {showErrors ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {showErrors && (
-                    <ScrollArea className="max-h-48">
+                    <ScrollArea className="h-48">
                       <div className="divide-y divide-border">
                         {jobStatus.error_details.map((err, i) => (
                           <div key={i} className="px-3 py-2 text-xs">
