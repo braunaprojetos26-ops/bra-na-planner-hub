@@ -1350,6 +1350,7 @@ export type Database = {
       }
       import_jobs: {
         Row: {
+          checkpoint_data: Json | null
           contacts_errors: number | null
           contacts_found: number | null
           contacts_imported: number | null
@@ -1367,6 +1368,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          checkpoint_data?: Json | null
           contacts_errors?: number | null
           contacts_found?: number | null
           contacts_imported?: number | null
@@ -1384,6 +1386,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          checkpoint_data?: Json | null
           contacts_errors?: number | null
           contacts_found?: number | null
           contacts_imported?: number | null
