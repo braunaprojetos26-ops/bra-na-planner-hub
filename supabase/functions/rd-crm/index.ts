@@ -36,23 +36,44 @@ async function rdCrmGet(endpoint: string, params: Record<string, string> = {}) {
   return await res.json();
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function rdCrmGetWithRetry(endpoint: string, params: Record<string, string> = {}, retries = 2): Promise<unknown> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await rdCrmGet(endpoint, params);
+    } catch (err) {
+      const msg = (err as Error).message || "";
+      if ((msg.includes("504") || msg.includes("429")) && attempt < retries) {
+        console.log(`Retry ${attempt + 1} for ${endpoint} after error: ${msg}`);
+        await sleep(2000 * (attempt + 1));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Max retries reached");
+}
+
 async function fetchAllPages(endpoint: string, extraParams: Record<string, string> = {}, maxPages = 50) {
   const allItems: unknown[] = [];
   let page = 1;
-  const limit = "200";
+  const limit = "100";
 
   while (page <= maxPages) {
-    const data = await rdCrmGet(endpoint, { ...extraParams, page: String(page), limit });
+    const data = await rdCrmGetWithRetry(endpoint, { ...extraParams, page: String(page), limit });
 
     let items: unknown[];
     if (Array.isArray(data)) {
       items = data;
-    } else if (data?.contacts) {
-      items = data.contacts;
-    } else if (data?.deals) {
-      items = data.deals;
-    } else if (Array.isArray(data?.data)) {
-      items = data.data;
+    } else if ((data as Record<string, unknown>)?.contacts) {
+      items = (data as Record<string, unknown>).contacts as unknown[];
+    } else if ((data as Record<string, unknown>)?.deals) {
+      items = (data as Record<string, unknown>).deals as unknown[];
+    } else if (Array.isArray((data as Record<string, unknown>)?.data)) {
+      items = (data as Record<string, unknown>).data as unknown[];
     } else {
       items = [];
     }
@@ -60,8 +81,11 @@ async function fetchAllPages(endpoint: string, extraParams: Record<string, strin
     if (items.length === 0) break;
     allItems.push(...items);
 
-    if (items.length < 200) break;
+    if (items.length < 100) break;
     page++;
+
+    // Small delay between pages to avoid rate limits
+    await sleep(500);
   }
 
   return allItems;
@@ -315,8 +339,6 @@ Deno.serve(async (req) => {
           console.log(`Filtered contacts: ${filteredContacts.length} of ${allContacts.length} (via ${userDeals.length} deals for user ${rdUserId})`);
           
           var contactsToImport = filteredContacts;
-          
-          var contactsToImport = contacts;
         } else {
           var contactsToImport = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
         }
