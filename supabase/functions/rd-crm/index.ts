@@ -259,9 +259,20 @@ Deno.serve(async (req) => {
           return String(val).trim() || null;
         }
 
+        // Normalize Brazilian phone: strip country code 55 prefix, keep last 10-11 digits
+        function normalizePhone(raw: string): string {
+          const digits = raw.replace(/\D/g, "");
+          if (!digits) return "";
+          // If starts with 55 and has 12-13 digits, strip country code
+          if (digits.length >= 12 && digits.startsWith("55")) {
+            return digits.substring(2);
+          }
+          return digits;
+        }
+
         // When filtering by user, we must go through deals (contacts don't have user field)
         if (rdUserId) {
-          // Step 1: Fetch all deals and filter by user
+          // Step 1: Fetch all deals for user (deals are fewer, ~hundreds)
           const allDeals = await fetchAllPages("/deals") as Array<Record<string, unknown>>;
           const userDeals = allDeals.filter((d) => {
             const dealUser = d.user as Record<string, unknown> | undefined;
@@ -270,8 +281,7 @@ Deno.serve(async (req) => {
 
           console.log(`Found ${userDeals.length} deals for user ${rdUserId}`);
 
-          // Step 2: Extract contact identifiers from deals' contact arrays
-          // The deal list DOES include contacts with name/phone/email (but no _id)
+          // Step 2: Extract contact identifiers from deals
           const dealContactPhones = new Set<string>();
           const dealContactEmails = new Set<string>();
           const dealContactNames = new Set<string>();
@@ -279,66 +289,70 @@ Deno.serve(async (req) => {
           for (const deal of userDeals) {
             const dealContacts = (deal.contacts || []) as Array<Record<string, unknown>>;
             for (const dc of dealContacts) {
-              // Phones
               const phones = (dc.phones || []) as Array<{ phone: string }>;
               for (const p of phones) {
                 if (p.phone) {
-                  const normalized = p.phone.replace(/\D/g, "");
+                  const normalized = normalizePhone(p.phone);
                   if (normalized) dealContactPhones.add(normalized);
                 }
               }
-              // Emails
               const emails = (dc.emails || []) as Array<{ email: string }>;
               for (const e of emails) {
                 if (e.email) dealContactEmails.add(e.email.toLowerCase().trim());
               }
-              // Names
               const name = ((dc.name as string) || "").trim().toLowerCase();
               if (name) dealContactNames.add(name);
             }
           }
 
           console.log(`Extracted from deals: ${dealContactPhones.size} phones, ${dealContactEmails.size} emails, ${dealContactNames.size} names`);
-          // Log a few sample phones for debugging
-          const samplePhones = Array.from(dealContactPhones).slice(0, 5);
-          console.log(`Sample deal phones: ${JSON.stringify(samplePhones)}`);
+          console.log(`Sample deal phones: ${JSON.stringify(Array.from(dealContactPhones).slice(0, 5))}`);
 
-          // Step 3: Fetch all contacts and match
-          const allContacts = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
-          
-          // Log a few sample contact phones for comparison
-          const sampleContactPhones = allContacts.slice(0, 5).map((c) => {
-            const ph = (c.phones as Array<{ phone: string }>) || [];
-            return ph.map((p) => p.phone?.replace(/\D/g, ""));
-          });
-          console.log(`Sample contact phones from list: ${JSON.stringify(sampleContactPhones)}`);
+          // Step 3: Fetch contacts page by page and match (stop early if all found)
+          const matchedContacts: Array<Record<string, unknown>> = [];
+          const totalToFind = Math.max(dealContactPhones.size, dealContactEmails.size, dealContactNames.size);
+          let page = 1;
+          const maxPages = 60;
 
-          const filteredContacts = allContacts.filter((c) => {
-            // Match by phone
-            const cPhones = (c.phones || []) as Array<{ phone: string }>;
-            for (const p of cPhones) {
-              if (p.phone) {
-                const normalized = p.phone.replace(/\D/g, "");
-                if (normalized && dealContactPhones.has(normalized)) return true;
+          while (page <= maxPages) {
+            const data = await rdCrmGetWithRetry("/contacts", { page: String(page), limit: "200" });
+            const items = ((data as Record<string, unknown>)?.contacts || (Array.isArray(data) ? data : [])) as Array<Record<string, unknown>>;
+            if (items.length === 0) break;
+
+            for (const c of items) {
+              let matched = false;
+              // Match by phone
+              const cPhones = (c.phones || []) as Array<{ phone: string }>;
+              for (const p of cPhones) {
+                if (p.phone) {
+                  const normalized = normalizePhone(p.phone);
+                  if (normalized && dealContactPhones.has(normalized)) { matched = true; break; }
+                }
               }
+              if (!matched) {
+                // Match by email
+                const cEmails = (c.emails || []) as Array<{ email: string }>;
+                for (const e of cEmails) {
+                  if (e.email && dealContactEmails.has(e.email.toLowerCase().trim())) { matched = true; break; }
+                }
+              }
+              if (!matched) {
+                // Match by exact name
+                const cName = ((c.name as string) || "").trim().toLowerCase();
+                if (cName && dealContactNames.has(cName)) matched = true;
+              }
+              if (matched) matchedContacts.push(c);
             }
 
-            // Match by email
-            const cEmails = (c.emails || []) as Array<{ email: string }>;
-            for (const e of cEmails) {
-              if (e.email && dealContactEmails.has(e.email.toLowerCase().trim())) return true;
-            }
+            if (items.length < 200) break;
+            // If we found enough, stop early
+            if (matchedContacts.length >= totalToFind) break;
+            page++;
+            await sleep(300);
+          }
 
-            // Match by exact name as last resort
-            const cName = ((c.name as string) || "").trim().toLowerCase();
-            if (cName && dealContactNames.has(cName)) return true;
-
-            return false;
-          });
-          
-          console.log(`Filtered contacts: ${filteredContacts.length} of ${allContacts.length} (via ${userDeals.length} deals for user ${rdUserId})`);
-          
-          var contactsToImport = filteredContacts;
+          console.log(`Matched ${matchedContacts.length} contacts across ${page} pages for user ${rdUserId}`);
+          var contactsToImport = matchedContacts;
         } else {
           var contactsToImport = await fetchAllPages("/contacts") as Array<Record<string, unknown>>;
         }
