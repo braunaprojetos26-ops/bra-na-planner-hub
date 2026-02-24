@@ -19,6 +19,7 @@ import type { Funnel } from '@/types/contacts';
 interface PipelineFiltersProps {
   opportunities: Opportunity[] | undefined;
   funnels: Funnel[] | undefined;
+  filteredCount: number;
   
   // Filter values
   selectedFunnelId: string;
@@ -62,6 +63,7 @@ const PERIOD_OPTIONS = [
 export function PipelineFilters({
   opportunities,
   funnels,
+  filteredCount,
   selectedFunnelId,
   selectedStatus,
   selectedOwnerId,
@@ -364,35 +366,39 @@ export function PipelineFilters({
         </div>
       </div>
 
-      {/* Active filter tags */}
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Filtros ativos:</span>
-          {activeFilters.map(filter => (
-            <Badge
-              key={filter.key}
-              variant="secondary"
-              className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
-            >
-              {filter.label}
-              <button
-                onClick={() => handleRemoveFilter(filter.key)}
-                className="ml-1 hover:bg-muted rounded-full p-0.5"
+      {/* Active filter tags and count */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="font-semibold">
+          {filteredCount} Negociação{filteredCount !== 1 ? 'ões' : ''}
+        </Badge>
+        {activeFilters.length > 0 && (
+          <>
+            {activeFilters.map(filter => (
+              <Badge
+                key={filter.key}
+                variant="secondary"
+                className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
               >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearAllFilters}
-            className="h-6 px-2 text-xs text-muted-foreground"
-          >
-            Limpar todos
-          </Button>
-        </div>
-      )}
+                {filter.label}
+                <button
+                  onClick={() => handleRemoveFilter(filter.key)}
+                  className="ml-1 hover:bg-muted rounded-full p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAllFilters}
+              className="h-6 px-2 text-xs text-muted-foreground"
+            >
+              Limpar todos
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
