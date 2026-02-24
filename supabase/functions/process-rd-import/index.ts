@@ -577,11 +577,37 @@ async function processDealsFromIds(
 
       if (rdContactIds.length > 0) {
         const rdContact = rdContactIds[0];
-        const contactPhone = ((rdContact.phones as Array<{ phone: string }>)?.[0]?.phone || "").replace(/\D/g, "");
-        const contactEmail = (rdContact.emails as Array<{ email: string }>)?.[0]?.email || null;
-        const contactName = (rdContact.name as string) || "";
+        const rdContactId = (rdContact._id || rdContact.id) as string;
+        
+        // The deal's inline contacts may not have phones/emails, so fetch full contact
+        let contactPhone = "";
+        let contactEmail: string | null = null;
+        let contactName = (rdContact.name as string) || "";
 
-        // Search by phone (including email: placeholder)
+        // Try inline data first
+        const inlinePhones = rdContact.phones as Array<{ phone: string }> | undefined;
+        const inlineEmails = rdContact.emails as Array<{ email: string }> | undefined;
+        if (inlinePhones?.length) contactPhone = (inlinePhones[0].phone || "").replace(/\D/g, "");
+        if (inlineEmails?.length) contactEmail = inlineEmails[0].email || null;
+
+        // If no inline phone/email, fetch full contact from RD API
+        if (!contactPhone && !contactEmail && rdContactId) {
+          try {
+            const cRes = await rateLimitedFetch(`${BASE}/contacts/${rdContactId}?token=${TOKEN}`);
+            if (cRes.ok) {
+              const fullContact = await cRes.json() as Record<string, unknown>;
+              const phones = fullContact.phones as Array<{ phone: string }> | undefined;
+              const emails = fullContact.emails as Array<{ email: string }> | undefined;
+              if (phones?.length) contactPhone = (phones[0].phone || "").replace(/\D/g, "");
+              if (emails?.length) contactEmail = emails[0].email || null;
+              if (!contactName) contactName = (fullContact.name as string) || "";
+            }
+          } catch (e) {
+            console.log(`Failed to fetch RD contact ${rdContactId}: ${(e as Error).message}`);
+          }
+        }
+
+        // Search by phone
         if (contactPhone && contactPhone.length >= 8) {
           const { data: found } = await supabase.from("contacts").select("id").or(`phone.eq.${contactPhone}`).limit(1);
           if (found?.length) localContactId = found[0].id;
@@ -591,6 +617,7 @@ async function processDealsFromIds(
           const { data: found } = await supabase.from("contacts").select("id").or(`email.eq.${contactEmail},phone.eq.email:${contactEmail}`).limit(1);
           if (found?.length) localContactId = found[0].id;
         }
+        // Search by name as last resort
         if (!localContactId && contactName) {
           const { data: found } = await supabase.from("contacts").select("id").ilike("full_name", contactName).limit(1);
           if (found?.length) localContactId = found[0].id;
