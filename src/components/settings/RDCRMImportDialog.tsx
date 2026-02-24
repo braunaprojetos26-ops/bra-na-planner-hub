@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Users, Handshake, UserPlus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, Users, Handshake, UserPlus, CheckCircle2, XCircle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,41 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRDCRM, type RDCRMUser } from '@/hooks/useRDCRM';
 
 interface RDCRMImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   type: 'contacts' | 'deals';
+}
+
+const CONTACT_STEPS = [
+  { label: 'Criando usuário no sistema...', duration: 3000 },
+  { label: 'Buscando negociações do RD CRM...', duration: 5000 },
+  { label: 'Identificando contatos vinculados...', duration: 4000 },
+  { label: 'Buscando dados completos dos contatos...', duration: 8000 },
+  { label: 'Verificando duplicatas no sistema...', duration: 4000 },
+  { label: 'Importando contatos...', duration: 10000 },
+  { label: 'Finalizando importação...', duration: 3000 },
+];
+
+const DEAL_STEPS = [
+  { label: 'Criando usuário no sistema...', duration: 3000 },
+  { label: 'Buscando negociações do RD CRM...', duration: 5000 },
+  { label: 'Verificando funis e etapas locais...', duration: 3000 },
+  { label: 'Vinculando contatos às negociações...', duration: 6000 },
+  { label: 'Importando negociações...', duration: 10000 },
+  { label: 'Finalizando importação...', duration: 3000 },
+];
+
+interface ImportResultFull {
+  total_fetched: number;
+  imported: number;
+  skipped: number;
+  errors: number;
+  error_details: Array<{ name: string; error: string }>;
 }
 
 export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialogProps) {
@@ -35,16 +64,25 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
   const [users, setUsers] = useState<RDCRMUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [createUser, setCreateUser] = useState(true);
-  const [importResult, setImportResult] = useState<{
-    total_fetched: number;
-    imported: number;
-    skipped: number;
-    errors: number;
-  } | null>(null);
+  const [importResult, setImportResult] = useState<ImportResultFull | null>(null);
   const [step, setStep] = useState<'select' | 'importing' | 'done'>('select');
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [progressValue, setProgressValue] = useState(0);
+  const [showErrors, setShowErrors] = useState(false);
+  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isImporting = isImportingContacts || isImportingDeals || isCreatingUser;
   const isContacts = type === 'contacts';
+  const steps = isContacts ? CONTACT_STEPS : DEAL_STEPS;
+
+  // Cleanup timers
+  useEffect(() => {
+    return () => {
+      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -52,10 +90,60 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
       setCreateUser(true);
       setImportResult(null);
       setStep('select');
+      setCurrentStepIndex(0);
+      setProgressValue(0);
+      setShowErrors(false);
       setUsers([]);
       listUsers().then(setUsers).catch(() => {});
     }
   }, [open]);
+
+  // Animate through steps while importing
+  useEffect(() => {
+    if (step !== 'importing') return;
+
+    const advanceStep = () => {
+      setCurrentStepIndex((prev) => {
+        const next = prev + 1;
+        if (next < steps.length) {
+          stepTimerRef.current = setTimeout(advanceStep, steps[next].duration);
+          return next;
+        }
+        // Stay on last step
+        return prev;
+      });
+    };
+
+    // Start first step timer (skip user creation step if not creating)
+    const startIdx = createUser ? 0 : 1;
+    setCurrentStepIndex(startIdx);
+    stepTimerRef.current = setTimeout(advanceStep, steps[startIdx].duration);
+
+    // Animate progress bar smoothly
+    const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0);
+    const interval = 200;
+    const increment = (90 / (totalDuration / interval)); // max 90% while waiting
+    setProgressValue(0);
+    progressTimerRef.current = setInterval(() => {
+      setProgressValue((prev) => {
+        if (prev >= 90) return 90;
+        return prev + increment;
+      });
+    }, interval);
+
+    return () => {
+      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, [step, createUser]);
+
+  // When done, jump progress to 100
+  useEffect(() => {
+    if (step === 'done') {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      setProgressValue(100);
+    }
+  }, [step]);
 
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
@@ -90,16 +178,20 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
     }
   };
 
+  const currentStepLabel = steps[currentStepIndex]?.label || 'Processando...';
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={step === 'importing' ? undefined : onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isContacts ? <Users className="h-5 w-5" /> : <Handshake className="h-5 w-5" />}
             Importar {isContacts ? 'Contatos' : 'Negociações'}
           </DialogTitle>
           <DialogDescription>
-            Selecione um usuário do RD CRM para importar {isContacts ? 'seus contatos' : 'suas negociações'}.
+            {step === 'select' && `Selecione um usuário do RD CRM para importar ${isContacts ? 'seus contatos' : 'suas negociações'}.`}
+            {step === 'importing' && 'A importação está em andamento. Não feche esta janela.'}
+            {step === 'done' && 'Importação concluída. Veja os resultados abaixo.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -164,49 +256,89 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
                 onClick={handleImport}
                 disabled={!selectedUserId || isImporting}
               >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importando...
-                  </>
-                ) : (
-                  'Importar'
-                )}
+                Importar
               </Button>
             </DialogFooter>
           </>
         )}
 
         {step === 'importing' && (
-          <div className="flex flex-col items-center justify-center py-8 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              {isCreatingUser
-                ? 'Criando usuário no sistema...'
-                : `Importando ${isContacts ? 'contatos' : 'negociações'}...`}
+          <div className="flex flex-col items-center py-8 gap-5 px-4">
+            <div className="relative">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+            <div className="w-full space-y-3">
+              <Progress value={progressValue} className="h-2 w-full" />
+              <p className="text-sm text-center text-muted-foreground animate-pulse">
+                {currentStepLabel}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground/60 text-center">
+              Isso pode levar alguns minutos dependendo da quantidade de dados.
             </p>
           </div>
         )}
 
         {step === 'done' && importResult && (
           <>
-            <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-              <p className="font-medium text-foreground">Resultado da importação</p>
-              <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                <span>Total encontrados:</span>
-                <span className="font-medium text-foreground">{importResult.total_fetched}</span>
-                <span>Importados:</span>
-                <span className="font-medium text-green-600">{importResult.imported}</span>
-                <span>Já existentes:</span>
-                <span className="font-medium text-foreground">{importResult.skipped}</span>
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">{importResult.total_fetched}</p>
+                  <p className="text-xs text-muted-foreground">Encontrados no RD</p>
+                </div>
+                <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-3 text-center">
+                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <p className="text-2xl font-bold text-green-600">{importResult.imported}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Importados</p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                  <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-2xl font-bold text-foreground">{importResult.skipped}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Já existentes</p>
+                </div>
                 {importResult.errors > 0 && (
-                  <>
-                    <span>Erros:</span>
-                    <span className="font-medium text-destructive">{importResult.errors}</span>
-                  </>
+                  <div className="rounded-lg border bg-destructive/10 border-destructive/20 p-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                      <XCircle className="h-4 w-4 text-destructive" />
+                      <p className="text-2xl font-bold text-destructive">{importResult.errors}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Erros</p>
+                  </div>
                 )}
               </div>
+
+              {/* Error details */}
+              {importResult.error_details && importResult.error_details.length > 0 && (
+                <div className="rounded-lg border border-destructive/20 overflow-hidden">
+                  <button
+                    onClick={() => setShowErrors(!showErrors)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-destructive/5 hover:bg-destructive/10 transition-colors text-sm font-medium text-destructive"
+                  >
+                    <span>Detalhes dos erros ({importResult.error_details.length})</span>
+                    {showErrors ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {showErrors && (
+                    <ScrollArea className="max-h-48">
+                      <div className="divide-y divide-border">
+                        {importResult.error_details.map((err, i) => (
+                          <div key={i} className="px-3 py-2 text-xs">
+                            <p className="font-medium text-foreground">{err.name || 'Sem nome'}</p>
+                            <p className="text-destructive/80 mt-0.5">{err.error}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </div>
+              )}
             </div>
+
             <DialogFooter>
               <Button onClick={() => onOpenChange(false)}>Fechar</Button>
             </DialogFooter>
