@@ -96,7 +96,7 @@ const corsHeaders = {
 
 // LIGHTWEIGHT checkpoint - only stores IDs and indexes, NEVER full objects
 interface CheckpointData {
-  phase: "fetching_deals" | "fetching_contacts" | "fetching_details" | "importing";
+  phase: "fetching_deals" | "fetching_contacts" | "fetching_details" | "importing" | "importing_deals";
   deals_page?: number;
   // Store only deal IDs, not full objects
   user_deal_ids?: string[];
@@ -110,6 +110,7 @@ interface CheckpointData {
   skipped?: number;
   errors?: number;
   error_details?: Array<{ name: string; error: string }>;
+  contacts_found?: number;
 }
 
 Deno.serve(async (req) => {
@@ -465,11 +466,25 @@ Deno.serve(async (req) => {
       console.log(`[process-rd-import] Job ${jobId} done: ${imported} imported, ${skipped} skipped, ${errors} errors`);
     }
 
-    // ===== DEALS IMPORT =====
+    // ===== DEALS IMPORT: init from fetching_contacts phase =====
     if (importType === "deals" && checkpoint.phase === "fetching_contacts") {
-      // For deals, we need to re-fetch the deals since we only stored IDs
       const dealIds = checkpoint.user_deal_ids || [];
-      await processDealsFromIds(jobId, dealIds, ownerUserId, createdBy, supabase, TOKEN, BASE, startTime);
+      checkpoint = {
+        phase: "importing_deals",
+        user_deal_ids: dealIds,
+        deal_index: 0,
+        imported: 0,
+        skipped: 0,
+        errors: 0,
+        error_details: [],
+        contacts_found: 0,
+      };
+      await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
+    }
+
+    // ===== DEALS IMPORT: resumable processing =====
+    if (importType === "deals" && checkpoint.phase === "importing_deals") {
+      await processDealsWithCheckpoint(jobId, checkpoint, ownerUserId, createdBy, supabase, TOKEN, BASE, startTime);
     }
   } catch (err) {
     console.error(`[process-rd-import] Job ${jobId} error:`, (err as Error).message);
@@ -499,9 +514,9 @@ function findBestMatch(rdName: string, locals: Array<{ id: string; name: string 
   return null;
 }
 
-async function processDealsFromIds(
+async function processDealsWithCheckpoint(
   jobId: string,
-  dealIds: string[],
+  checkpoint: CheckpointData,
   ownerUserId: string | null,
   createdBy: string,
   supabase: ReturnType<typeof getServiceRoleClient>,
@@ -529,26 +544,48 @@ async function processDealsFromIds(
   const defaultFunnel = localFunnels[0];
   const defaultStage = localStages.find((s) => s.funnel_id === defaultFunnel.id) || localStages[0];
 
-  let imported = 0;
-  let skipped = 0;
-  let errors = 0;
-  let contactsFound = 0;
-  const errorDetails: Array<{ name: string; error: string }> = [];
+  const dealIds = checkpoint.user_deal_ids || [];
+  let dealIndex = checkpoint.deal_index || 0;
+  let imported = checkpoint.imported || 0;
+  let skipped = checkpoint.skipped || 0;
+  let errors = checkpoint.errors || 0;
+  let contactsFound = checkpoint.contacts_found || 0;
+  const errorDetails: Array<{ name: string; error: string }> = checkpoint.error_details || [];
 
-  for (const dealId of dealIds) {
+  console.log(`[process-rd-import] Deals resuming at index ${dealIndex}/${dealIds.length}`);
+
+  while (dealIndex < dealIds.length) {
     if (isNearTimeout(startTime)) {
-      break;
+      const cp: CheckpointData = {
+        phase: "importing_deals",
+        user_deal_ids: dealIds,
+        deal_index: dealIndex,
+        imported, skipped, errors,
+        contacts_found: contactsFound,
+        error_details: errorDetails.slice(0, 200),
+      };
+      await updateJob(jobId, {
+        checkpoint_data: cp as unknown as Record<string, unknown>,
+        contacts_found: contactsFound,
+        contacts_imported: imported,
+        contacts_skipped: skipped,
+        contacts_errors: errors,
+      });
+      console.log(`[process-rd-import] Deals checkpoint at ${dealIndex}/${dealIds.length}: ${imported}imp ${skipped}skip ${errors}err`);
+      await reinvokeSelf(jobId);
+      return;
     }
+
+    const dealId = dealIds[dealIndex];
 
     try {
       const res = await rateLimitedFetch(`${BASE}/deals/${dealId}?token=${TOKEN}`);
-      if (!res.ok) { skipped++; continue; }
+      if (!res.ok) { skipped++; dealIndex++; continue; }
       const deal = await res.json() as Record<string, unknown>;
 
       const dealName = (deal.name as string) || "";
       const dealValue = Number(deal.amount_total || deal.amount || 0);
 
-      // --- Map funnel & stage by name ---
       const rdPipeline = deal.deal_pipeline as Record<string, unknown> | null;
       const rdStage = deal.deal_stage as Record<string, unknown> | null;
       const rdPipelineName = (rdPipeline?.name as string) || "";
@@ -571,7 +608,6 @@ async function processDealsFromIds(
         }
       }
 
-      // --- Fetch deal's contacts via separate API call ---
       let localContactId: string | null = null;
 
       const contactsRes = await rateLimitedFetch(`${BASE}/deals/${dealId}/contacts?token=${TOKEN}`);
@@ -580,6 +616,7 @@ async function processDealsFromIds(
         const rdContacts = contactsData?.contacts || (Array.isArray(contactsData) ? contactsData : []);
 
         if (rdContacts.length > 0) {
+          contactsFound++;
           const rdContact = rdContacts[0] as Record<string, unknown>;
           const rdContactId = (rdContact._id || rdContact.id) as string;
           const phones = rdContact.phones as Array<{ phone: string }> | undefined;
@@ -588,7 +625,6 @@ async function processDealsFromIds(
           let contactEmail = emails?.length ? (emails[0].email || null) : null;
           let contactName = (rdContact.name as string) || "";
 
-          // If still no phone/email from deal contacts endpoint, fetch full contact
           if (!contactPhone && !contactEmail && rdContactId) {
             try {
               const cRes = await rateLimitedFetch(`${BASE}/contacts/${rdContactId}?token=${TOKEN}`);
@@ -603,7 +639,6 @@ async function processDealsFromIds(
             } catch (_e) { /* ignore */ }
           }
 
-          // Search local contact
           if (contactPhone && contactPhone.length >= 8) {
             const { data: found } = await supabase.from("contacts").select("id").or(`phone.eq.${contactPhone}`).limit(1);
             if (found?.length) localContactId = found[0].id;
@@ -616,23 +651,22 @@ async function processDealsFromIds(
             const { data: found } = await supabase.from("contacts").select("id").ilike("full_name", contactName).limit(1);
             if (found?.length) localContactId = found[0].id;
           }
-        if (rdContacts.length > 0) contactsFound++;
         }
       }
 
       if (!localContactId) {
         errors++;
         errorDetails.push({ name: dealName || dealId, error: "Contato não encontrado no sistema" });
+        dealIndex++;
         continue;
       }
 
-      // Check duplicate
       const { data: existingOpp } = await supabase
         .from("opportunities").select("id")
         .eq("contact_id", localContactId)
         .ilike("notes", `%RD CRM Deal: ${dealId}%`)
         .limit(1);
-      if (existingOpp?.length) { skipped++; continue; }
+      if (existingOpp?.length) { skipped++; dealIndex++; continue; }
 
       const rdStatus = (deal.win as string);
       let oppStatus: string = "active";
@@ -662,9 +696,11 @@ async function processDealsFromIds(
       errorDetails.push({ name: dealId, error: (e as Error).message });
     }
 
-    // Progress update every 5 records
+    dealIndex++;
+
     if ((imported + skipped + errors) % 5 === 0) {
       await updateJob(jobId, {
+        contacts_found: contactsFound,
         contacts_imported: imported,
         contacts_skipped: skipped,
         contacts_errors: errors,
@@ -681,4 +717,6 @@ async function processDealsFromIds(
     error_details: errorDetails,
     checkpoint_data: null,
   });
+
+  console.log(`[process-rd-import] Deals job ${jobId} done: ${imported} imported, ${skipped} skipped, ${errors} errors out of ${dealIds.length} deals`);
 }
