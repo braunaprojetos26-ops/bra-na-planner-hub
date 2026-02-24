@@ -281,11 +281,12 @@ Deno.serve(async (req) => {
 
         const { data: job, error: jobError } = await supabase
           .from("import_jobs")
-          .select("*")
+          .select("id, status, deals_found, contacts_found, contacts_imported, contacts_skipped, contacts_errors, error_details, error_message, created_at, updated_at")
           .eq("id", jobId)
-          .single();
+          .maybeSingle();
 
-        if (jobError) throw new Error(`Job não encontrado: ${jobError.message}`);
+        if (jobError) throw new Error(`Erro ao buscar job: ${jobError.message}`);
+        if (!job) throw new Error("Job não encontrado");
         result = job;
         break;
       }
