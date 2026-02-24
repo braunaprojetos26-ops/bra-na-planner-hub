@@ -546,12 +546,6 @@ async function processDealsFromIds(
 
       const dealName = (deal.name as string) || "";
       const dealValue = Number(deal.amount_total || deal.amount || 0);
-      const rdContactIds = deal.contacts as Array<Record<string, unknown>> || [];
-      
-      // Debug: log first 3 deals structure
-      if (imported + skipped + errors < 3) {
-        console.log(`[DEBUG] Deal "${dealName}" contacts field:`, JSON.stringify(rdContactIds?.map((c: Record<string, unknown>) => ({ id: c._id || c.id, name: c.name, phones: c.phones, emails: c.emails })).slice(0, 2)));
-      }
 
       // --- Map funnel & stage by name ---
       const rdPipeline = deal.deal_pipeline as Record<string, unknown> | null;
@@ -566,7 +560,6 @@ async function processDealsFromIds(
         const matchedFunnel = findBestMatch(rdPipelineName, localFunnels);
         if (matchedFunnel) {
           targetFunnelId = matchedFunnel.id;
-          // Find matching stage within this funnel
           const funnelStages = localStages.filter((s) => s.funnel_id === matchedFunnel.id);
           if (rdStageName && funnelStages.length > 0) {
             const matchedStage = findBestMatch(rdStageName, funnelStages);
@@ -577,55 +570,51 @@ async function processDealsFromIds(
         }
       }
 
-      // --- Find local contact ---
+      // --- Fetch deal's contacts via separate API call ---
       let localContactId: string | null = null;
 
-      if (rdContactIds.length > 0) {
-        const rdContact = rdContactIds[0];
-        const rdContactId = (rdContact._id || rdContact.id) as string;
-        
-        // The deal's inline contacts may not have phones/emails, so fetch full contact
-        let contactPhone = "";
-        let contactEmail: string | null = null;
-        let contactName = (rdContact.name as string) || "";
+      const contactsRes = await rateLimitedFetch(`${BASE}/deals/${dealId}/contacts?token=${TOKEN}`);
+      if (contactsRes.ok) {
+        const contactsData = await contactsRes.json();
+        const rdContacts = contactsData?.contacts || (Array.isArray(contactsData) ? contactsData : []);
 
-        // Try inline data first
-        const inlinePhones = rdContact.phones as Array<{ phone: string }> | undefined;
-        const inlineEmails = rdContact.emails as Array<{ email: string }> | undefined;
-        if (inlinePhones?.length) contactPhone = (inlinePhones[0].phone || "").replace(/\D/g, "");
-        if (inlineEmails?.length) contactEmail = inlineEmails[0].email || null;
+        if (rdContacts.length > 0) {
+          const rdContact = rdContacts[0] as Record<string, unknown>;
+          const rdContactId = (rdContact._id || rdContact.id) as string;
+          const phones = rdContact.phones as Array<{ phone: string }> | undefined;
+          const emails = rdContact.emails as Array<{ email: string }> | undefined;
+          let contactPhone = phones?.length ? (phones[0].phone || "").replace(/\D/g, "") : "";
+          let contactEmail = emails?.length ? (emails[0].email || null) : null;
+          let contactName = (rdContact.name as string) || "";
 
-        // If no inline phone/email, fetch full contact from RD API
-        if (!contactPhone && !contactEmail && rdContactId) {
-          try {
-            const cRes = await rateLimitedFetch(`${BASE}/contacts/${rdContactId}?token=${TOKEN}`);
-            if (cRes.ok) {
-              const fullContact = await cRes.json() as Record<string, unknown>;
-              const phones = fullContact.phones as Array<{ phone: string }> | undefined;
-              const emails = fullContact.emails as Array<{ email: string }> | undefined;
-              if (phones?.length) contactPhone = (phones[0].phone || "").replace(/\D/g, "");
-              if (emails?.length) contactEmail = emails[0].email || null;
-              if (!contactName) contactName = (fullContact.name as string) || "";
-            }
-          } catch (e) {
-            console.log(`Failed to fetch RD contact ${rdContactId}: ${(e as Error).message}`);
+          // If still no phone/email from deal contacts endpoint, fetch full contact
+          if (!contactPhone && !contactEmail && rdContactId) {
+            try {
+              const cRes = await rateLimitedFetch(`${BASE}/contacts/${rdContactId}?token=${TOKEN}`);
+              if (cRes.ok) {
+                const fullContact = await cRes.json() as Record<string, unknown>;
+                const fp = fullContact.phones as Array<{ phone: string }> | undefined;
+                const fe = fullContact.emails as Array<{ email: string }> | undefined;
+                if (fp?.length) contactPhone = (fp[0].phone || "").replace(/\D/g, "");
+                if (fe?.length) contactEmail = fe[0].email || null;
+                if (!contactName) contactName = (fullContact.name as string) || "";
+              }
+            } catch (_e) { /* ignore */ }
           }
-        }
 
-        // Search by phone
-        if (contactPhone && contactPhone.length >= 8) {
-          const { data: found } = await supabase.from("contacts").select("id").or(`phone.eq.${contactPhone}`).limit(1);
-          if (found?.length) localContactId = found[0].id;
-        }
-        // Search by email (both in email field and email: placeholder in phone)
-        if (!localContactId && contactEmail) {
-          const { data: found } = await supabase.from("contacts").select("id").or(`email.eq.${contactEmail},phone.eq.email:${contactEmail}`).limit(1);
-          if (found?.length) localContactId = found[0].id;
-        }
-        // Search by name as last resort
-        if (!localContactId && contactName) {
-          const { data: found } = await supabase.from("contacts").select("id").ilike("full_name", contactName).limit(1);
-          if (found?.length) localContactId = found[0].id;
+          // Search local contact
+          if (contactPhone && contactPhone.length >= 8) {
+            const { data: found } = await supabase.from("contacts").select("id").or(`phone.eq.${contactPhone}`).limit(1);
+            if (found?.length) localContactId = found[0].id;
+          }
+          if (!localContactId && contactEmail) {
+            const { data: found } = await supabase.from("contacts").select("id").or(`email.eq.${contactEmail},phone.eq.email:${contactEmail}`).limit(1);
+            if (found?.length) localContactId = found[0].id;
+          }
+          if (!localContactId && contactName) {
+            const { data: found } = await supabase.from("contacts").select("id").ilike("full_name", contactName).limit(1);
+            if (found?.length) localContactId = found[0].id;
+          }
         }
       }
 
