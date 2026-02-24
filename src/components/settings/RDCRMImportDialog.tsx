@@ -254,8 +254,12 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border bg-muted/30 p-3 text-center">
-                  <p className="text-2xl font-bold text-foreground">{jobStatus.contacts_found}</p>
-                  <p className="text-xs text-muted-foreground">Encontrados no RD</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {isContacts ? jobStatus.contacts_found : jobStatus.deals_found}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isContacts ? 'Contatos encontrados' : 'Negociações encontradas'}
+                  </p>
                 </div>
                 <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-3 text-center">
                   <div className="flex items-center justify-center gap-1.5 mb-0.5">
@@ -292,7 +296,8 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
                 // Group errors by type
                 const grouped = jobStatus.error_details.reduce<Record<string, Array<{ name: string; error: string }>>>((acc, err) => {
                   let category = 'Outros erros';
-                  if (err.error.includes('contacts_phone_key')) category = 'Telefone duplicado';
+                  if (err.error.includes('não encontrado no sistema')) category = 'Contato não encontrado';
+                  else if (err.error.includes('contacts_phone_key')) category = 'Telefone duplicado';
                   else if (err.error.includes('Sem telefone e sem e-mail')) category = 'Sem dados de contato';
                   else if (err.error.includes('contacts_email_key') || err.error.includes('email')) category = 'E-mail duplicado';
                   if (!acc[category]) acc[category] = [];
@@ -301,6 +306,7 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
                 }, {});
                 
                 const categoryIcons: Record<string, typeof Phone> = {
+                  'Contato não encontrado': Users,
                   'Telefone duplicado': Phone,
                   'Sem dados de contato': AlertTriangle,
                   'E-mail duplicado': Mail,
@@ -308,6 +314,7 @@ export function RDCRMImportDialog({ open, onOpenChange, type }: RDCRMImportDialo
                 };
                 
                 const categoryColors: Record<string, string> = {
+                  'Contato não encontrado': 'text-amber-600',
                   'Telefone duplicado': 'text-amber-600',
                   'Sem dados de contato': 'text-muted-foreground',
                   'E-mail duplicado': 'text-blue-600',
