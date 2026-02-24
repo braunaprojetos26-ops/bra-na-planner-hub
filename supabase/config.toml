@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.evaluate-perpetual-activities]
 verify_jwt = false
+
+[functions.rd-station]
+verify_jwt = false

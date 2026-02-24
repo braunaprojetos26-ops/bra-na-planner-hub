@@ -1,5 +1,6 @@
 import { Settings as SettingsIcon, Link2 } from 'lucide-react';
 import { OutlookConnectionCard } from '@/components/settings/OutlookConnectionCard';
+import { RDStationConnectionCard } from '@/components/settings/RDStationConnectionCard';
 
 export default function Settings() {
   return (
@@ -24,6 +25,7 @@ export default function Settings() {
         
         <div className="grid gap-4 md:grid-cols-2">
           <OutlookConnectionCard />
+          <RDStationConnectionCard />
         </div>
       </section>
     </div>
