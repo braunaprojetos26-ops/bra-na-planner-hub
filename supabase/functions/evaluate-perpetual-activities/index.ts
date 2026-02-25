@@ -123,6 +123,13 @@ async function handleInadimplente(supabase: any, activity: any) {
       .select("id")
       .single();
 
+    // Create assignment for tracking on the Critical Activities screen
+    await supabase.from("critical_activity_assignments").upsert({
+      activity_id: activity.id,
+      user_id: userId,
+      status: "pending",
+    }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
+
     // Create/update trigger record
     if (existing) {
       await supabase
@@ -215,6 +222,13 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
       .select("id")
       .single();
 
+    // Create assignment for tracking on the Critical Activities screen
+    await supabase.from("critical_activity_assignments").upsert({
+      activity_id: activity.id,
+      user_id: userId,
+      status: "pending",
+    }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
+
     if (existing) {
       await supabase
         .from("perpetual_activity_triggers")
@@ -306,6 +320,13 @@ async function handleContratoVencendo(supabase: any, activity: any) {
       })
       .select("id")
       .single();
+
+    // Create assignment for tracking on the Critical Activities screen
+    await supabase.from("critical_activity_assignments").upsert({
+      activity_id: activity.id,
+      user_id: userId,
+      status: "pending",
+    }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
 
     if (existing) {
       await supabase
