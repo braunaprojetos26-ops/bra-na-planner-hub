@@ -115,7 +115,26 @@ Deno.serve(async (req) => {
 
     console.log('Calculating health score for:', { contactIds, ownerId, ownerIds });
 
-    // Build query based on parameters
+    // First, get contact IDs that have active contracts
+    const { data: activeContractContacts, error: activeError } = await supabase
+      .from('contracts')
+      .select('contact_id')
+      .eq('status', 'active');
+
+    if (activeError) {
+      console.error('Error fetching active contracts:', activeError);
+      throw activeError;
+    }
+
+    const activeContactIds = [...new Set((activeContractContacts || []).map(c => c.contact_id))];
+
+    if (activeContactIds.length === 0) {
+      return new Response(JSON.stringify({ results: [], summary: { totalClients: 0, averageScore: 0, byCategory: { otimo: 0, estavel: 0, atencao: 0, critico: 0 } } }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Build query - only clients with active contracts
     let query = supabase
       .from('contacts')
       .select(`
@@ -124,7 +143,7 @@ Deno.serve(async (req) => {
         owner_id,
         client_code
       `)
-      .not('client_code', 'is', null); // Only clients (with client_code)
+      .in('id', activeContactIds);
 
     if (contactIds && contactIds.length > 0) {
       query = query.in('id', contactIds);
