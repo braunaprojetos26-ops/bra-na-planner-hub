@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
         if (matchResult) {
           result.clicksign_document_key = matchResult.key;
           result.clicksign_has_distrato = matchResult.hasDistrato;
+          result.clicksign_created_at = matchResult.created;
           if (matchResult.hasDistrato) {
             result.clicksign_status = "cancelled";
           } else if (matchResult.status === "closed") {
@@ -162,6 +163,9 @@ Deno.serve(async (req) => {
       if (result.clicksign_document_key) {
         updates.clicksign_document_key = result.clicksign_document_key;
         updates.clicksign_status = result.clicksign_status || "signed";
+        if (result.clicksign_created_at) {
+          updates.reported_at = result.clicksign_created_at;
+        }
       }
 
       if (Object.keys(updates).length > 0) {
@@ -332,15 +336,15 @@ function mapEnvelope(envelope: any): any {
     id: envelope.id,
     name: attrs.name || "",
     status: attrs.status || "",
-    created: attrs.created,
-    modified: attrs.modified,
+    created: attrs.created_at || attrs.created || null,
+    modified: attrs.updated_at || attrs.modified || null,
   };
 }
 
 // Find matching envelopes for a client name from pre-loaded v3 envelopes
 function findClicksignMatch(
   allEnvelopes: any[], clientName: string
-): { key: string; status: string; hasDistrato: boolean } | null {
+): { key: string; status: string; hasDistrato: boolean; created: string | null } | null {
   const normName = normalizeStr(clientName);
   const nameWords = normName.split(/\s+/).filter(w => w.length >= 2);
   
@@ -349,29 +353,21 @@ function findClicksignMatch(
   const firstName = nameWords[0];
   const lastName = nameWords[nameWords.length - 1];
   
-  // Find all envelopes whose name contains the client name
   const matchingEnvelopes = allEnvelopes.filter((e: any) => {
     const normEnvName = normalizeStr(e.name || "");
-    
-    // Full name match
     if (normEnvName.includes(normName)) return true;
-    
-    // Match by first + last name (handles cases like "Ingrid Pelajo" vs "Ingrid de Freitas Pelajo")
     if (nameWords.length >= 2 && normEnvName.includes(firstName) && normEnvName.includes(lastName)) {
       return true;
     }
-    
     return false;
   });
   
   if (matchingEnvelopes.length === 0) return null;
   
-  // Check for distrato
   const distratoEnv = matchingEnvelopes.find((e: any) => 
     normalizeStr(e.name || "").includes("distrato")
   );
   
-  // Find the main contract envelope (not distrato)
   const contractEnv = matchingEnvelopes.find((e: any) => {
     const eName = normalizeStr(e.name || "");
     return !eName.includes("distrato") && (
@@ -381,13 +377,12 @@ function findClicksignMatch(
   });
   
   if (contractEnv) {
-    return { key: contractEnv.id, status: contractEnv.status, hasDistrato: !!distratoEnv };
+    return { key: contractEnv.id, status: contractEnv.status, hasDistrato: !!distratoEnv, created: contractEnv.created };
   }
   
   if (distratoEnv) {
-    return { key: distratoEnv.id, status: distratoEnv.status, hasDistrato: true };
+    return { key: distratoEnv.id, status: distratoEnv.status, hasDistrato: true, created: distratoEnv.created };
   }
   
-  // Fallback: first matching envelope
-  return { key: matchingEnvelopes[0].id, status: matchingEnvelopes[0].status, hasDistrato: false };
+  return { key: matchingEnvelopes[0].id, status: matchingEnvelopes[0].status, hasDistrato: false, created: matchingEnvelopes[0].created };
 }
