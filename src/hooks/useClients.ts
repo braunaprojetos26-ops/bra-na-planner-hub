@@ -174,7 +174,7 @@ const CREDIT_CATEGORIES = [
   'Consórcio',
 ];
 
-export function useClientMetrics() {
+export function useClientMetrics(plannerIds?: string[]) {
   const { user } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
   const { role } = useAuth();
@@ -183,8 +183,11 @@ export function useClientMetrics() {
   const isLeaderOrAbove = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const targetUserId = isImpersonating && actingUser ? actingUser.id : (!isLeaderOrAbove ? user?.id : null);
 
+  // If specific plannerIds are selected, use those instead of targetUserId
+  const effectivePlannerIds = plannerIds && plannerIds.length > 0 ? plannerIds : null;
+
   return useQuery({
-    queryKey: ['client-metrics', targetUserId, isLeaderOrAbove],
+    queryKey: ['client-metrics', targetUserId, isLeaderOrAbove, effectivePlannerIds],
     queryFn: async () => {
       const now = new Date();
       const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
@@ -196,7 +199,9 @@ export function useClientMetrics() {
         .select('id, contract_value, owner_id')
         .eq('status', 'active');
 
-      if (targetUserId) {
+      if (effectivePlannerIds) {
+        plansQuery = plansQuery.in('owner_id', effectivePlannerIds);
+      } else if (targetUserId) {
         plansQuery = plansQuery.eq('owner_id', targetUserId);
       }
 
@@ -224,7 +229,9 @@ export function useClientMetrics() {
         `)
         .eq('status', 'active');
 
-      if (targetUserId) {
+      if (effectivePlannerIds) {
+        contractsQuery = contractsQuery.in('owner_id', effectivePlannerIds);
+      } else if (targetUserId) {
         contractsQuery = contractsQuery.eq('owner_id', targetUserId);
       }
 
@@ -285,8 +292,9 @@ export function useClientMetrics() {
         wonOpportunities.forEach(opp => {
           const funnelName = (opp.current_funnel as any)?.name || '';
           const contactOwnerId = (opp.contact as any)?.owner_id;
-          // Filter by owner if needed (planejador sees only their own)
-          if (targetUserId && contactOwnerId !== targetUserId) return;
+          // Filter by owner if needed (planejador sees only their own, or planner filter active)
+          if (effectivePlannerIds && !effectivePlannerIds.includes(contactOwnerId)) return;
+          if (!effectivePlannerIds && targetUserId && contactOwnerId !== targetUserId) return;
           if (funnelName.toLowerCase().includes('prunus') && opp.proposal_value) {
             investimentosValue += Number(opp.proposal_value);
           }
@@ -448,7 +456,7 @@ export function useUpdateClientPlan() {
 }
 
 // Hook para buscar clientes inadimplentes
-export function useDelinquentClients() {
+export function useDelinquentClients(plannerIds?: string[]) {
   const { user } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
   const { role } = useAuth();
@@ -457,8 +465,10 @@ export function useDelinquentClients() {
   const isLeaderOrAbove = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const targetUserId = isImpersonating && actingUser ? actingUser.id : (!isLeaderOrAbove ? user?.id : null);
 
+  const effectivePlannerIds = plannerIds && plannerIds.length > 0 ? plannerIds : null;
+
   return useQuery({
-    queryKey: ['delinquent-clients', targetUserId, isLeaderOrAbove],
+    queryKey: ['delinquent-clients', targetUserId, isLeaderOrAbove, effectivePlannerIds],
     queryFn: async () => {
       // Buscar contratos com vindi_status = 'overdue' ou similar
       let query = supabase
@@ -476,7 +486,9 @@ export function useDelinquentClients() {
         .eq('status', 'active')
         .in('vindi_status', ['overdue', 'pending']);
 
-      if (targetUserId) {
+      if (effectivePlannerIds) {
+        query = query.in('owner_id', effectivePlannerIds);
+      } else if (targetUserId) {
         query = query.eq('owner_id', targetUserId);
       }
 
@@ -489,7 +501,9 @@ export function useDelinquentClients() {
         .select('id, contact_id')
         .eq('status', 'active');
 
-      if (targetUserId) {
+      if (effectivePlannerIds) {
+        plansQuery = plansQuery.in('owner_id', effectivePlannerIds);
+      } else if (targetUserId) {
         plansQuery = plansQuery.eq('owner_id', targetUserId);
       }
 

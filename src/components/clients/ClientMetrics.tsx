@@ -12,6 +12,7 @@ interface ClientMetricsProps {
   isLoading: boolean;
   delinquentClients?: DelinquentClient[];
   onDelinquentClick?: () => void;
+  selectedPlannerIds?: string[];
 }
 
 function formatCurrency(value: number): string {
@@ -23,7 +24,7 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function ClientMetrics({ metrics, isLoading, delinquentClients = [], onDelinquentClick }: ClientMetricsProps) {
+export function ClientMetrics({ metrics, isLoading, delinquentClients = [], onDelinquentClick, selectedPlannerIds }: ClientMetricsProps) {
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
@@ -31,9 +32,15 @@ export function ClientMetrics({ metrics, isLoading, delinquentClients = [], onDe
   const isLeaderOrAbove = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
   const targetUserId = isImpersonating && actingUser ? actingUser.id : (!isLeaderOrAbove ? user?.id : null);
   
-  const { data: healthData, isLoading: isHealthLoading } = useHealthScore(
-    targetUserId ? { ownerId: targetUserId } : undefined
-  );
+  // Build health score filter based on planner selection or role
+  const effectivePlannerIds = selectedPlannerIds && selectedPlannerIds.length > 0 ? selectedPlannerIds : null;
+  const healthFilter = effectivePlannerIds 
+    ? { ownerIds: effectivePlannerIds } 
+    : targetUserId 
+      ? { ownerId: targetUserId } 
+      : undefined;
+  
+  const { data: healthData, isLoading: isHealthLoading } = useHealthScore(healthFilter);
 
   const averageScore = healthData?.summary?.averageScore ?? 0;
   const category = averageScore >= 75 ? 'otimo' : averageScore >= 50 ? 'estavel' : averageScore >= 30 ? 'atencao' : 'critico';

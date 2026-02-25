@@ -34,8 +34,8 @@ export default function Clients() {
   
   const { data: allUsers } = useAllActiveUsers();
   const { data: clients, isLoading } = useClients(undefined, selectedPlannerIds.length > 0 ? selectedPlannerIds : undefined);
-  const { data: metrics, isLoading: metricsLoading } = useClientMetrics();
-  const { data: delinquentClients = [], isLoading: delinquentLoading } = useDelinquentClients();
+  const { data: metrics, isLoading: metricsLoading } = useClientMetrics(selectedPlannerIds.length > 0 ? selectedPlannerIds : undefined);
+  const { data: delinquentClients = [], isLoading: delinquentLoading } = useDelinquentClients(selectedPlannerIds.length > 0 ? selectedPlannerIds : undefined);
 
   const filteredPlanners = allUsers?.filter(u => 
     !plannerSearch || u.full_name.toLowerCase().includes(plannerSearch.toLowerCase())
@@ -81,6 +81,7 @@ export default function Clients() {
         isLoading={metricsLoading} 
         delinquentClients={delinquentClients}
         onDelinquentClick={() => setShowDelinquentDrawer(true)}
+        selectedPlannerIds={selectedPlannerIds.length > 0 ? selectedPlannerIds : undefined}
       />
 
       {/* Filters */}
