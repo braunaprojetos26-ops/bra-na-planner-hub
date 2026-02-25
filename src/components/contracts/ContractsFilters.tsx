@@ -49,6 +49,7 @@ const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pendente' },
   { value: 'active', label: 'Ativo' },
   { value: 'cancelled', label: 'Cancelado' },
+  { value: 'frozen', label: 'Congelado' },
 ];
 
 const PAYMENT_STATUS_OPTIONS = [

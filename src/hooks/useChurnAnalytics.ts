@@ -115,6 +115,7 @@ export function useChurnAnalytics(filters: ChurnFilters = {}) {
       if (legacyError) throw legacyError;
 
       // Fetch active contracts for comparison
+      // Fetch active contracts (exclude cancelled and frozen)
       let activeQuery = supabase
         .from("contracts")
         .select("id, contract_value, owner_id, plan_type")

@@ -69,7 +69,7 @@ export interface Contract {
   start_date: string | null;
   end_date: string | null;
   reported_at: string;
-  status: 'pending' | 'active' | 'cancelled';
+  status: 'pending' | 'active' | 'cancelled' | 'frozen';
   clicksign_document_key: string | null;
   clicksign_status: string | null;
   vindi_customer_id: string | null;

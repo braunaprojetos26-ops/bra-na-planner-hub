@@ -35,6 +35,10 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
     return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">Cancelado</Badge>;
   }
   
+  if (status === 'frozen') {
+    return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Congelado</Badge>;
+  }
+  
   // For active contracts, check ClickSign status for more detail
   if (status === 'active') {
     if (clicksignStatus === 'cancelled') {

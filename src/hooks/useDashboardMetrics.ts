@@ -33,7 +33,8 @@ export function useDashboardMetrics() {
       const { data: contracts, error } = await supabase
         .from('contracts')
         .select('contract_value, calculated_pbs, reported_at')
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled')
+        .neq('status', 'frozen');
 
       if (error) throw error;
 
