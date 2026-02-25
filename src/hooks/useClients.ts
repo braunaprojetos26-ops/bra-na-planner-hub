@@ -501,6 +501,35 @@ export function useDelinquentClients() {
       // Filtrar apenas contratos com atraso (vindi_status = 'overdue')
       const delinquentContracts = contracts?.filter(c => c.vindi_status === 'overdue') || [];
 
+      if (delinquentContracts.length === 0) return [];
+
+      // Buscar dados reais de pagamento da Vindi para cada contato inadimplente
+      const uniqueContactIds = [...new Set(delinquentContracts.map(c => c.contact_id))];
+      
+      const paymentResults = await Promise.allSettled(
+        uniqueContactIds.map(contactId =>
+          supabase.functions.invoke('get-vindi-payments', { body: { contactId } })
+            .then(res => ({ contactId, data: res.data }))
+        )
+      );
+
+      const paymentsByContact = new Map<string, { overdueCount: number; overdueAmount: number; lastDueDate: string }>();
+      paymentResults.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.data) {
+          const { contactId, data } = result.value;
+          const overdueInstallments = data.installments?.filter((i: any) => i.status === 'overdue') || [];
+          const overdueAmount = overdueInstallments.reduce((sum: number, i: any) => sum + (i.amount || 0), 0);
+          const lastDueDate = overdueInstallments.length > 0 
+            ? overdueInstallments[overdueInstallments.length - 1].dueDate || ''
+            : '';
+          paymentsByContact.set(contactId, {
+            overdueCount: overdueInstallments.length,
+            overdueAmount,
+            lastDueDate,
+          });
+        }
+      });
+
       // Agrupar por contato
       const clientsMap = new Map<string, {
         clientId: string;
@@ -515,17 +544,15 @@ export function useDelinquentClients() {
         const contactId = contract.contact_id;
         const clientId = planByContact.get(contactId) || contactId;
         const clientName = (contract.contact as any)?.full_name || 'Cliente';
-        const customData = contract.custom_data as Record<string, unknown> | null;
-        const paidInstallments = (customData?.paid_installments as number) || 0;
-        const totalInstallments = contract.installments || 1;
-        const overdueInstallments = Math.max(1, totalInstallments - paidInstallments);
-        const installmentValue = contract.installment_value || 0;
-        const overdueAmount = overdueInstallments * installmentValue;
+        
+        const vindiData = paymentsByContact.get(contactId);
+        const overdueInstallments = vindiData?.overdueCount || 1;
+        const overdueAmount = vindiData?.overdueAmount || 0;
+        const lastDueDate = vindiData?.lastDueDate || contract.billing_date || '';
 
         const existing = clientsMap.get(contactId);
         if (existing) {
-          existing.overdueInstallments += overdueInstallments;
-          existing.overdueAmount += overdueAmount;
+          // Already added from another contract for same contact, skip duplicate
         } else {
           clientsMap.set(contactId, {
             clientId,
@@ -533,7 +560,7 @@ export function useDelinquentClients() {
             contactId,
             overdueInstallments,
             overdueAmount,
-            lastDueDate: contract.billing_date || '',
+            lastDueDate,
           });
         }
       });
@@ -541,5 +568,6 @@ export function useDelinquentClients() {
       return Array.from(clientsMap.values());
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
