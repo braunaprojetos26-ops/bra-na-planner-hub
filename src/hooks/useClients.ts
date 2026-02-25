@@ -269,18 +269,24 @@ export function useClientMetrics() {
       });
 
       // Buscar oportunidades ganhas do funil PRUNUS para investimentos
-      const { data: wonOpportunities, error: wonError } = await supabase
+      let wonQuery = supabase
         .from('opportunities')
         .select(`
           id,
           proposal_value,
-          current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
+          current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name),
+          contact:contacts!opportunities_contact_id_fkey(owner_id)
         `)
         .eq('status', 'won');
+
+      const { data: wonOpportunities, error: wonError } = await wonQuery;
 
       if (!wonError && wonOpportunities) {
         wonOpportunities.forEach(opp => {
           const funnelName = (opp.current_funnel as any)?.name || '';
+          const contactOwnerId = (opp.contact as any)?.owner_id;
+          // Filter by owner if needed (planejador sees only their own)
+          if (targetUserId && contactOwnerId !== targetUserId) return;
           if (funnelName.toLowerCase().includes('prunus') && opp.proposal_value) {
             investimentosValue += Number(opp.proposal_value);
           }
