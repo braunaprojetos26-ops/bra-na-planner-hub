@@ -19,13 +19,12 @@ Deno.serve(async (req) => {
 
     const clicksignApiKey = Deno.env.get("CLICKSIGN_API_KEY")!;
 
-    // Get ALL planejamento contracts still with import date
+    // Get contracts that need updating: either import date OR missing clicksign_status
     const { data: contracts, error: fetchErr } = await supabase
       .from("contracts")
-      .select("id, clicksign_document_key, reported_at, contact_id, contacts!inner(full_name)")
+      .select("id, clicksign_document_key, clicksign_status, reported_at, contact_id, contacts!inner(full_name)")
       .eq("product_id", "4b900185-852d-4f25-8ecc-8d21d7d826d5")
-      .gte("reported_at", "2026-02-24T00:00:00")
-      .lte("reported_at", "2026-02-25T00:00:00")
+      .or("clicksign_status.is.null,reported_at.gte.2026-02-24T00:00:00,reported_at.lte.2026-02-25T00:00:00")
       .order("id");
 
     if (fetchErr) throw fetchErr;
@@ -54,24 +53,26 @@ Deno.serve(async (req) => {
     for (const contract of contracts) {
       const contactName = (contract as any).contacts?.full_name || "";
       let createdDate: string | null = null;
+      let envelopeStatus: string | null = null;
       let matchMethod = "";
 
       // Strategy 1: Match by existing clicksign_document_key
       if (contract.clicksign_document_key) {
         const envelope = envelopeById.get(contract.clicksign_document_key);
-        if (envelope?.created) {
-          createdDate = envelope.created;
+        if (envelope) {
+          if (envelope.created) createdDate = envelope.created;
+          envelopeStatus = envelope.status;
           matchMethod = "key_match";
         }
       }
 
       // Strategy 2: Search by contact name in envelope names
-      if (!createdDate && contactName) {
+      if (!createdDate && !envelopeStatus && contactName) {
         const match = findClicksignMatch(allEnvelopes, contactName);
-        if (match?.created) {
+        if (match) {
           createdDate = match.created;
+          envelopeStatus = match.status;
           matchMethod = "name_match";
-          // Also update clicksign_document_key if missing
           if (!contract.clicksign_document_key) {
             await supabase
               .from("contracts")
@@ -81,10 +82,23 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (createdDate) {
+      // Build updates
+      const updates: any = {};
+      if (createdDate && contract.reported_at?.startsWith("2026-02-24")) {
+        updates.reported_at = createdDate;
+      }
+      if (envelopeStatus && !contract.clicksign_status) {
+        // Map ClickSign status to our status
+        if (envelopeStatus === "closed") updates.clicksign_status = "signed";
+        else if (envelopeStatus === "running") updates.clicksign_status = "pending";
+        else if (envelopeStatus === "canceled") updates.clicksign_status = "cancelled";
+        else updates.clicksign_status = envelopeStatus;
+      }
+
+      if (Object.keys(updates).length > 0) {
         const { error: updateErr } = await supabase
           .from("contracts")
-          .update({ reported_at: createdDate })
+          .update(updates)
           .eq("id", contract.id);
 
         if (!updateErr) {
@@ -92,8 +106,7 @@ Deno.serve(async (req) => {
           results.push({
             contract_id: contract.id,
             name: contactName,
-            old_date: contract.reported_at,
-            new_date: createdDate,
+            updates,
             match_method: matchMethod,
             status: "updated",
           });
@@ -101,7 +114,7 @@ Deno.serve(async (req) => {
           results.push({ contract_id: contract.id, name: contactName, status: "error", error: updateErr.message });
         }
       } else {
-        results.push({ contract_id: contract.id, name: contactName, status: "not_found" });
+        results.push({ contract_id: contract.id, name: contactName, status: "no_changes" });
       }
     }
 
