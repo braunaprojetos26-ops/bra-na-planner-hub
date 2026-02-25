@@ -125,23 +125,18 @@ function getPaymentStatusBadge(contract: {
   opportunity_id?: string | null;
   product?: { category_id?: string | null } | null;
   opportunity?: { current_stage?: { name: string } | null } | null;
-}, vindiStatuses?: Record<string, { status: string; details?: string }>, vindiLoading?: boolean) {
+}, vindiStatuses?: Record<string, { status: string; details?: string }>) {
   const isPlanejamento = contract.product?.category_id === PLANEJAMENTO_CATEGORY_ID;
   
-  // Para produtos de Planejamento Financeiro, usa status real da Vindi
+  // Para produtos de Planejamento Financeiro
   if (isPlanejamento) {
-    // First check real-time status from edge function
+    // Check real-time status from edge function first (has details/tooltips)
     const realTimeStatus = vindiStatuses?.[contract.id];
-    if (realTimeStatus) {
+    if (realTimeStatus && realTimeStatus.status !== 'unknown') {
       return getVindiStatusBadge(realTimeStatus.status, realTimeStatus.details);
     }
     
-    // If still loading, show loading indicator
-    if (vindiLoading && (contract.vindi_subscription_id || contract.vindi_bill_id || contract.vindi_status)) {
-      return getVindiStatusBadge('loading');
-    }
-    
-    // Fallback to stored DB status
+    // Use stored DB status (always available after sync)
     if (contract.vindi_status) {
       const statusMap: Record<string, string> = {
         'paid': 'em_dia',
@@ -243,10 +238,9 @@ interface ContractsTableProps {
   }>;
   isLoading: boolean;
   vindiStatuses?: Record<string, { status: string; details?: string }>;
-  vindiLoading?: boolean;
 }
 
-function ContractsTable({ contracts, isLoading, vindiStatuses, vindiLoading }: ContractsTableProps) {
+function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableProps) {
   if (isLoading) {
     return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   }
@@ -307,7 +301,7 @@ function ContractsTable({ contracts, isLoading, vindiStatuses, vindiLoading }: C
               {format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR })}
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
-            <TableCell>{getPaymentStatusBadge(contract, vindiStatuses, vindiLoading)}</TableCell>
+            <TableCell>{getPaymentStatusBadge(contract, vindiStatuses)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -434,7 +428,6 @@ export default function Contracts() {
   // Fetch real-time Vindi payment statuses for planejamento contracts
   const [vindiStatuses, setVindiStatuses] = useState<Record<string, { status: string; details?: string }>>({});
   const [vindiFetched, setVindiFetched] = useState(false);
-  const [vindiLoading, setVindiLoading] = useState(false);
 
   // Build stable list of contract IDs that need Vindi status
   const vindiContractIds = useMemo(() => {
@@ -455,7 +448,6 @@ export default function Contracts() {
     
     const fetchStatuses = async () => {
       try {
-        console.log('Fetching Vindi statuses for', ids.length, 'contracts');
         const { data, error } = await supabase.functions.invoke('get-vindi-contract-statuses', {
           body: { contract_ids: ids },
         });
@@ -466,7 +458,6 @@ export default function Contracts() {
         }
 
         if (data?.statuses) {
-          console.log('Vindi statuses received:', Object.keys(data.statuses).length);
           setVindiStatuses(data.statuses);
         }
       } catch (e) {
@@ -475,8 +466,7 @@ export default function Contracts() {
     };
 
     setVindiFetched(true);
-    setVindiLoading(true);
-    fetchStatuses().finally(() => setVindiLoading(false));
+    fetchStatuses();
   }, [vindiContractIds, isLoading, vindiFetched]);
 
   // Apply client-side payment status filter
@@ -624,7 +614,6 @@ export default function Contracts() {
             contracts={filteredContracts} 
             isLoading={isLoading}
             vindiStatuses={vindiStatuses}
-            vindiLoading={vindiLoading}
           />
         </CardContent>
       </Card>
