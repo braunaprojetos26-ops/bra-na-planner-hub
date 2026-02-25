@@ -177,11 +177,14 @@ const CREDIT_CATEGORIES = [
 export function useClientMetrics() {
   const { user } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
+  const { role } = useAuth();
 
-  const targetUserId = isImpersonating && actingUser ? actingUser.id : user?.id;
+  // For leaders: show all clients (no filter). For planners or impersonating: filter by target user.
+  const isLeaderOrAbove = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
+  const targetUserId = isImpersonating && actingUser ? actingUser.id : (!isLeaderOrAbove ? user?.id : null);
 
   return useQuery({
-    queryKey: ['client-metrics', targetUserId],
+    queryKey: ['client-metrics', targetUserId, isLeaderOrAbove],
     queryFn: async () => {
       const now = new Date();
       const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
