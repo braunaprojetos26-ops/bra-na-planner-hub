@@ -187,7 +187,7 @@ export function ClientPaymentSection({ contactId, compact = false }: ClientPayme
                       <div>
                         <p className="font-medium">{formatCurrency(installment.amount)}</p>
                         <p className="text-xs text-muted-foreground">
-                          Venc: {format(parseISO(installment.dueDate), 'dd/MM/yyyy', { locale: ptBR })}
+                          Venc: {installment.dueDate ? format(parseISO(installment.dueDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -196,7 +196,7 @@ export function ClientPaymentSection({ contactId, compact = false }: ClientPayme
                         {config.icon}
                         <span className="ml-1">{config.label}</span>
                       </Badge>
-                      {installment.paidAt && (
+                      {installment.paidAt && installment.paidAt !== '' && (
                         <span className="text-xs text-muted-foreground">
                           em {format(parseISO(installment.paidAt), 'dd/MM', { locale: ptBR })}
                         </span>
