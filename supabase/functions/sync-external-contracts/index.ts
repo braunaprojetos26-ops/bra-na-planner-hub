@@ -20,7 +20,6 @@ Deno.serve(async (req) => {
     const vindiApiKey = Deno.env.get("VINDI_API_KEY")!;
     const clicksignApiKey = Deno.env.get("CLICKSIGN_API_KEY")!;
     const vindiUrl = "https://app.vindi.com.br/api/v1";
-    const clicksignUrl = "https://app.clicksign.com/api/v1";
     const vindiAuth = "Basic " + btoa(vindiApiKey + ":");
 
     const body = await req.json().catch(() => ({}));
@@ -28,15 +27,11 @@ Deno.serve(async (req) => {
     const batchSize = body.batch_size || 10;
     const offset = body.offset || 0;
 
-    // Pre-load all ClickSign documents if needed
-    let allClicksignDocs: any[] = [];
+    // Pre-load all ClickSign envelopes via v3 API
+    let allClicksignEnvelopes: any[] = [];
     if (mode === "all" || mode === "clicksign") {
-      allClicksignDocs = await loadAllClicksignDocs(clicksignUrl, clicksignApiKey);
-      // Deduplicate by document key
-      const uniqueDocs = new Map();
-      allClicksignDocs.forEach(d => uniqueDocs.set(d.key, d));
-      allClicksignDocs = Array.from(uniqueDocs.values());
-      console.log(`Loaded ${allClicksignDocs.length} unique ClickSign documents (before dedup: ${uniqueDocs.size})`);
+      allClicksignEnvelopes = await loadAllClicksignEnvelopes(clicksignApiKey);
+      console.log(`Loaded ${allClicksignEnvelopes.length} ClickSign envelopes via v3 API`);
     }
 
     // Build query based on mode
@@ -131,7 +126,7 @@ Deno.serve(async (req) => {
 
     // ============ CLICKSIGN ============
       if (mode === "all" || mode === "clicksign") {
-        const matchResult = findClicksignMatch(allClicksignDocs, name);
+        const matchResult = findClicksignMatch(allClicksignEnvelopes, name);
 
         if (matchResult) {
           result.clicksign_document_key = matchResult.key;
@@ -280,27 +275,28 @@ function normalizeStr(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-// Load ALL documents from ClickSign (paginated)
-async function loadAllClicksignDocs(clicksignUrl: string, apiKey: string): Promise<any[]> {
-  const seen = new Set<string>();
-  const allDocs: any[] = [];
-  const baseUrl = `${clicksignUrl}/documents?access_token=${apiKey}&page_size=30`;
-  
-  // Get first page to know total pages
-  const firstRes = await fetch(`${baseUrl}&page=1`, { headers: { "Content-Type": "application/json" } });
-  if (!firstRes.ok) return [];
-  const firstData = await firstRes.json();
-  const firstDocs = firstData.documents || [];
-  for (const d of firstDocs) {
-    if (!seen.has(d.key)) { seen.add(d.key); allDocs.push(d); }
+// Load ALL envelopes from ClickSign API v3 (stable pagination)
+async function loadAllClicksignEnvelopes(apiKey: string): Promise<any[]> {
+  const baseUrl = "https://app.clicksign.com/api/v3/envelopes";
+  const headers = { "Authorization": apiKey, "Accept": "application/json" };
+  const pageSize = 50; // Max allowed by v3
+
+  // Get first page to know total
+  const firstRes = await fetch(`${baseUrl}?page[number]=1&page[size]=${pageSize}`, { headers });
+  if (!firstRes.ok) {
+    console.error("ClickSign v3 first page error:", firstRes.status);
+    return [];
   }
+  const firstData = await firstRes.json();
+  const totalRecords = firstData.meta?.record_count || 0;
+  const totalPages = Math.ceil(totalRecords / pageSize);
   
-  const totalPages = firstData.page_infos?.total_pages || 1;
-  console.log(`ClickSign: ${totalPages} total pages to load`);
+  const allEnvelopes: any[] = (firstData.data || []).map(mapEnvelope);
+  console.log(`ClickSign v3: ${totalRecords} envelopes, ${totalPages} pages`);
   
-  if (totalPages <= 1) return allDocs;
-  
-  // Fetch remaining pages in parallel batches of 5 (conservative to avoid API issues)
+  if (totalPages <= 1) return allEnvelopes;
+
+  // Fetch remaining pages in parallel batches of 5
   for (let batchStart = 2; batchStart <= totalPages; batchStart += 5) {
     const pages = Array.from({ length: 5 }, (_, i) => batchStart + i)
       .filter(p => p <= totalPages);
@@ -308,29 +304,42 @@ async function loadAllClicksignDocs(clicksignUrl: string, apiKey: string): Promi
     const results = await Promise.all(
       pages.map(async (page) => {
         try {
-          const res = await fetch(`${baseUrl}&page=${page}`, { headers: { "Content-Type": "application/json" } });
+          const res = await fetch(`${baseUrl}?page[number]=${page}&page[size]=${pageSize}`, { headers });
           if (!res.ok) return [];
           const data = await res.json();
-          return data.documents || [];
+          return (data.data || []).map(mapEnvelope);
         } catch {
           return [];
         }
       })
     );
     
-    for (const docs of results) {
-      for (const d of docs) {
-        if (!seen.has(d.key)) { seen.add(d.key); allDocs.push(d); }
-      }
+    for (const envelopes of results) {
+      allEnvelopes.push(...envelopes);
     }
   }
-  
-  return allDocs;
+
+  // Deduplicate by id
+  const unique = new Map<string, any>();
+  allEnvelopes.forEach(e => unique.set(e.id, e));
+  return Array.from(unique.values());
 }
 
-// Find matching documents for a client name from pre-loaded docs
+// Map v3 envelope to a simplified object
+function mapEnvelope(envelope: any): any {
+  const attrs = envelope.attributes || {};
+  return {
+    id: envelope.id,
+    name: attrs.name || "",
+    status: attrs.status || "",
+    created: attrs.created,
+    modified: attrs.modified,
+  };
+}
+
+// Find matching envelopes for a client name from pre-loaded v3 envelopes
 function findClicksignMatch(
-  allDocs: any[], clientName: string
+  allEnvelopes: any[], clientName: string
 ): { key: string; status: string; hasDistrato: boolean } | null {
   const normName = normalizeStr(clientName);
   const nameWords = normName.split(/\s+/).filter(w => w.length >= 2);
@@ -340,52 +349,45 @@ function findClicksignMatch(
   const firstName = nameWords[0];
   const lastName = nameWords[nameWords.length - 1];
   
-  // Find all docs whose filename contains the client name
-  const matchingDocs = allDocs.filter((d: any) => {
-    // Normalize filename: replace em dashes, en dashes, and multiple separators
-    const normFile = normalizeStr((d.filename || "").replace(/[–—]/g, "-"));
+  // Find all envelopes whose name contains the client name
+  const matchingEnvelopes = allEnvelopes.filter((e: any) => {
+    const normEnvName = normalizeStr(e.name || "");
     
-    // Full name match anywhere in filename
-    if (normFile.includes(normName)) return true;
+    // Full name match
+    if (normEnvName.includes(normName)) return true;
     
-    // Match by first + last name appearing in the filename
-    if (nameWords.length >= 2 && normFile.includes(firstName) && normFile.includes(lastName)) {
-      // Extract the "client part" - everything after "financeiro" or after last separator
-      const afterFinanceiro = normFile.split("financeiro").pop() || "";
-      if (afterFinanceiro.includes(firstName) && afterFinanceiro.includes(lastName)) return true;
-      
-      // Also check after last " - "
-      const parts = normFile.split(" - ");
-      const clientPart = parts[parts.length - 1] || "";
-      if (clientPart.includes(firstName) && clientPart.includes(lastName)) return true;
+    // Match by first + last name (handles cases like "Ingrid Pelajo" vs "Ingrid de Freitas Pelajo")
+    if (nameWords.length >= 2 && normEnvName.includes(firstName) && normEnvName.includes(lastName)) {
+      return true;
     }
     
     return false;
   });
   
-  if (matchingDocs.length === 0) return null;
+  if (matchingEnvelopes.length === 0) return null;
   
   // Check for distrato
-  const distratoDoc = matchingDocs.find((d: any) => 
-    normalizeStr(d.filename || "").includes("distrato")
+  const distratoEnv = matchingEnvelopes.find((e: any) => 
+    normalizeStr(e.name || "").includes("distrato")
   );
   
-  // Find the main contract (not distrato)
-  const contractDoc = matchingDocs.find((d: any) => {
-    const fname = normalizeStr(d.filename || "");
-    return !fname.includes("distrato") && (
-      fname.includes("planejamento") || fname.includes("contrato") || fname.includes("prestacao")
+  // Find the main contract envelope (not distrato)
+  const contractEnv = matchingEnvelopes.find((e: any) => {
+    const eName = normalizeStr(e.name || "");
+    return !eName.includes("distrato") && (
+      eName.includes("planejamento") || eName.includes("contrato") || 
+      eName.includes("prestacao") || eName.includes("envelope de")
     );
   });
   
-  if (contractDoc) {
-    return { key: contractDoc.key, status: contractDoc.status, hasDistrato: !!distratoDoc };
+  if (contractEnv) {
+    return { key: contractEnv.id, status: contractEnv.status, hasDistrato: !!distratoEnv };
   }
   
-  if (distratoDoc) {
-    return { key: distratoDoc.key, status: distratoDoc.status, hasDistrato: true };
+  if (distratoEnv) {
+    return { key: distratoEnv.id, status: distratoEnv.status, hasDistrato: true };
   }
   
-  // Fallback: first matching doc
-  return { key: matchingDocs[0].key, status: matchingDocs[0].status, hasDistrato: false };
+  // Fallback: first matching envelope
+  return { key: matchingEnvelopes[0].id, status: matchingEnvelopes[0].status, hasDistrato: false };
 }
