@@ -159,7 +159,7 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                         <p className={`font-medium ${isCompleted ? 'line-through' : ''}`}>
                           {task.title.replace('[Atividade Crítica] ', '')}
                         </p>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium ${tag.className}`}>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium whitespace-nowrap shrink-0 ${tag.className}`}>
                           {tag.label}
                         </Badge>
                       </div>
