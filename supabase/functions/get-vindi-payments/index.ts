@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
       if (contract.vindi_subscription_id) {
         // Fetch bills for subscription
         const billsResponse = await fetch(
-          `https://app.vindi.com.br/api/v1/bills?subscription_id=${contract.vindi_subscription_id}&sort_by=created_at&sort_order=asc&per_page=100`,
+          `https://app.vindi.com.br/api/v1/bills?query=subscription_id:${contract.vindi_subscription_id}&sort_by=created_at&sort_order=asc&per_page=100`,
           {
             headers: {
               'Authorization': `Basic ${vindiAuth}`,
