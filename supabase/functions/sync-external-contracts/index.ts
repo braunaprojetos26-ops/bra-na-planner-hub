@@ -32,7 +32,11 @@ Deno.serve(async (req) => {
     let allClicksignDocs: any[] = [];
     if (mode === "all" || mode === "clicksign") {
       allClicksignDocs = await loadAllClicksignDocs(clicksignUrl, clicksignApiKey);
-      console.log(`Loaded ${allClicksignDocs.length} ClickSign documents`);
+      // Deduplicate by document key
+      const uniqueDocs = new Map();
+      allClicksignDocs.forEach(d => uniqueDocs.set(d.key, d));
+      allClicksignDocs = Array.from(uniqueDocs.values());
+      console.log(`Loaded ${allClicksignDocs.length} unique ClickSign documents (before dedup: ${uniqueDocs.size})`);
     }
 
     // Build query based on mode
@@ -278,36 +282,33 @@ function normalizeStr(s: string): string {
 
 // Load ALL documents from ClickSign (paginated)
 async function loadAllClicksignDocs(clicksignUrl: string, apiKey: string): Promise<any[]> {
+  const seen = new Set<string>();
   const allDocs: any[] = [];
-  const perPage = 30; // API cap
+  const baseUrl = `${clicksignUrl}/documents?access_token=${apiKey}&page_size=30`;
   
-  // First, get page 1 to see how many docs there are
-  const firstRes = await fetch(
-    `${clicksignUrl}/documents?access_token=${apiKey}&page=1&page_size=${perPage}`,
-    { headers: { "Content-Type": "application/json" } }
-  );
+  // Get first page to know total pages
+  const firstRes = await fetch(`${baseUrl}&page=1`, { headers: { "Content-Type": "application/json" } });
   if (!firstRes.ok) return [];
   const firstData = await firstRes.json();
   const firstDocs = firstData.documents || [];
-  allDocs.push(...firstDocs);
+  for (const d of firstDocs) {
+    if (!seen.has(d.key)) { seen.add(d.key); allDocs.push(d); }
+  }
   
-  if (firstDocs.length < perPage) return allDocs;
+  const totalPages = firstData.page_infos?.total_pages || 1;
+  console.log(`ClickSign: ${totalPages} total pages to load`);
   
-  // Fetch remaining pages in parallel batches of 10
-  let currentPage = 2;
-  const maxPages = 80; // safety limit (~2400 docs)
+  if (totalPages <= 1) return allDocs;
   
-  while (currentPage <= maxPages) {
-    const batchPages = Array.from({ length: 10 }, (_, i) => currentPage + i)
-      .filter(p => p <= maxPages);
+  // Fetch remaining pages in parallel batches of 5 (conservative to avoid API issues)
+  for (let batchStart = 2; batchStart <= totalPages; batchStart += 5) {
+    const pages = Array.from({ length: 5 }, (_, i) => batchStart + i)
+      .filter(p => p <= totalPages);
     
     const results = await Promise.all(
-      batchPages.map(async (page) => {
+      pages.map(async (page) => {
         try {
-          const res = await fetch(
-            `${clicksignUrl}/documents?access_token=${apiKey}&page=${page}&page_size=${perPage}`,
-            { headers: { "Content-Type": "application/json" } }
-          );
+          const res = await fetch(`${baseUrl}&page=${page}`, { headers: { "Content-Type": "application/json" } });
           if (!res.ok) return [];
           const data = await res.json();
           return data.documents || [];
@@ -317,15 +318,11 @@ async function loadAllClicksignDocs(clicksignUrl: string, apiKey: string): Promi
       })
     );
     
-    let gotEmpty = false;
     for (const docs of results) {
-      if (docs.length === 0) { gotEmpty = true; break; }
-      allDocs.push(...docs);
-      if (docs.length < perPage) { gotEmpty = true; break; }
+      for (const d of docs) {
+        if (!seen.has(d.key)) { seen.add(d.key); allDocs.push(d); }
+      }
     }
-    
-    if (gotEmpty) break;
-    currentPage += 10;
   }
   
   return allDocs;
@@ -336,22 +333,28 @@ function findClicksignMatch(
   allDocs: any[], clientName: string
 ): { key: string; status: string; hasDistrato: boolean } | null {
   const normName = normalizeStr(clientName);
-  const nameWords = normName.split(/\s+/).filter(w => w.length >= 3);
+  const nameWords = normName.split(/\s+/).filter(w => w.length >= 2);
   
   if (nameWords.length === 0) return null;
   
+  const firstName = nameWords[0];
+  const lastName = nameWords[nameWords.length - 1];
+  
   // Find all docs whose filename contains the client name
   const matchingDocs = allDocs.filter((d: any) => {
-    const normFile = normalizeStr(d.filename || "");
+    // Normalize filename: replace em dashes, en dashes, and multiple separators
+    const normFile = normalizeStr((d.filename || "").replace(/[–—]/g, "-"));
     
-    // Full name match
+    // Full name match anywhere in filename
     if (normFile.includes(normName)) return true;
     
-    // Match by first + last name (minimum)
-    const firstName = nameWords[0];
-    const lastName = nameWords[nameWords.length - 1];
+    // Match by first + last name appearing in the filename
     if (nameWords.length >= 2 && normFile.includes(firstName) && normFile.includes(lastName)) {
-      // Verify it's in the client name part (after the last " - ")
+      // Extract the "client part" - everything after "financeiro" or after last separator
+      const afterFinanceiro = normFile.split("financeiro").pop() || "";
+      if (afterFinanceiro.includes(firstName) && afterFinanceiro.includes(lastName)) return true;
+      
+      // Also check after last " - "
       const parts = normFile.split(" - ");
       const clientPart = parts[parts.length - 1] || "";
       if (clientPart.includes(firstName) && clientPart.includes(lastName)) return true;
