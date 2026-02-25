@@ -124,6 +124,8 @@ export function useTasks(opportunityId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['critical-activity-detail'] });
       toast.success('Tarefa concluída!');
     },
     onError: (error) => {
