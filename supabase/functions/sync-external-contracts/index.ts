@@ -25,8 +25,15 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || "all"; // "vindi" | "clicksign" | "all"
-    const batchSize = body.batch_size || 10; // process in smaller batches to avoid timeout
+    const batchSize = body.batch_size || 10;
     const offset = body.offset || 0;
+
+    // Pre-load all ClickSign documents if needed
+    let allClicksignDocs: any[] = [];
+    if (mode === "all" || mode === "clicksign") {
+      allClicksignDocs = await loadAllClicksignDocs(clicksignUrl, clicksignApiKey);
+      console.log(`Loaded ${allClicksignDocs.length} ClickSign documents`);
+    }
 
     // Build query based on mode
     let query = supabase
@@ -118,47 +125,24 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ============ CLICKSIGN ============
+    // ============ CLICKSIGN ============
       if (mode === "all" || mode === "clicksign") {
-        let docKey = "";
-        let docStatus = "";
+        const matchResult = findClicksignMatch(allClicksignDocs, name);
 
-        // Strategy 1: search by full name in document path
-        const nameWords = name.split(" ");
-        const firstName = nameWords[0] || "";
-        const lastName = nameWords[nameWords.length - 1] || "";
-
-        // Try full name search
-        const fullResult = await clicksignSearchDoc(clicksignUrl, clicksignApiKey, name);
-        if (fullResult) {
-          docKey = fullResult.key;
-          docStatus = fullResult.status;
-        }
-
-        // Strategy 2: first + last name
-        if (!docKey && nameWords.length > 1) {
-          const shortName = `${firstName} ${lastName}`;
-          const shortResult = await clicksignSearchDoc(clicksignUrl, clicksignApiKey, shortName);
-          if (shortResult) {
-            docKey = shortResult.key;
-            docStatus = shortResult.status;
+        if (matchResult) {
+          result.clicksign_document_key = matchResult.key;
+          result.clicksign_has_distrato = matchResult.hasDistrato;
+          if (matchResult.hasDistrato) {
+            result.clicksign_status = "cancelled";
+          } else if (matchResult.status === "closed") {
+            result.clicksign_status = "signed";
+          } else if (matchResult.status === "running") {
+            result.clicksign_status = "pending";
+          } else if (matchResult.status === "canceled") {
+            result.clicksign_status = "cancelled";
+          } else {
+            result.clicksign_status = matchResult.status;
           }
-        }
-
-        // Strategy 3: search by CPF
-        if (!docKey && cpf) {
-          const cpfResult = await clicksignSearchDoc(clicksignUrl, clicksignApiKey, cpf);
-          if (cpfResult) {
-            docKey = cpfResult.key;
-            docStatus = cpfResult.status;
-          }
-        }
-
-        if (docKey) {
-          result.clicksign_document_key = docKey;
-          result.clicksign_status = docStatus === "closed" ? "signed"
-            : docStatus === "running" ? "pending"
-            : docStatus;
           result.clicksign = "linked";
         } else {
           result.clicksign = "not_found";
@@ -288,32 +272,117 @@ async function vindiFindBill(
   return null;
 }
 
-async function clicksignSearchDoc(
-  clicksignUrl: string, apiKey: string, searchTerm: string
-): Promise<{ key: string; status: string } | null> {
-  try {
-    const res = await fetch(
-      `${clicksignUrl}/documents?access_token=${apiKey}&q=${encodeURIComponent(searchTerm)}&page=1&page_size=10`,
-      { headers: { "Content-Type": "application/json" } }
+function normalizeStr(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Load ALL documents from ClickSign (paginated)
+async function loadAllClicksignDocs(clicksignUrl: string, apiKey: string): Promise<any[]> {
+  const allDocs: any[] = [];
+  const perPage = 30; // API cap
+  
+  // First, get page 1 to see how many docs there are
+  const firstRes = await fetch(
+    `${clicksignUrl}/documents?access_token=${apiKey}&page=1&page_size=${perPage}`,
+    { headers: { "Content-Type": "application/json" } }
+  );
+  if (!firstRes.ok) return [];
+  const firstData = await firstRes.json();
+  const firstDocs = firstData.documents || [];
+  allDocs.push(...firstDocs);
+  
+  if (firstDocs.length < perPage) return allDocs;
+  
+  // Fetch remaining pages in parallel batches of 10
+  let currentPage = 2;
+  const maxPages = 80; // safety limit (~2400 docs)
+  
+  while (currentPage <= maxPages) {
+    const batchPages = Array.from({ length: 10 }, (_, i) => currentPage + i)
+      .filter(p => p <= maxPages);
+    
+    const results = await Promise.all(
+      batchPages.map(async (page) => {
+        try {
+          const res = await fetch(
+            `${clicksignUrl}/documents?access_token=${apiKey}&page=${page}&page_size=${perPage}`,
+            { headers: { "Content-Type": "application/json" } }
+          );
+          if (!res.ok) return [];
+          const data = await res.json();
+          return data.documents || [];
+        } catch {
+          return [];
+        }
+      })
     );
-    if (res.ok) {
-      const data = await res.json();
-      const docs = data.documents || [];
-      // Find document that contains "Planejamento" or "Contrato" in filename
-      const match = docs.find((d: any) =>
-        d.filename?.toLowerCase().includes("planejamento") ||
-        d.filename?.toLowerCase().includes("contrato")
-      );
-      if (match) {
-        return { key: match.key, status: match.status };
-      }
-      // Fallback: return first doc if any
-      if (docs.length === 1) {
-        return { key: docs[0].key, status: docs[0].status };
-      }
+    
+    let gotEmpty = false;
+    for (const docs of results) {
+      if (docs.length === 0) { gotEmpty = true; break; }
+      allDocs.push(...docs);
+      if (docs.length < perPage) { gotEmpty = true; break; }
     }
-  } catch (e) {
-    console.error("ClickSign search error:", e);
+    
+    if (gotEmpty) break;
+    currentPage += 10;
   }
-  return null;
+  
+  return allDocs;
+}
+
+// Find matching documents for a client name from pre-loaded docs
+function findClicksignMatch(
+  allDocs: any[], clientName: string
+): { key: string; status: string; hasDistrato: boolean } | null {
+  const normName = normalizeStr(clientName);
+  const nameWords = normName.split(/\s+/).filter(w => w.length >= 3);
+  
+  if (nameWords.length === 0) return null;
+  
+  // Find all docs whose filename contains the client name
+  const matchingDocs = allDocs.filter((d: any) => {
+    const normFile = normalizeStr(d.filename || "");
+    
+    // Full name match
+    if (normFile.includes(normName)) return true;
+    
+    // Match by first + last name (minimum)
+    const firstName = nameWords[0];
+    const lastName = nameWords[nameWords.length - 1];
+    if (nameWords.length >= 2 && normFile.includes(firstName) && normFile.includes(lastName)) {
+      // Verify it's in the client name part (after the last " - ")
+      const parts = normFile.split(" - ");
+      const clientPart = parts[parts.length - 1] || "";
+      if (clientPart.includes(firstName) && clientPart.includes(lastName)) return true;
+    }
+    
+    return false;
+  });
+  
+  if (matchingDocs.length === 0) return null;
+  
+  // Check for distrato
+  const distratoDoc = matchingDocs.find((d: any) => 
+    normalizeStr(d.filename || "").includes("distrato")
+  );
+  
+  // Find the main contract (not distrato)
+  const contractDoc = matchingDocs.find((d: any) => {
+    const fname = normalizeStr(d.filename || "");
+    return !fname.includes("distrato") && (
+      fname.includes("planejamento") || fname.includes("contrato") || fname.includes("prestacao")
+    );
+  });
+  
+  if (contractDoc) {
+    return { key: contractDoc.key, status: contractDoc.status, hasDistrato: !!distratoDoc };
+  }
+  
+  if (distratoDoc) {
+    return { key: distratoDoc.key, status: distratoDoc.status, hasDistrato: true };
+  }
+  
+  // Fallback: first matching doc
+  return { key: matchingDocs[0].key, status: matchingDocs[0].status, hasDistrato: false };
 }
