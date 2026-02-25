@@ -20,7 +20,7 @@ import type { ClientPlanStatus } from '@/types/clients';
 
 export default function Clients() {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ClientPlanStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<ClientPlanStatus | 'all'>('active');
   const [showNewClient, setShowNewClient] = useState(false);
   const [showDelinquentDrawer, setShowDelinquentDrawer] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -99,10 +99,10 @@ export default function Clients() {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="active">Ativos</SelectItem>
-            <SelectItem value="suspended">Suspensos</SelectItem>
-            <SelectItem value="closed">Encerrados</SelectItem>
+            <SelectItem value="suspended">Congelados</SelectItem>
+            <SelectItem value="closed">Cancelados</SelectItem>
+            <SelectItem value="all">Todos</SelectItem>
           </SelectContent>
         </Select>
 
