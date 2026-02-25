@@ -45,7 +45,7 @@ export function TeamFilters({ filters, onFiltersChange }: TeamFiltersProps) {
       m.role === 'planejador' || 
       m.position === 'planejador_financeiro' ||
       m.position === 'planejador_prime' ||
-      m.position === 'planejador_exclusive' ||
+      m.position === 'planejador_elite' ||
       m.position === 'especialista' ||
       m.position === 'especialista_private'
     ) || [],
