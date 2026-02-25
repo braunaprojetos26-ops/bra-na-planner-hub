@@ -111,9 +111,9 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { contactIds, ownerId } = await req.json();
+    const { contactIds, ownerId, ownerIds } = await req.json();
 
-    console.log('Calculating health score for:', { contactIds, ownerId });
+    console.log('Calculating health score for:', { contactIds, ownerId, ownerIds });
 
     // Build query based on parameters
     let query = supabase
@@ -128,6 +128,8 @@ Deno.serve(async (req) => {
 
     if (contactIds && contactIds.length > 0) {
       query = query.in('id', contactIds);
+    } else if (ownerIds && ownerIds.length > 0) {
+      query = query.in('owner_id', ownerIds);
     } else if (ownerId) {
       query = query.eq('owner_id', ownerId);
     }
