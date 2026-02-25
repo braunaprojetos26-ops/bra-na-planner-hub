@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
@@ -60,7 +60,7 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
 }
 
 function getVindiStatusBadge(vindiStatus?: string | null, vindiDetails?: string | null) {
-  if (!vindiStatus) {
+  if (!vindiStatus || vindiStatus === 'unknown') {
     return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
   }
   
@@ -120,20 +120,40 @@ function getPaymentStatus(contract: {
 function getPaymentStatusBadge(contract: {
   id: string;
   vindi_status?: string | null;
+  vindi_subscription_id?: string | null;
+  vindi_bill_id?: string | null;
   opportunity_id?: string | null;
   product?: { category_id?: string | null } | null;
   opportunity?: { current_stage?: { name: string } | null } | null;
-}, vindiStatuses?: Record<string, { status: string; details?: string }>) {
+}, vindiStatuses?: Record<string, { status: string; details?: string }>, vindiLoading?: boolean) {
   const isPlanejamento = contract.product?.category_id === PLANEJAMENTO_CATEGORY_ID;
   
   // Para produtos de Planejamento Financeiro, usa status real da Vindi
   if (isPlanejamento) {
+    // First check real-time status from edge function
     const realTimeStatus = vindiStatuses?.[contract.id];
     if (realTimeStatus) {
       return getVindiStatusBadge(realTimeStatus.status, realTimeStatus.details);
     }
-    // Fallback to stored status while loading
-    return getVindiStatusBadge(contract.vindi_status ? 'loading' : null);
+    
+    // If still loading, show loading indicator
+    if (vindiLoading && (contract.vindi_subscription_id || contract.vindi_bill_id || contract.vindi_status)) {
+      return getVindiStatusBadge('loading');
+    }
+    
+    // Fallback to stored DB status
+    if (contract.vindi_status) {
+      const statusMap: Record<string, string> = {
+        'paid': 'em_dia',
+        'overdue': 'atrasado', 
+        'pending': 'aguardando',
+        'cancelled': 'cancelado',
+        'active': 'aguardando',
+      };
+      return getVindiStatusBadge(statusMap[contract.vindi_status] || contract.vindi_status);
+    }
+    
+    return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
   }
   
   // Para outros produtos, verifica a etapa do funil da oportunidade
@@ -206,6 +226,8 @@ interface ContractsTableProps {
     status: string;
     clicksign_status?: string | null;
     vindi_status?: string | null;
+    vindi_subscription_id?: string | null;
+    vindi_bill_id?: string | null;
     opportunity_id?: string | null;
     contact?: { full_name: string } | null;
     product?: { 
@@ -221,9 +243,10 @@ interface ContractsTableProps {
   }>;
   isLoading: boolean;
   vindiStatuses?: Record<string, { status: string; details?: string }>;
+  vindiLoading?: boolean;
 }
 
-function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableProps) {
+function ContractsTable({ contracts, isLoading, vindiStatuses, vindiLoading }: ContractsTableProps) {
   if (isLoading) {
     return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   }
@@ -284,7 +307,7 @@ function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableP
               {format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR })}
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
-            <TableCell>{getPaymentStatusBadge(contract, vindiStatuses)}</TableCell>
+            <TableCell>{getPaymentStatusBadge(contract, vindiStatuses, vindiLoading)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -410,36 +433,51 @@ export default function Contracts() {
 
   // Fetch real-time Vindi payment statuses for planejamento contracts
   const [vindiStatuses, setVindiStatuses] = useState<Record<string, { status: string; details?: string }>>({});
+  const [vindiFetched, setVindiFetched] = useState(false);
+  const [vindiLoading, setVindiLoading] = useState(false);
 
-  const fetchVindiStatuses = useCallback(async (contractList: typeof contracts) => {
-    // Get only planejamento contracts with vindi subscription
-    const vindiContractIds = contractList
+  // Build stable list of contract IDs that need Vindi status
+  const vindiContractIds = useMemo(() => {
+    return contracts
       .filter(c => 
         c.product?.category_id === PLANEJAMENTO_CATEGORY_ID && 
-        c.vindi_status // has vindi link
+        (c.vindi_subscription_id || c.vindi_bill_id || c.vindi_status)
       )
-      .map(c => c.id);
-
-    if (vindiContractIds.length === 0) return;
-
-    try {
-      const { data, error } = await supabase.functions.invoke('get-vindi-contract-statuses', {
-        body: { contract_ids: vindiContractIds },
-      });
-
-      if (!error && data?.statuses) {
-        setVindiStatuses(data.statuses);
-      }
-    } catch (e) {
-      console.error('Error fetching Vindi statuses:', e);
-    }
-  }, []);
+      .map(c => c.id)
+      .sort()
+      .join(',');
+  }, [contracts]);
 
   useEffect(() => {
-    if (contracts.length > 0 && !isLoading) {
-      fetchVindiStatuses(contracts);
-    }
-  }, [contracts, isLoading, fetchVindiStatuses]);
+    if (!vindiContractIds || isLoading || vindiFetched) return;
+
+    const ids = vindiContractIds.split(',');
+    
+    const fetchStatuses = async () => {
+      try {
+        console.log('Fetching Vindi statuses for', ids.length, 'contracts');
+        const { data, error } = await supabase.functions.invoke('get-vindi-contract-statuses', {
+          body: { contract_ids: ids },
+        });
+
+        if (error) {
+          console.error('Vindi fetch error:', error);
+          return;
+        }
+
+        if (data?.statuses) {
+          console.log('Vindi statuses received:', Object.keys(data.statuses).length);
+          setVindiStatuses(data.statuses);
+        }
+      } catch (e) {
+        console.error('Error fetching Vindi statuses:', e);
+      }
+    };
+
+    setVindiFetched(true);
+    setVindiLoading(true);
+    fetchStatuses().finally(() => setVindiLoading(false));
+  }, [vindiContractIds, isLoading, vindiFetched]);
 
   // Apply client-side payment status filter
   const filteredContracts = useMemo(() => {
@@ -586,6 +624,7 @@ export default function Contracts() {
             contracts={filteredContracts} 
             isLoading={isLoading}
             vindiStatuses={vindiStatuses}
+            vindiLoading={vindiLoading}
           />
         </CardContent>
       </Card>

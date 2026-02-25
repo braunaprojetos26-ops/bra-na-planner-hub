@@ -68,18 +68,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update vindi_status in DB for contracts that changed
+    // Update vindi_status in DB for contracts that changed (skip unknown)
     for (const [contractId, statusInfo] of Object.entries(statuses)) {
+      if (statusInfo.status === "unknown") continue;
+      
       const dbStatus = statusInfo.status === "em_dia" ? "paid" 
         : statusInfo.status === "atrasado" ? "overdue"
         : statusInfo.status === "aguardando" ? "pending"
         : statusInfo.status === "cancelado" ? "cancelled"
-        : "active";
+        : null;
 
-      await supabase
-        .from("contracts")
-        .update({ vindi_status: dbStatus })
-        .eq("id", contractId);
+      if (dbStatus) {
+        await supabase
+          .from("contracts")
+          .update({ vindi_status: dbStatus })
+          .eq("id", contractId);
+      }
     }
 
     return new Response(
