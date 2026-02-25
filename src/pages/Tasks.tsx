@@ -5,6 +5,7 @@ import { TasksWeekSummary } from '@/components/tasks/TasksWeekSummary';
 import { TasksFilters, PeriodFilter } from '@/components/tasks/TasksFilters';
 import { TasksListPage } from '@/components/tasks/TasksListPage';
 import { useAllUserTasks, TaskFilters } from '@/hooks/useTasks';
+import { useTeamMembers } from '@/hooks/useTeamAnalytics';
 import { TaskType, TaskStatus } from '@/types/tasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -37,6 +38,9 @@ export default function Tasks() {
   const [period, setPeriod] = useState<PeriodFilter>('this_week');
   const [taskType, setTaskType] = useState<TaskType | 'all'>('all');
   const [status, setStatus] = useState<TaskStatus | 'all'>('all');
+  const [assignedTo, setAssignedTo] = useState<string | 'all'>('all');
+
+  const { data: teamMembers = [] } = useTeamMembers();
 
   const filters: TaskFilters = useMemo(() => {
     const dateRange = getDateRange(period);
@@ -44,8 +48,9 @@ export default function Tasks() {
       ...dateRange,
       taskType: taskType,
       status: status,
+      assignedTo: assignedTo,
     };
-  }, [period, taskType, status]);
+  }, [period, taskType, status, assignedTo]);
 
   const { data: tasks = [], isLoading } = useAllUserTasks(filters);
 
@@ -65,6 +70,11 @@ export default function Tasks() {
       completed: weekTasks.filter(t => t.status === 'completed').length,
     };
   }, [weekTasks]);
+
+  const teamMemberOptions = useMemo(() => 
+    teamMembers.map(m => ({ userId: m.userId, fullName: m.fullName })),
+    [teamMembers]
+  );
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -98,6 +108,9 @@ export default function Tasks() {
               onTaskTypeChange={setTaskType}
               status={status}
               onStatusChange={setStatus}
+              assignedTo={assignedTo}
+              onAssignedToChange={setAssignedTo}
+              teamMembers={teamMemberOptions}
             />
           </div>
         </CardHeader>

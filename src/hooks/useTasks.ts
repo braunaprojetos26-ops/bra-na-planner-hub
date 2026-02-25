@@ -211,6 +211,7 @@ export interface TaskFilters {
   endDate?: Date;
   taskType?: TaskType | 'all';
   status?: TaskStatus | 'all';
+  assignedTo?: string | 'all';
 }
 
 export function useAllUserTasks(filters?: TaskFilters) {
@@ -234,7 +235,8 @@ export function useAllUserTasks(filters?: TaskFilters) {
             id,
             contact:contacts(id, full_name),
             current_funnel:funnels!opportunities_current_funnel_id_fkey(id, name)
-          )
+          ),
+          assigned_to_profile:profiles!tasks_assigned_to_fkey(full_name)
         `)
         .or(`created_by.eq.${userId},assigned_to.eq.${userId}`)
         .order('scheduled_at', { ascending: true });
@@ -255,6 +257,11 @@ export function useAllUserTasks(filters?: TaskFilters) {
       // Apply status filter
       if (filters?.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
+      }
+
+      // Apply assigned_to filter
+      if (filters?.assignedTo && filters.assignedTo !== 'all') {
+        query = query.eq('assigned_to', filters.assignedTo);
       }
 
       const { data, error } = await query;

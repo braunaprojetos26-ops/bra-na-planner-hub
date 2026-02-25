@@ -121,6 +121,7 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Tarefa</TableHead>
+            <TableHead>Responsável</TableHead>
             <TableHead>Contato</TableHead>
             <TableHead>Funil</TableHead>
             <TableHead>Agendamento</TableHead>
@@ -167,6 +168,11 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                       </p>
                     </div>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm">
+                    {task.assigned_to_profile?.full_name || '-'}
+                  </span>
                 </TableCell>
                 <TableCell>
                   {task.opportunity?.contact?.full_name || '-'}
