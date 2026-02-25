@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
@@ -59,22 +59,30 @@ function getStatusBadge(status: string, clicksignStatus?: string | null) {
   return <Badge variant="outline">{status}</Badge>;
 }
 
-function getVindiStatusBadge(vindiStatus?: string | null) {
+function getVindiStatusBadge(vindiStatus?: string | null, vindiDetails?: string | null) {
   if (!vindiStatus) {
     return <Badge variant="outline" className="text-muted-foreground">-</Badge>;
   }
   
   switch (vindiStatus) {
-    case 'pending':
-      return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Aguardando</Badge>;
     case 'paid':
-      return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Pago</Badge>;
+    case 'em_dia':
+      return <Badge className="bg-green-500/10 text-green-600 border-green-500/20" title={vindiDetails || undefined}>Em dia</Badge>;
+    case 'pending':
+    case 'aguardando':
+      return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20" title={vindiDetails || undefined}>Aguardando</Badge>;
+    case 'overdue':
+    case 'atrasado':
+      return <Badge className="bg-red-500/10 text-red-600 border-red-500/20" title={vindiDetails || undefined}>Atrasado</Badge>;
+    case 'cancelled':
+    case 'cancelado':
+      return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20" title={vindiDetails || undefined}>Cancelado</Badge>;
     case 'rejected':
       return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Rejeitado</Badge>;
     case 'refunded':
       return <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">Estornado</Badge>;
-    case 'cancelled':
-      return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20">Cancelado</Badge>;
+    case 'loading':
+      return <Badge variant="outline" className="text-muted-foreground animate-pulse">...</Badge>;
     default:
       return <Badge variant="outline">{vindiStatus}</Badge>;
   }
@@ -110,16 +118,22 @@ function getPaymentStatus(contract: {
 }
 
 function getPaymentStatusBadge(contract: {
+  id: string;
   vindi_status?: string | null;
   opportunity_id?: string | null;
   product?: { category_id?: string | null } | null;
   opportunity?: { current_stage?: { name: string } | null } | null;
-}) {
+}, vindiStatuses?: Record<string, { status: string; details?: string }>) {
   const isPlanejamento = contract.product?.category_id === PLANEJAMENTO_CATEGORY_ID;
   
-  // Para produtos de Planejamento Financeiro, usa status da Vindi
+  // Para produtos de Planejamento Financeiro, usa status real da Vindi
   if (isPlanejamento) {
-    return getVindiStatusBadge(contract.vindi_status);
+    const realTimeStatus = vindiStatuses?.[contract.id];
+    if (realTimeStatus) {
+      return getVindiStatusBadge(realTimeStatus.status, realTimeStatus.details);
+    }
+    // Fallback to stored status while loading
+    return getVindiStatusBadge(contract.vindi_status ? 'loading' : null);
   }
   
   // Para outros produtos, verifica a etapa do funil da oportunidade
@@ -127,7 +141,7 @@ function getPaymentStatusBadge(contract: {
   const isPaid = PAID_STAGE_KEYWORDS.some(kw => stageName.includes(kw));
   
   if (isPaid) {
-    return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Pago</Badge>;
+    return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Em dia</Badge>;
   }
   
   // Se não tem oportunidade vinculada
@@ -206,9 +220,10 @@ interface ContractsTableProps {
     } | null;
   }>;
   isLoading: boolean;
+  vindiStatuses?: Record<string, { status: string; details?: string }>;
 }
 
-function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
+function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableProps) {
   if (isLoading) {
     return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   }
@@ -269,7 +284,7 @@ function ContractsTable({ contracts, isLoading }: ContractsTableProps) {
               {format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR })}
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
-            <TableCell>{getPaymentStatusBadge(contract)}</TableCell>
+            <TableCell>{getPaymentStatusBadge(contract, vindiStatuses)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -393,6 +408,39 @@ export default function Contracts() {
   const { data: contracts = [], isLoading } = useContracts(queryFilters);
   const { data: metrics } = useContractMetrics();
 
+  // Fetch real-time Vindi payment statuses for planejamento contracts
+  const [vindiStatuses, setVindiStatuses] = useState<Record<string, { status: string; details?: string }>>({});
+
+  const fetchVindiStatuses = useCallback(async (contractList: typeof contracts) => {
+    // Get only planejamento contracts with vindi subscription
+    const vindiContractIds = contractList
+      .filter(c => 
+        c.product?.category_id === PLANEJAMENTO_CATEGORY_ID && 
+        c.vindi_status // has vindi link
+      )
+      .map(c => c.id);
+
+    if (vindiContractIds.length === 0) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('get-vindi-contract-statuses', {
+        body: { contract_ids: vindiContractIds },
+      });
+
+      if (!error && data?.statuses) {
+        setVindiStatuses(data.statuses);
+      }
+    } catch (e) {
+      console.error('Error fetching Vindi statuses:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (contracts.length > 0 && !isLoading) {
+      fetchVindiStatuses(contracts);
+    }
+  }, [contracts, isLoading, fetchVindiStatuses]);
+
   // Apply client-side payment status filter
   const filteredContracts = useMemo(() => {
     if (selectedPaymentStatus === 'all') {
@@ -400,10 +448,21 @@ export default function Contracts() {
     }
     
     return contracts.filter(contract => {
+      const isPlanejamento = contract.product?.category_id === PLANEJAMENTO_CATEGORY_ID;
+      if (isPlanejamento) {
+        const realStatus = vindiStatuses[contract.id]?.status;
+        if (!realStatus) return selectedPaymentStatus === 'unknown';
+        const mapped = realStatus === 'em_dia' ? 'paid' 
+          : realStatus === 'atrasado' ? 'overdue'
+          : realStatus === 'aguardando' ? 'pending'
+          : realStatus === 'cancelado' ? 'cancelled'
+          : 'unknown';
+        return mapped === selectedPaymentStatus;
+      }
       const paymentStatus = getPaymentStatus(contract);
       return paymentStatus === selectedPaymentStatus;
     });
-  }, [contracts, selectedPaymentStatus]);
+  }, [contracts, selectedPaymentStatus, vindiStatuses]);
 
   // Calculate filtered metrics
   const filteredMetrics = useMemo(() => {
@@ -526,6 +585,7 @@ export default function Contracts() {
           <ContractsTable 
             contracts={filteredContracts} 
             isLoading={isLoading}
+            vindiStatuses={vindiStatuses}
           />
         </CardContent>
       </Card>
