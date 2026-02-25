@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Users, Calendar, DollarSign, Briefcase, Shield, TrendingUp, CreditCard, HeartPulse, AlertTriangle } from 'lucide-react';
 import type { ClientMetrics as ClientMetricsType } from '@/types/clients';
 import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 import type { DelinquentClient } from './DelinquentClientsDrawer';
 
 interface ClientMetricsProps {
@@ -23,7 +25,15 @@ function formatCurrency(value: number): string {
 
 export function ClientMetrics({ metrics, isLoading, delinquentClients = [], onDelinquentClick }: ClientMetricsProps) {
   const navigate = useNavigate();
-  const { data: healthData, isLoading: isHealthLoading } = useHealthScore();
+  const { user, role } = useAuth();
+  const { actingUser, isImpersonating } = useActingUser();
+  
+  const isLeaderOrAbove = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
+  const targetUserId = isImpersonating && actingUser ? actingUser.id : (!isLeaderOrAbove ? user?.id : null);
+  
+  const { data: healthData, isLoading: isHealthLoading } = useHealthScore(
+    targetUserId ? { ownerId: targetUserId } : undefined
+  );
 
   const averageScore = healthData?.summary?.averageScore ?? 0;
   const category = averageScore >= 75 ? 'otimo' : averageScore >= 50 ? 'estavel' : averageScore >= 30 ? 'atencao' : 'critico';
