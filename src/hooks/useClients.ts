@@ -445,10 +445,14 @@ export function useUpdateClientPlan() {
 export function useDelinquentClients() {
   const { user } = useAuth();
   const { actingUser, isImpersonating } = useActingUser();
-  const targetUserId = isImpersonating && actingUser ? actingUser.id : user?.id;
+  const { role } = useAuth();
+
+  // Same logic as useClientMetrics: leaders see all, planners see only their own
+  const isLeaderOrAbove = role && ['lider', 'supervisor', 'gerente', 'superadmin'].includes(role);
+  const targetUserId = isImpersonating && actingUser ? actingUser.id : (!isLeaderOrAbove ? user?.id : null);
 
   return useQuery({
-    queryKey: ['delinquent-clients', targetUserId],
+    queryKey: ['delinquent-clients', targetUserId, isLeaderOrAbove],
     queryFn: async () => {
       // Buscar contratos com vindi_status = 'overdue' ou similar
       let query = supabase
