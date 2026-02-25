@@ -250,14 +250,15 @@ Deno.serve(async (req) => {
 
         bills.forEach((bill, index) => {
           const charge = bill.charges?.[0];
-          const status = mapVindiStatus(bill.status, bill.due_at);
+          const effectiveDueDate = bill.due_at || bill.billing_at || bill.created_at;
+          const status = mapVindiStatus(bill.status, effectiveDueDate);
           
           allInstallments.push({
             id: bill.id.toString(),
             installmentNumber: index + 1,
             amount: parseFloat(bill.amount),
             status,
-            dueDate: bill.due_at,
+            dueDate: effectiveDueDate,
             paidAt: charge?.paid_at || null,
             paymentUrl: bill.url || null,
             paymentMethod: charge?.payment_method?.public_name || null,
