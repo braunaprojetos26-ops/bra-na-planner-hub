@@ -106,6 +106,8 @@ interface PaymentResponse {
   paidAmount: number;
   installments: PaymentInstallment[];
   vindiStatus: string | null;
+  contractTotalAmount: number;
+  contractTotalInstallments: number;
   error?: string;
 }
 
@@ -324,19 +326,36 @@ Deno.serve(async (req) => {
 
     const paidCount = allInstallments.filter(i => i.status === 'paid').length;
     const overdueCount = allInstallments.filter(i => i.status === 'overdue').length;
-    const totalAmount = allInstallments.reduce((sum, i) => sum + i.amount, 0);
     const paidAmount = allInstallments.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0);
+
+    // Use contract data for total amounts/installments instead of just counting Vindi bills
+    const contractTotalAmount = allContracts.reduce((sum, c) => sum + Number(c.contract_value || 0), 0);
+    
+    // Calculate expected total installments from contract data
+    const firstBillAmount = allInstallments.length > 0 ? allInstallments[0].amount : 0;
+    let contractTotalInstallments = allContracts.reduce((sum, c) => sum + (c.installments || 0), 0);
+    
+    // If contract doesn't have installments set, calculate from contract_value / bill_amount
+    if (contractTotalInstallments === 0 && firstBillAmount > 0) {
+      contractTotalInstallments = Math.round(contractTotalAmount / firstBillAmount);
+    }
+    
+    // Use contract-based totals if available, otherwise fall back to Vindi bill count
+    const effectiveTotalCount = contractTotalInstallments > 0 ? contractTotalInstallments : allInstallments.length;
+    const effectiveTotalAmount = contractTotalAmount > 0 ? contractTotalAmount : allInstallments.reduce((sum, i) => sum + i.amount, 0);
 
     const response: PaymentResponse = {
       success: true,
       isUpToDate: overdueCount === 0,
       overdueCount,
       paidCount,
-      totalCount: allInstallments.length,
-      totalAmount,
+      totalCount: effectiveTotalCount,
+      totalAmount: effectiveTotalAmount,
       paidAmount,
       installments: allInstallments,
       vindiStatus,
+      contractTotalAmount,
+      contractTotalInstallments: effectiveTotalCount,
     };
 
     return new Response(
