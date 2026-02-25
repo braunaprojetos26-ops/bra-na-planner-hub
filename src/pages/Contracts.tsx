@@ -30,11 +30,22 @@ function formatCurrency(value: number) {
 }
 
 function getStatusBadge(status: string, clicksignStatus?: string | null) {
+  // Contract-level cancellation always takes priority
   if (status === 'cancelled') {
     return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">Cancelado</Badge>;
   }
   
+  // For active contracts, check ClickSign status for more detail
   if (status === 'active') {
+    if (clicksignStatus === 'cancelled') {
+      return <Badge className="bg-red-500/10 text-red-500 border-red-500/20">Distrato</Badge>;
+    }
+    if (clicksignStatus === 'signed') {
+      return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Assinado</Badge>;
+    }
+    if (clicksignStatus === 'pending') {
+      return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 whitespace-nowrap">Aguardando Assinatura</Badge>;
+    }
     return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Ativo</Badge>;
   }
   
