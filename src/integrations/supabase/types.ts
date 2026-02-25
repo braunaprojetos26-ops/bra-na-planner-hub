@@ -4037,7 +4037,7 @@ export type Database = {
       user_position:
         | "planejador_financeiro"
         | "planejador_prime"
-        | "planejador_exclusive"
+        | "planejador_elite"
         | "lider_comercial"
         | "especialista"
         | "especialista_private"
@@ -4196,7 +4196,7 @@ export const Constants = {
       user_position: [
         "planejador_financeiro",
         "planejador_prime",
-        "planejador_exclusive",
+        "planejador_elite",
         "lider_comercial",
         "especialista",
         "especialista_private",

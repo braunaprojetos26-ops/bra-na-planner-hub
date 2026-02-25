@@ -1,7 +1,7 @@
 export type UserPosition = 
   | 'planejador_financeiro'
   | 'planejador_prime'
-  | 'planejador_exclusive'
+  | 'planejador_elite'
   | 'lider_comercial'
   | 'especialista'
   | 'especialista_private'
@@ -36,7 +36,7 @@ export function isOperationsPosition(position: string | null): boolean {
 export const positionLabels: Record<UserPosition, { label: string; short: string }> = {
   'planejador_financeiro': { label: 'Planejador Financeiro', short: 'PF' },
   'planejador_prime': { label: 'Planejador Prime', short: 'PP' },
-  'planejador_exclusive': { label: 'Planejador Exclusive', short: 'PE' },
+  'planejador_elite': { label: 'Planejador Elite', short: 'PE' },
   'lider_comercial': { label: 'Líder Comercial', short: 'LC' },
   'especialista': { label: 'Especialista', short: 'E' },
   'especialista_private': { label: 'Especialista Private', short: 'EP' },
@@ -61,7 +61,7 @@ export const positionOptions: { value: UserPosition; label: string }[] = [
   { value: 'lider_comercial', label: 'Líder Comercial' },
   { value: 'especialista_private', label: 'Especialista Private' },
   { value: 'especialista', label: 'Especialista' },
-  { value: 'planejador_exclusive', label: 'Planejador Exclusive' },
+  { value: 'planejador_elite', label: 'Planejador Elite' },
   { value: 'planejador_prime', label: 'Planejador Prime' },
   { value: 'planejador_financeiro', label: 'Planejador Financeiro' },
   { value: 'operacoes_administrativo', label: 'Operações - Administrativo' },
