@@ -3,6 +3,11 @@ import { TaskType, TaskStatus, TASK_TYPE_LABELS } from '@/types/tasks';
 
 export type PeriodFilter = 'this_week' | 'next_7_days' | 'this_month' | 'all';
 
+export interface TeamMemberOption {
+  userId: string;
+  fullName: string;
+}
+
 interface TasksFiltersProps {
   period: PeriodFilter;
   onPeriodChange: (period: PeriodFilter) => void;
@@ -10,6 +15,9 @@ interface TasksFiltersProps {
   onTaskTypeChange: (type: TaskType | 'all') => void;
   status: TaskStatus | 'all';
   onStatusChange: (status: TaskStatus | 'all') => void;
+  assignedTo?: string | 'all';
+  onAssignedToChange?: (userId: string | 'all') => void;
+  teamMembers?: TeamMemberOption[];
 }
 
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
@@ -33,6 +41,9 @@ export function TasksFilters({
   onTaskTypeChange,
   status,
   onStatusChange,
+  assignedTo,
+  onAssignedToChange,
+  teamMembers,
 }: TasksFiltersProps) {
   return (
     <div className="flex flex-wrap gap-3">
@@ -75,6 +86,22 @@ export function TasksFilters({
           ))}
         </SelectContent>
       </Select>
+
+      {teamMembers && teamMembers.length > 0 && onAssignedToChange && (
+        <Select value={assignedTo || 'all'} onValueChange={(value) => onAssignedToChange(value as string)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Responsável" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os responsáveis</SelectItem>
+            {teamMembers.map((member) => (
+              <SelectItem key={member.userId} value={member.userId}>
+                {member.fullName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }
