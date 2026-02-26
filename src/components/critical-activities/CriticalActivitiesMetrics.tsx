@@ -6,6 +6,7 @@ import { MetricsActivityOverTime } from './metrics/MetricsActivityOverTime';
 import { MetricsAvgResponseTime } from './metrics/MetricsAvgResponseTime';
 import { MetricsTopPlanners } from './metrics/MetricsTopPlanners';
 import { MetricsTeamPerformance } from './metrics/MetricsTeamPerformance';
+import { MetricsInteractionBreakdown } from './metrics/MetricsInteractionBreakdown';
 import { Card, CardContent } from '@/components/ui/card';
 import { Activity, Clock, Users, TrendingUp } from 'lucide-react';
 
@@ -26,6 +27,9 @@ export function CriticalActivitiesMetrics() {
     kpis,
     profiles,
     managers,
+    interactionBreakdown,
+    interactionChannels,
+    plannerInteractionRanking,
   } = useCriticalActivityMetrics({
     months,
     ruleType: ruleType && ruleType !== 'all' ? ruleType : undefined,
@@ -187,6 +191,13 @@ export function CriticalActivitiesMetrics() {
           color="destructive"
         />
       </div>
+
+      {/* Interaction Breakdown */}
+      <MetricsInteractionBreakdown
+        data={interactionBreakdown}
+        channels={interactionChannels}
+        plannerRanking={plannerInteractionRanking}
+      />
 
       {/* Team Performance */}
       <MetricsTeamPerformance data={teamRanking} />
