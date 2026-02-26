@@ -184,14 +184,26 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
     );
   }
 
-  // Apply cutoff date to assignments
-  let filteredAssignments = assignments.filter(
-    a => filteredActivityIds.has(a.activity_id) && a.created_at >= cutoffISO
+  // ---- FILTER TASKS (the real unit of distribution) ----
+
+  // Build activity title set for matching
+  const activityTitleSet = new Set(
+    activities.filter(a => filteredActivityIds.has(a.id)).map(a => a.title)
   );
+
+  // Filter tasks by: matching activity title, cutoff date, planner, team
+  let filteredTasks = tasks.filter(t => {
+    if (t.created_at < cutoffISO) return false;
+    // Match task title to activity
+    for (const actTitle of activityTitleSet) {
+      if (t.title.includes(actTitle)) return true;
+    }
+    return false;
+  });
 
   // Filter by planner
   if (filters.plannerId) {
-    filteredAssignments = filteredAssignments.filter(a => a.user_id === filters.plannerId);
+    filteredTasks = filteredTasks.filter(t => t.assigned_to === filters.plannerId);
   }
 
   // Filter by team (manager)
@@ -200,57 +212,36 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
       hierarchy.filter(h => h.manager_user_id === filters.teamManagerId).map(h => h.user_id)
     );
     teamUserIds.add(filters.teamManagerId);
-    filteredAssignments = filteredAssignments.filter(a => teamUserIds.has(a.user_id));
+    filteredTasks = filteredTasks.filter(t => t.assigned_to && teamUserIds.has(t.assigned_to));
   }
-
-  // Build set of filtered user+activity combinations to match tasks
-  const filteredUserIds = new Set(filteredAssignments.map(a => a.user_id));
-  
-  // Match tasks to filtered activities by title and user
-  const activityTitleSet = new Set(
-    activities
-      .filter(a => filteredActivityIds.has(a.id))
-      .map(a => a.title)
-  );
-
-  const filteredTasks = tasks.filter(t => {
-    if (!t.assigned_to || !filteredUserIds.has(t.assigned_to)) return false;
-    if (t.created_at < cutoffISO) return false;
-    // Match task title to activity: "[Atividade Crítica] {activity_title} - {contact_name}"
-    for (const actTitle of activityTitleSet) {
-      if (t.title.includes(actTitle)) return true;
-    }
-    return false;
-  });
 
   const filteredTaskIds = new Set(filteredTasks.map(t => t.id));
 
-  // ---- METRICS ----
+  // ---- METRICS (all based on tasks) ----
 
   // 1. Monthly created vs acted
   const monthlyMap = new Map<string, { created: number; acted: number }>();
-  for (const a of filteredAssignments) {
-    const month = format(parseISO(a.created_at), 'yyyy-MM');
+  const actedTaskIds = new Set<string>();
+
+  // Mark tasks as acted if they have interactions
+  for (const i of interactions) {
+    if (filteredTaskIds.has(i.task_id)) {
+      actedTaskIds.add(i.task_id);
+    }
+  }
+  // Mark completed tasks as acted
+  for (const t of filteredTasks) {
+    if (t.status === 'completed') {
+      actedTaskIds.add(t.id);
+    }
+  }
+
+  for (const t of filteredTasks) {
+    const month = format(parseISO(t.created_at), 'yyyy-MM');
     const entry = monthlyMap.get(month) || { created: 0, acted: 0 };
     entry.created++;
-    if (a.status === 'completed') entry.acted++;
+    if (actedTaskIds.has(t.id)) entry.acted++;
     monthlyMap.set(month, entry);
-  }
-  
-  // Count unique users who interacted on filtered tasks as "acted" (if not already completed)
-  const interactedAssignments = new Set<string>();
-  for (const i of interactions) {
-    if (!filteredTaskIds.has(i.task_id)) continue;
-    // Find assignment for this user
-    const matchingAssignment = filteredAssignments.find(
-      a => a.user_id === i.user_id && a.status !== 'completed'
-    );
-    if (matchingAssignment && !interactedAssignments.has(matchingAssignment.id)) {
-      interactedAssignments.add(matchingAssignment.id);
-      const month = format(parseISO(matchingAssignment.created_at), 'yyyy-MM');
-      const entry = monthlyMap.get(month);
-      if (entry) entry.acted++;
-    }
   }
 
   const monthlyData: MonthlyActivityData[] = Array.from(monthlyMap.entries())
@@ -261,28 +252,22 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
       acted: d.acted,
     }));
 
-  // 2. Top planners (interactions + completed)
-  const plannerInteractionCount = new Map<string, number>();
-  for (const i of interactions) {
-    if (!filteredTaskIds.has(i.task_id)) continue;
-    plannerInteractionCount.set(i.user_id, (plannerInteractionCount.get(i.user_id) || 0) + 1);
+  // 2. Top planners (count of acted tasks per planner)
+  const plannerActedCount = new Map<string, number>();
+  for (const t of filteredTasks) {
+    if (!t.assigned_to || !actedTaskIds.has(t.id)) continue;
+    plannerActedCount.set(t.assigned_to, (plannerActedCount.get(t.assigned_to) || 0) + 1);
   }
-  for (const a of filteredAssignments) {
-    if (a.status === 'completed') {
-      plannerInteractionCount.set(a.user_id, (plannerInteractionCount.get(a.user_id) || 0) + 1);
-    }
-  }
-  const topPlanners: PlannerRanking[] = Array.from(plannerInteractionCount.entries())
+  const topPlanners: PlannerRanking[] = Array.from(plannerActedCount.entries())
     .map(([userId, count]) => ({ userId, name: profileMap.get(userId) || 'Desconhecido', count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 15);
 
-  // 3. Planners with most open activities
+  // 3. Planners with most open tasks
   const openCount = new Map<string, number>();
-  for (const a of filteredAssignments) {
-    if (a.status !== 'completed') {
-      openCount.set(a.user_id, (openCount.get(a.user_id) || 0) + 1);
-    }
+  for (const t of filteredTasks) {
+    if (!t.assigned_to || actedTaskIds.has(t.id)) continue;
+    openCount.set(t.assigned_to, (openCount.get(t.assigned_to) || 0) + 1);
   }
   const openRanking: PlannerRanking[] = Array.from(openCount.entries())
     .map(([userId, count]) => ({ userId, name: profileMap.get(userId) || 'Desconhecido', count }))
@@ -291,11 +276,12 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
 
   // 4. Team ranking
   const teamMap = new Map<string, { acted: number; open: number }>();
-  for (const a of filteredAssignments) {
-    const managerId = hierarchyMap.get(a.user_id);
+  for (const t of filteredTasks) {
+    if (!t.assigned_to) continue;
+    const managerId = hierarchyMap.get(t.assigned_to);
     if (!managerId) continue;
     const entry = teamMap.get(managerId) || { acted: 0, open: 0 };
-    if (a.status === 'completed') entry.acted++;
+    if (actedTaskIds.has(t.id)) entry.acted++;
     else entry.open++;
     teamMap.set(managerId, entry);
   }
@@ -309,7 +295,6 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
     .sort((a, b) => b.acted - a.acted);
 
   // 5. Average response time per month
-  const taskCreatedMap = new Map(filteredTasks.map(t => [t.id, t.created_at]));
   const firstInteractionByTask = new Map<string, string>();
   for (const i of interactions) {
     if (!filteredTaskIds.has(i.task_id)) continue;
@@ -321,11 +306,11 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
 
   const responseTimeByMonth = new Map<string, number[]>();
   for (const [taskId, interactionDate] of firstInteractionByTask.entries()) {
-    const taskCreated = taskCreatedMap.get(taskId);
-    if (!taskCreated) continue;
-    const hours = differenceInHours(parseISO(interactionDate), parseISO(taskCreated));
+    const task = filteredTasks.find(t => t.id === taskId);
+    if (!task) continue;
+    const hours = differenceInHours(parseISO(interactionDate), parseISO(task.created_at));
     if (hours < 0) continue;
-    const month = format(parseISO(taskCreated), 'yyyy-MM');
+    const month = format(parseISO(task.created_at), 'yyyy-MM');
     const arr = responseTimeByMonth.get(month) || [];
     arr.push(hours);
     responseTimeByMonth.set(month, arr);
@@ -339,8 +324,8 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
     }));
 
   // KPIs
-  const totalDistributed = filteredAssignments.length;
-  const totalActed = filteredAssignments.filter(a => a.status === 'completed').length + interactedAssignments.size;
+  const totalDistributed = filteredTasks.length;
+  const totalActed = actedTaskIds.size;
   const percentActed = totalDistributed > 0 ? Math.round((totalActed / totalDistributed) * 100) : 0;
   const allResponseHours = Array.from(responseTimeByMonth.values()).flat();
   const avgResponseHours = allResponseHours.length > 0
