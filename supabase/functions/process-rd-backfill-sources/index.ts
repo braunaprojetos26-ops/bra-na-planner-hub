@@ -268,17 +268,12 @@ Deno.serve(async (req) => {
 
               const { data: found } = await supabase
                 .from("contacts")
-                .select("id, source")
+                .select("id")
                 .or(`phone.eq.${normalized},phone.eq.${p.phone}`)
                 .limit(1);
 
               if (found && found.length > 0) {
                 localContactId = found[0].id;
-                // Only update if source is 'rd_crm' or null
-                const currentSource = found[0].source;
-                if (currentSource && currentSource !== "rd_crm") {
-                  localContactId = null; // Don't overwrite meaningful sources
-                }
                 break;
               }
             }
@@ -288,34 +283,23 @@ Deno.serve(async (req) => {
                 if (!e.email) continue;
                 const { data: found } = await supabase
                   .from("contacts")
-                  .select("id, source")
+                  .select("id")
                   .eq("email", e.email)
                   .limit(1);
 
                 if (found && found.length > 0) {
                   localContactId = found[0].id;
-                  const currentSource = found[0].source;
-                  if (currentSource && currentSource !== "rd_crm") {
-                    localContactId = null;
-                  }
                   break;
                 }
               }
             }
 
             if (localContactId) {
+              // Always update source with the real deal source from RD CRM
               const { error: updateError } = await supabase
                 .from("contacts")
                 .update({ source: sourceName })
-                .eq("id", localContactId)
-                .in("source", ["rd_crm"]);
-
-              // Also try updating null sources
-              await supabase
-                .from("contacts")
-                .update({ source: sourceName })
-                .eq("id", localContactId)
-                .is("source", null);
+                .eq("id", localContactId);
 
               if (updateError) {
                 errors++;
