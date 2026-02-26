@@ -227,6 +227,7 @@ interface ContractsTableProps {
     vindi_status?: string | null;
     vindi_subscription_id?: string | null;
     vindi_bill_id?: string | null;
+    first_payment_at?: string | null;
     opportunity_id?: string | null;
     contact?: { full_name: string } | null;
     product?: { 
@@ -270,6 +271,7 @@ function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableP
           <TableHead className="text-right">Valor</TableHead>
           <TableHead className="text-right">PBs</TableHead>
           <TableHead>Data</TableHead>
+          <TableHead>Início</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Pagamento</TableHead>
         </TableRow>
@@ -303,6 +305,12 @@ function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableP
             </TableCell>
             <TableCell className="text-muted-foreground">
               {format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR })}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {contract.first_payment_at 
+                ? format(new Date(contract.first_payment_at), 'dd/MM/yyyy', { locale: ptBR })
+                : <span className="text-muted-foreground/50">—</span>
+              }
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
             <TableCell>{getPaymentStatusBadge(contract, vindiStatuses)}</TableCell>
@@ -518,6 +526,9 @@ export default function Contracts() {
         Valor: contract.contract_value,
         PBs: contract.calculated_pbs,
         Data: format(new Date(contract.reported_at), 'dd/MM/yyyy', { locale: ptBR }),
+        'Início (1º Pgto)': contract.first_payment_at 
+          ? format(new Date(contract.first_payment_at), 'dd/MM/yyyy', { locale: ptBR }) 
+          : '—',
         Status:
           contract.status === 'active'
             ? 'Ativo'

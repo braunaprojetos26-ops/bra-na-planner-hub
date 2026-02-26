@@ -634,6 +634,7 @@ export type Database = {
           created_at: string
           custom_data: Json
           end_date: string | null
+          first_payment_at: string | null
           id: string
           installment_value: number | null
           installments: number | null
@@ -665,6 +666,7 @@ export type Database = {
           created_at?: string
           custom_data?: Json
           end_date?: string | null
+          first_payment_at?: string | null
           id?: string
           installment_value?: number | null
           installments?: number | null
@@ -696,6 +698,7 @@ export type Database = {
           created_at?: string
           custom_data?: Json
           end_date?: string | null
+          first_payment_at?: string | null
           id?: string
           installment_value?: number | null
           installments?: number | null
