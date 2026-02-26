@@ -199,24 +199,14 @@ export function useProspectionOwners() {
     queryKey: ['prospection-owners'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('contact_history')
-        .select(`
-          changed_by,
-          changed_by_profile:profiles!contact_history_changed_by_fkey(full_name)
-        `)
-        .in('action', ['added_to_prospection', 'prospection_negotiation_started', 'prospection_no_contact']);
+        .from('profiles')
+        .select('user_id, full_name')
+        .eq('is_active', true)
+        .order('full_name');
 
       if (error) throw error;
 
-      // Deduplicate owners
-      const ownersMap = new Map<string, string>();
-      (data || []).forEach((item: { changed_by: string; changed_by_profile?: { full_name: string } }) => {
-        if (!ownersMap.has(item.changed_by)) {
-          ownersMap.set(item.changed_by, item.changed_by_profile?.full_name || 'Desconhecido');
-        }
-      });
-
-      return Array.from(ownersMap.entries()).map(([id, name]) => ({ id, name }));
+      return (data || []).map((p) => ({ id: p.user_id, name: p.full_name }));
     },
   });
 }
