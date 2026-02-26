@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { positionOptions } from '@/lib/positionLabels';
+import { RuleConfigSection } from './RuleConfigSection';
 import type { CreateActivityData } from '@/hooks/useCriticalActivities';
 
 interface NewActivityModalProps {
@@ -17,12 +19,6 @@ interface NewActivityModalProps {
   isSubmitting: boolean;
 }
 
-const RULE_OPTIONS = [
-  { value: 'inadimplente', label: 'Cliente Inadimplente', description: 'Quando o contrato do cliente tem pagamento atrasado (Vindi)' },
-  { value: 'health_score_critico', label: 'Health Score Crítico', description: 'Quando o Health Score do cliente cai abaixo do limite definido' },
-  { value: 'contrato_vencendo', label: 'Contrato Vencendo', description: 'Quando o contrato de Planejamento está próximo do vencimento' },
-];
-
 export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }: NewActivityModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -31,40 +27,51 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [allPositions, setAllPositions] = useState(true);
 
-  // Perpetual fields
+  // Mode & rule
   const [activityMode, setActivityMode] = useState<'one_time' | 'perpetual'>('one_time');
-  const [perpetualType, setPerpetualType] = useState<'rule' | 'recurrence'>('rule');
+  const [useRule, setUseRule] = useState(false);
   const [ruleType, setRuleType] = useState('inadimplente');
   const [healthThreshold, setHealthThreshold] = useState('40');
   const [daysBefore, setDaysBefore] = useState('30');
+
+  // Client characteristic
+  const [filterType, setFilterType] = useState('product');
+  const [filterOperator, setFilterOperator] = useState('has');
+  const [filterValue, setFilterValue] = useState('');
+
+  // Perpetual recurrence
+  const [perpetualType, setPerpetualType] = useState<'rule' | 'recurrence'>('rule');
   const [recurrenceInterval, setRecurrenceInterval] = useState('daily');
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    if (activityMode === 'one_time' && !deadline) return;
+    if (activityMode === 'one_time' && !useRule && !deadline) return;
 
     const data: CreateActivityData = {
       title: title.trim(),
       description: description.trim() || undefined,
       urgency,
       target_positions: allPositions ? null : selectedPositions,
-      deadline: activityMode === 'one_time'
+      deadline: activityMode === 'one_time' && !useRule
         ? new Date(deadline).toISOString()
-        : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year for perpetual
+        : activityMode === 'one_time' && useRule
+          ? new Date(deadline || Date.now()).toISOString()
+          : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
+    // One-time with rule
+    if (activityMode === 'one_time' && useRule) {
+      data.rule_type = ruleType;
+      data.rule_config = buildRuleConfig();
+      data.use_rule = true;
+    }
+
+    // Perpetual
     if (activityMode === 'perpetual') {
       data.is_perpetual = true;
       if (perpetualType === 'rule') {
         data.rule_type = ruleType;
-        data.rule_config = {};
-        if (ruleType === 'health_score_critico') {
-          data.rule_config.threshold = parseInt(healthThreshold);
-        }
-        if (ruleType === 'contrato_vencendo') {
-          data.rule_config.days_before = parseInt(daysBefore);
-          data.rule_config.category_id = 'd770d864-4679-4a6d-9620-6844db224dc3';
-        }
+        data.rule_config = buildRuleConfig();
       } else {
         data.rule_type = 'manual_recurrence';
         data.recurrence_interval = recurrenceInterval;
@@ -72,19 +79,33 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
     }
 
     onSubmit(data);
-    // Reset
-    setTitle('');
-    setDescription('');
-    setUrgency('medium');
-    setDeadline('');
-    setSelectedPositions([]);
-    setAllPositions(true);
-    setActivityMode('one_time');
-    setPerpetualType('rule');
-    setRuleType('inadimplente');
-    setHealthThreshold('40');
-    setDaysBefore('30');
-    setRecurrenceInterval('daily');
+    resetForm();
+  };
+
+  const buildRuleConfig = (): Record<string, any> => {
+    const config: Record<string, any> = {};
+    if (ruleType === 'health_score_critico') {
+      config.threshold = parseInt(healthThreshold);
+    }
+    if (ruleType === 'contrato_vencendo') {
+      config.days_before = parseInt(daysBefore);
+      config.category_id = 'd770d864-4679-4a6d-9620-6844db224dc3';
+    }
+    if (ruleType === 'client_characteristic') {
+      config.filter_type = filterType;
+      config.operator = filterOperator;
+      config.value = filterValue;
+    }
+    return config;
+  };
+
+  const resetForm = () => {
+    setTitle(''); setDescription(''); setUrgency('medium'); setDeadline('');
+    setSelectedPositions([]); setAllPositions(true);
+    setActivityMode('one_time'); setUseRule(false);
+    setRuleType('inadimplente'); setHealthThreshold('40'); setDaysBefore('30');
+    setFilterType('product'); setFilterOperator('has'); setFilterValue('');
+    setPerpetualType('rule'); setRecurrenceInterval('daily');
   };
 
   const togglePosition = (pos: string) => {
@@ -93,7 +114,21 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
     );
   };
 
-  const isValid = title.trim() && (activityMode === 'perpetual' || deadline) && (allPositions || selectedPositions.length > 0);
+  const ruleValid = () => {
+    if (ruleType === 'client_characteristic') {
+      if (filterType === 'product') return !!filterValue;
+      return !!filterValue;
+    }
+    return true;
+  };
+
+  const isValid = title.trim()
+    && (activityMode === 'perpetual' || useRule || deadline)
+    && (allPositions || selectedPositions.length > 0 || useRule || (activityMode === 'perpetual' && perpetualType === 'rule'))
+    && (!useRule || ruleValid())
+    && (activityMode !== 'perpetual' || perpetualType !== 'rule' || ruleValid());
+
+  const showPositions = activityMode === 'one_time' ? !useRule : perpetualType === 'recurrence';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,10 +138,10 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Mode selection */}
+          {/* Mode */}
           <div>
             <Label>Tipo de Atividade</Label>
-            <Tabs value={activityMode} onValueChange={(v) => setActivityMode(v as any)} className="mt-2">
+            <Tabs value={activityMode} onValueChange={(v) => { setActivityMode(v as any); setUseRule(false); }} className="mt-2">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="one_time">Pontual</TabsTrigger>
                 <TabsTrigger value="perpetual">Perpétua</TabsTrigger>
@@ -127,9 +162,7 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
           <div>
             <Label>Nível de Urgência</Label>
             <Select value={urgency} onValueChange={setUrgency}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="low">Baixa</SelectItem>
                 <SelectItem value="medium">Média</SelectItem>
@@ -139,11 +172,50 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
             </Select>
           </div>
 
-          {/* One-time: deadline */}
+          {/* One-time: rule toggle */}
           {activityMode === 'one_time' && (
+            <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+              <Switch checked={useRule} onCheckedChange={setUseRule} id="use-rule" />
+              <label htmlFor="use-rule" className="text-sm font-medium cursor-pointer">
+                Distribuir por regra
+              </label>
+              <span className="text-xs text-muted-foreground">
+                (distribui para responsáveis de clientes que atendem a condição)
+              </span>
+            </div>
+          )}
+
+          {/* Deadline for one-time without rule */}
+          {activityMode === 'one_time' && !useRule && (
             <div>
               <Label htmlFor="deadline">Data Máxima *</Label>
               <Input id="deadline" type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} />
+            </div>
+          )}
+
+          {/* Deadline for one-time with rule (optional) */}
+          {activityMode === 'one_time' && useRule && (
+            <div>
+              <Label htmlFor="deadline">Data Máxima (opcional)</Label>
+              <Input id="deadline" type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} />
+              <p className="text-xs text-muted-foreground mt-1">Se não definir, a regra será avaliada e as tarefas criadas imediatamente</p>
+            </div>
+          )}
+
+          {/* One-time rule config */}
+          {activityMode === 'one_time' && useRule && (
+            <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+              <RuleConfigSection
+                ruleType={ruleType} setRuleType={setRuleType}
+                healthThreshold={healthThreshold} setHealthThreshold={setHealthThreshold}
+                daysBefore={daysBefore} setDaysBefore={setDaysBefore}
+                filterType={filterType} setFilterType={setFilterType}
+                filterOperator={filterOperator} setFilterOperator={setFilterOperator}
+                filterValue={filterValue} setFilterValue={setFilterValue}
+              />
+              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                ⚡ A regra será avaliada uma única vez no momento da criação. Tarefas serão criadas para os responsáveis dos clientes que atendem a condição.
+              </p>
             </div>
           )}
 
@@ -161,65 +233,21 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
               </div>
 
               {perpetualType === 'rule' && (
-                <div className="space-y-3">
-                  <div>
-                    <Label>Regra</Label>
-                    <Select value={ruleType} onValueChange={setRuleType}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RULE_OPTIONS.map(r => (
-                          <SelectItem key={r.value} value={r.value}>
-                            {r.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {RULE_OPTIONS.find(r => r.value === ruleType)?.description}
-                    </p>
-                  </div>
-
-                  {ruleType === 'health_score_critico' && (
-                    <div>
-                      <Label htmlFor="threshold">Limite do Health Score</Label>
-                      <Input
-                        id="threshold"
-                        type="number"
-                        value={healthThreshold}
-                        onChange={e => setHealthThreshold(e.target.value)}
-                        min="0"
-                        max="100"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Tarefas serão criadas quando o score for menor que este valor</p>
-                    </div>
-                  )}
-
-                  {ruleType === 'contrato_vencendo' && (
-                    <div>
-                      <Label htmlFor="daysBefore">Dias antes do vencimento</Label>
-                      <Input
-                        id="daysBefore"
-                        type="number"
-                        value={daysBefore}
-                        onChange={e => setDaysBefore(e.target.value)}
-                        min="1"
-                        max="180"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Quantos dias antes do vencimento a tarefa deve ser criada</p>
-                    </div>
-                  )}
-                </div>
+                <RuleConfigSection
+                  ruleType={ruleType} setRuleType={setRuleType}
+                  healthThreshold={healthThreshold} setHealthThreshold={setHealthThreshold}
+                  daysBefore={daysBefore} setDaysBefore={setDaysBefore}
+                  filterType={filterType} setFilterType={setFilterType}
+                  filterOperator={filterOperator} setFilterOperator={setFilterOperator}
+                  filterValue={filterValue} setFilterValue={setFilterValue}
+                />
               )}
 
               {perpetualType === 'recurrence' && (
                 <div>
                   <Label>Frequência de recorrência</Label>
                   <Select value={recurrenceInterval} onValueChange={setRecurrenceInterval}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="daily">Diária</SelectItem>
                       <SelectItem value="weekly">Semanal</SelectItem>
@@ -235,28 +263,31 @@ export function NewActivityModal({ open, onOpenChange, onSubmit, isSubmitting }:
             </div>
           )}
 
-          <div>
-            <Label>Destinatários</Label>
-            <div className="flex items-center gap-2 mt-2">
-              <Checkbox id="all-positions" checked={allPositions} onCheckedChange={(checked) => setAllPositions(!!checked)} />
-              <label htmlFor="all-positions" className="text-sm">Todos os cargos</label>
-            </div>
-
-            {!allPositions && (
-              <div className="grid grid-cols-1 gap-2 mt-3 max-h-48 overflow-y-auto border rounded-md p-3">
-                {positionOptions.map(pos => (
-                  <div key={pos.value} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`pos-${pos.value}`}
-                      checked={selectedPositions.includes(pos.value)}
-                      onCheckedChange={() => togglePosition(pos.value)}
-                    />
-                    <label htmlFor={`pos-${pos.value}`} className="text-sm">{pos.label}</label>
-                  </div>
-                ))}
+          {/* Positions (only for non-rule distribution) */}
+          {showPositions && (
+            <div>
+              <Label>Destinatários</Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Checkbox id="all-positions" checked={allPositions} onCheckedChange={(checked) => setAllPositions(!!checked)} />
+                <label htmlFor="all-positions" className="text-sm">Todos os cargos</label>
               </div>
-            )}
-          </div>
+
+              {!allPositions && (
+                <div className="grid grid-cols-1 gap-2 mt-3 max-h-48 overflow-y-auto border rounded-md p-3">
+                  {positionOptions.map(pos => (
+                    <div key={pos.value} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`pos-${pos.value}`}
+                        checked={selectedPositions.includes(pos.value)}
+                        onCheckedChange={() => togglePosition(pos.value)}
+                      />
+                      <label htmlFor={`pos-${pos.value}`} className="text-sm">{pos.label}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>

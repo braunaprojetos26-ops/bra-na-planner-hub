@@ -42,6 +42,7 @@ export interface CreateActivityData {
   rule_type?: string;
   rule_config?: Record<string, any>;
   recurrence_interval?: string;
+  use_rule?: boolean;
 }
 
 export function useCriticalActivities() {
@@ -151,7 +152,16 @@ export function useCriticalActivities() {
 
       // For perpetual rule-based activities, don't distribute immediately
       if (data.is_perpetual && data.rule_type !== 'manual_recurrence') {
-        return { activity, distributed_count: 0, is_perpetual: true };
+        return { activity, distributed_count: 0, is_perpetual: true, is_rule: false };
+      }
+
+      // One-time with rule: call edge function to evaluate and distribute
+      if (data.use_rule && data.rule_type) {
+        const { data: result, error: evalErr } = await supabase.functions.invoke('evaluate-single-activity', {
+          body: { activity_id: activity.id },
+        });
+        if (evalErr) throw evalErr;
+        return { activity, distributed_count: result?.tasks_created || 0, is_perpetual: false, is_rule: true };
       }
 
       // Distribute to users (creates assignments + tasks)
@@ -159,11 +169,13 @@ export function useCriticalActivities() {
         .rpc('distribute_critical_activity', { p_activity_id: activity.id });
       if (distErr) throw distErr;
 
-      return { activity, distributed_count: count, is_perpetual: false };
+      return { activity, distributed_count: count, is_perpetual: false, is_rule: false };
     },
     onSuccess: (result) => {
       if (result.is_perpetual) {
         toast.success('Atividade perpétua criada! Tarefas serão geradas automaticamente quando a condição for detectada.');
+      } else if (result.is_rule) {
+        toast.success(`Atividade criada! Regra avaliada e ${result.distributed_count} tarefa(s) criada(s).`);
       } else {
         toast.success(`Atividade criada e distribuída para ${result.distributed_count} usuário(s).`);
       }
