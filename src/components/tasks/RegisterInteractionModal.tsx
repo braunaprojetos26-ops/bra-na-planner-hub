@@ -65,7 +65,14 @@ export function RegisterInteractionModal({
       toast.error('Selecione o canal utilizado');
       return;
     }
-    if (!actingUser?.id) return;
+    
+    // Get the actual authenticated user for DB operations
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+    if (!userId) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -74,7 +81,7 @@ export function RegisterInteractionModal({
         .from('contact_interactions')
         .insert({
           contact_id: contactId,
-          user_id: actingUser.id,
+          user_id: userId,
           task_id: taskId || null,
           interaction_date: date.toISOString(),
           channel,
@@ -91,7 +98,7 @@ export function RegisterInteractionModal({
         .from('contact_history')
         .insert({
           contact_id: contactId,
-          changed_by: actingUser.id,
+          changed_by: userId,
           action: 'interaction_registered',
           notes: historyNotes,
         });
