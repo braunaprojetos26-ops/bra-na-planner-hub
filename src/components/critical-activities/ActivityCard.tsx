@@ -65,6 +65,12 @@ export function ActivityCard({ activity, onComplete, onViewDetail, isAdmin, isCo
               Perpétua
             </Badge>
           )}
+          {!activity.is_perpetual && activity.rule_type && activity.rule_type !== 'manual_recurrence' && (
+            <Badge variant="outline" className="shrink-0 border-amber-500 text-amber-600">
+              <Zap className="h-3 w-3 mr-1" />
+              Regra
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
