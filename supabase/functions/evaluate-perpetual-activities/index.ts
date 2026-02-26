@@ -116,6 +116,7 @@ async function handleInadimplente(supabase: any, activity: any) {
       .insert({
         created_by: activity.created_by,
         assigned_to: userId,
+        contact_id: contract.contact_id,
         title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
         description: activity.description || `Cliente ${contact.full_name} está inadimplente.`,
         task_type: "other",
@@ -213,6 +214,7 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
       .insert({
         created_by: activity.created_by,
         assigned_to: userId,
+        contact_id: score.contact_id,
         title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
         description:
           activity.description ||
@@ -312,6 +314,7 @@ async function handleContratoVencendo(supabase: any, activity: any) {
       .insert({
         created_by: activity.created_by,
         assigned_to: userId,
+        contact_id: contract.contact_id,
         title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
         description:
           activity.description ||
@@ -441,33 +444,26 @@ async function handleClientCharacteristic(supabase: any, activity: any) {
     ownerContactPairs = (contacts || []).map((c: any) => ({ owner_id: c.owner_id, contact_id: c.id, contact_name: c.full_name }));
   }
 
-  const ownerGroups = new Map<string, typeof ownerContactPairs>();
+  // Create one task per contact (instead of grouping by owner)
   for (const pair of ownerContactPairs) {
-    if (!ownerGroups.has(pair.owner_id)) ownerGroups.set(pair.owner_id, []);
-    ownerGroups.get(pair.owner_id)!.push(pair);
-  }
-
-  for (const [ownerId, contacts] of ownerGroups) {
-    // Check for existing pending trigger
+    // Check for existing pending trigger for this specific contact
     const { data: existing } = await supabase
       .from("perpetual_activity_triggers")
       .select("id, resolved_at")
       .eq("activity_id", activity.id)
-      .eq("user_id", ownerId)
+      .eq("user_id", pair.owner_id)
+      .eq("contact_id", pair.contact_id)
       .is("resolved_at", null)
       .maybeSingle();
 
     if (existing) continue;
 
-    const contactNames = contacts.map(c => c.contact_name).slice(0, 5);
-    const suffix = contacts.length > 5 ? ` (+${contacts.length - 5} outros)` : "";
-    const nameList = contactNames.join(", ") + suffix;
-
     const { data: task } = await supabase.from("tasks").insert({
       created_by: activity.created_by,
-      assigned_to: ownerId,
-      title: `[Atividade Crítica] ${activity.title}`,
-      description: activity.description || `Clientes: ${nameList}`,
+      assigned_to: pair.owner_id,
+      contact_id: pair.contact_id,
+      title: `[Atividade Crítica] ${activity.title} - ${pair.contact_name}`,
+      description: activity.description || `Cliente: ${pair.contact_name}`,
       task_type: "other",
       scheduled_at: new Date().toISOString(),
       status: "pending",
@@ -475,14 +471,14 @@ async function handleClientCharacteristic(supabase: any, activity: any) {
 
     await supabase.from("critical_activity_assignments").upsert({
       activity_id: activity.id,
-      user_id: ownerId,
+      user_id: pair.owner_id,
       status: "pending",
     }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
 
     await supabase.from("perpetual_activity_triggers").insert({
       activity_id: activity.id,
-      user_id: ownerId,
-      contact_id: contacts[0].contact_id,
+      user_id: pair.owner_id,
+      contact_id: pair.contact_id,
       task_id: task?.id || null,
     });
 
