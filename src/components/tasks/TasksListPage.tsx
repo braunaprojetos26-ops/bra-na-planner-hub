@@ -241,19 +241,21 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                           Registrar Relacionamento
                         </DropdownMenuItem>
                       )}
-                      {!isCompleted && (
+                      {!task.contact_id && !isCompleted && (
                         <DropdownMenuItem onClick={() => handleComplete(task.id)}>
                           <CheckCircle2 className="w-4 h-4 mr-2" />
                           Marcar como concluída
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem 
-                        onClick={() => handleDelete(task.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Excluir
-                      </DropdownMenuItem>
+                      {!task.contact_id && (
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(task.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
