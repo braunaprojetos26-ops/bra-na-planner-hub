@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { Database, Check, Loader2, Unlink, Plug, Users, Handshake } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { useRDCRM } from '@/hooks/useRDCRM';
+import { useToast } from '@/hooks/use-toast';
 import { RDCRMImportDialog } from './RDCRMImportDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,9 +20,59 @@ export function RDCRMConnectionCard() {
     isTesting,
     disconnect,
     isDisconnecting,
+    startBackfillSources,
+    isStartingBackfill,
+    pollJobStatus,
   } = useRDCRM();
+  const { toast } = useToast();
 
   const [importType, setImportType] = useState<'contacts' | 'deals' | null>(null);
+  const [backfillJobId, setBackfillJobId] = useState<string | null>(null);
+  const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
+  const [backfillProgress, setBackfillProgress] = useState<{ updated: number; skipped: number; errors: number; total: number } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const handleStartBackfill = async () => {
+    try {
+      const jobId = await startBackfillSources();
+      setBackfillJobId(jobId);
+      setBackfillStatus('pending');
+      toast({ title: 'Atualização de fontes iniciada', description: 'Buscando negociações do RD CRM...' });
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const status = await pollJobStatus(jobId);
+          setBackfillStatus(status.status);
+          setBackfillProgress({
+            updated: status.contacts_imported || 0,
+            skipped: status.contacts_skipped || 0,
+            errors: status.contacts_errors || 0,
+            total: status.deals_found || 0,
+          });
+
+          if (status.status === 'done' || status.status === 'error') {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            if (status.status === 'done') {
+              toast({ title: 'Fontes atualizadas!', description: `${status.contacts_imported} contatos atualizados.` });
+            } else {
+              toast({ title: 'Erro na atualização', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
+            }
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }, 3000);
+    } catch {
+      // error handled by mutation
+    }
+  };
 
   if (isLoading) {
     return (
@@ -117,6 +169,43 @@ export function RDCRMConnectionCard() {
                     Importar Negociações
                   </Button>
                 </div>
+              </div>
+
+              <Separator />
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Ferramentas</h4>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleStartBackfill}
+                  disabled={isStartingBackfill || (backfillStatus !== null && backfillStatus !== 'done' && backfillStatus !== 'error')}
+                >
+                  {isStartingBackfill || (backfillStatus && backfillStatus !== 'done' && backfillStatus !== 'error') ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Atualizando fontes...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Atualizar Fontes dos Contatos
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Busca a fonte (origem) de cada negociação no RD CRM e atualiza nos contatos locais.
+                </p>
+                {backfillProgress && backfillStatus && backfillStatus !== 'pending' && (
+                  <div className="space-y-2">
+                    <Progress value={backfillProgress.total > 0 ? ((backfillProgress.updated + backfillProgress.skipped + backfillProgress.errors) / backfillProgress.total) * 100 : 0} />
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      <span>{backfillProgress.updated} atualizados</span>
+                      <span>{backfillProgress.skipped} ignorados</span>
+                      {backfillProgress.errors > 0 && <span className="text-destructive">{backfillProgress.errors} erros</span>}
+                      <span className="ml-auto">{backfillProgress.total} negociações</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
