@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { subDays } from 'date-fns';
-import { Users } from 'lucide-react';
+import { Users, PhoneCall } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { useProspectionAnalytics } from '@/hooks/useProspectionAnalytics';
 import { ProspectionMetricsCards } from '@/components/analytics/ProspectionMetricsCards';
 import { ProspectionConversionFunnel } from '@/components/analytics/ProspectionConversionFunnel';
@@ -18,6 +19,10 @@ export default function ProspectionAnalytics() {
     endDate,
     ownerId: ownerId === 'all' ? undefined : ownerId,
   });
+
+  const callsPerMeeting = data && data.conversionRate > 0
+    ? Math.ceil(100 / data.conversionRate)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -43,6 +48,31 @@ export default function ProspectionAnalytics() {
         onEndDateChange={setEndDate}
         onOwnerIdChange={setOwnerId}
       />
+
+      {/* Calls-per-meeting insight card */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="flex items-center gap-4 py-4">
+          <div className="p-3 rounded-full bg-primary/10">
+            <PhoneCall className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">
+              {callsPerMeeting !== null ? (
+                <>Você precisa fazer <span className="text-primary text-2xl font-bold">{callsPerMeeting}</span> ligações para agendar uma reunião.</>
+              ) : (
+                <>Ainda não há dados suficientes para calcular quantas ligações são necessárias para agendar uma reunião.</>
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {callsPerMeeting !== null ? (
+                <>Baseado na sua taxa de conversão de {data?.conversionRate.toFixed(1)}% no período selecionado ({data?.totalConverted || 0} conversões em {data?.totalAdded || 0} contatos)</>
+              ) : (
+                <>Adicione contatos à lista e registre conversões para gerar esta métrica</>
+              )}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Metrics Cards */}
       <ProspectionMetricsCards data={data} isLoading={isLoading} />
