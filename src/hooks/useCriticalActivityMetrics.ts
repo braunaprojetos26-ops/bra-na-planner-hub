@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, differenceInHours } from 'date-fns';
+import type { InteractionByChannel, PlannerInteractionRanking } from '@/components/critical-activities/metrics/MetricsInteractionBreakdown';
 
 export interface MetricsFilters {
   months: number;
@@ -332,6 +333,56 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
     ? Math.round(allResponseHours.reduce((s, h) => s + h, 0) / allResponseHours.length)
     : 0;
 
+  // 6. Interaction breakdown by channel per month
+  const channelMonthMap = new Map<string, Map<string, number>>();
+  const allChannels = new Set<string>();
+  const plannerMonthInteractions = new Map<string, Map<string, number>>(); // month -> userId -> count
+
+  for (const i of interactions) {
+    if (!filteredTaskIds.has(i.task_id)) continue;
+    const channel = i.channel || 'not_informed';
+    allChannels.add(channel);
+    const month = format(parseISO(i.interaction_date || i.created_at), 'yyyy-MM');
+
+    // Channel breakdown
+    if (!channelMonthMap.has(month)) channelMonthMap.set(month, new Map());
+    const chMap = channelMonthMap.get(month)!;
+    chMap.set(channel, (chMap.get(channel) || 0) + 1);
+
+    // Planner ranking
+    if (i.user_id) {
+      if (!plannerMonthInteractions.has(month)) plannerMonthInteractions.set(month, new Map());
+      const pMap = plannerMonthInteractions.get(month)!;
+      pMap.set(i.user_id, (pMap.get(i.user_id) || 0) + 1);
+    }
+  }
+
+  const channelList = Array.from(allChannels).sort();
+  const interactionBreakdown: InteractionByChannel[] = Array.from(channelMonthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, chMap]) => {
+      const entry: InteractionByChannel = {
+        month: format(parseISO(month + '-01'), 'MMM/yy'),
+        monthKey: month,
+      };
+      for (const ch of channelList) {
+        entry[ch] = chMap.get(ch) || 0;
+      }
+      return entry;
+    });
+
+  const plannerInteractionRanking: PlannerInteractionRanking[] = [];
+  for (const [month, pMap] of plannerMonthInteractions.entries()) {
+    for (const [userId, count] of pMap.entries()) {
+      plannerInteractionRanking.push({
+        month,
+        userId,
+        name: profileMap.get(userId) || 'Desconhecido',
+        count,
+      });
+    }
+  }
+
   // Managers list for filter
   const managerIds = new Set(hierarchy.map(h => h.manager_user_id).filter(Boolean));
   const managers = Array.from(managerIds).map(id => ({
@@ -349,5 +400,8 @@ export function useCriticalActivityMetrics(filters: MetricsFilters) {
     kpis: { totalDistributed, totalActed, percentActed, avgResponseHours },
     profiles,
     managers,
+    interactionBreakdown,
+    interactionChannels: channelList,
+    plannerInteractionRanking,
   };
 }
