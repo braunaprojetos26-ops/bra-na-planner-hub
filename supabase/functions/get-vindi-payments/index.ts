@@ -265,18 +265,25 @@ Deno.serve(async (req) => {
           });
         });
 
-        // Opportunistically save first_payment_at if not yet set
+        // Opportunistically save first_payment_at and update client_plan dates
         const firstPaidBill = bills.find(b => b.status === 'paid');
         if (firstPaidBill) {
           const firstCharge = firstPaidBill.charges?.[0];
           const firstPaidAt = firstCharge?.paid_at || firstPaidBill.billing_at || firstPaidBill.due_at || firstPaidBill.created_at;
           if (firstPaidAt) {
             // Update contract if first_payment_at is not yet set
-            await supabase
+            const { data: updatedContract } = await supabase
               .from('contracts')
               .update({ first_payment_at: firstPaidAt })
               .eq('id', contract.id)
-              .is('first_payment_at', null);
+              .is('first_payment_at', null)
+              .select('id')
+              .maybeSingle();
+
+            // If we just set first_payment_at, also update linked client_plan
+            if (updatedContract) {
+              await updateClientPlanDates(supabase, contract.id, firstPaidAt);
+            }
           }
         }
 
@@ -388,3 +395,65 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+// Update client_plan start_date, end_date, and meeting dates based on first payment
+async function updateClientPlanDates(supabase: any, contractId: string, firstPaymentAt: string) {
+  try {
+    // Find active client_plan linked to this contract
+    const { data: plan } = await supabase
+      .from('client_plans')
+      .select('id, total_meetings, start_date')
+      .eq('contract_id', contractId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!plan) return;
+
+    const paymentDate = new Date(firstPaymentAt);
+    const newStartDate = paymentDate.toISOString().split('T')[0];
+    
+    // Don't update if start_date is already based on payment (avoid re-running)
+    if (plan.start_date === newStartDate) return;
+
+    // Calculate new end_date (12 months from first payment)
+    const endDate = new Date(paymentDate);
+    endDate.setMonth(endDate.getMonth() + 12);
+    const newEndDate = endDate.toISOString().split('T')[0];
+
+    // Update plan dates
+    await supabase
+      .from('client_plans')
+      .update({ start_date: newStartDate, end_date: newEndDate })
+      .eq('id', plan.id);
+
+    // Update meeting dates - distribute evenly from first payment
+    const count = plan.total_meetings;
+    const monthInterval = Math.floor(12 / count);
+
+    const { data: meetings } = await supabase
+      .from('client_plan_meetings')
+      .select('id, meeting_number, status')
+      .eq('plan_id', plan.id)
+      .order('meeting_number', { ascending: true });
+
+    if (meetings) {
+      for (const meeting of meetings) {
+        // Only update meetings that haven't been completed yet
+        if (meeting.status === 'completed') continue;
+        
+        const meetingDate = new Date(paymentDate);
+        meetingDate.setMonth(meetingDate.getMonth() + (meeting.meeting_number - 1) * monthInterval);
+        const newMeetingDate = meetingDate.toISOString().split('T')[0];
+
+        await supabase
+          .from('client_plan_meetings')
+          .update({ scheduled_date: newMeetingDate })
+          .eq('id', meeting.id);
+      }
+    }
+
+    console.log(`Updated client_plan ${plan.id} dates based on first payment at ${firstPaymentAt}`);
+  } catch (e) {
+    console.error('Error updating client plan dates:', e);
+  }
+}
