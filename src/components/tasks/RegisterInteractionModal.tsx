@@ -60,6 +60,16 @@ export function RegisterInteractionModal({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fix Radix UI bug: body keeps pointer-events:none after Dialog closes
+  const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
+    if (!open) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = '';
+      }, 100);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!channel) {
       toast.error('Selecione o canal utilizado');
@@ -106,7 +116,7 @@ export function RegisterInteractionModal({
       if (historyError) throw historyError;
 
       toast.success('Relacionamento registrado com sucesso');
-      onOpenChange(false);
+      handleOpenChange(false);
       setChannel('');
       setNotes('');
       setDate(new Date());
@@ -119,7 +129,7 @@ export function RegisterInteractionModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Registrar Relacionamento</DialogTitle>
