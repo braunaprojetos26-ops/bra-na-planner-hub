@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface Notification {
   id: string;
-  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday' | 'project_invite' | 'assignment';
+  type: 'task_today' | 'task_overdue' | 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday' | 'project_invite' | 'assignment' | 'sla_breach';
   title: string;
   description: string;
   createdAt: Date;
@@ -108,7 +108,7 @@ export function useNotifications() {
 
     // DB notifications (tickets, contracts, health score, birthday, project invites, assignments)
     dbNotifications.forEach((notif) => {
-      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday' | 'project_invite' | 'assignment';
+      const notifType = notif.type as 'ticket_update' | 'contract_update' | 'payment' | 'health_score_drop' | 'birthday' | 'project_invite' | 'assignment' | 'sla_breach';
       notifs.push({
         id: `db-${notif.id}`,
         type: notifType,
