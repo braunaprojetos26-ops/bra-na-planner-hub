@@ -89,10 +89,10 @@ export function CriticalActivitiesMetrics() {
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="manual_recurrence">Manual</SelectItem>
-            <SelectItem value="inadimplencia">Inadimplência</SelectItem>
+            <SelectItem value="inadimplente">Inadimplência</SelectItem>
             <SelectItem value="health_score">Health Score</SelectItem>
             <SelectItem value="contract_renewal">Renovação</SelectItem>
-            <SelectItem value="client_characteristics">Características</SelectItem>
+            <SelectItem value="client_characteristic">Características</SelectItem>
           </SelectContent>
         </Select>
 
