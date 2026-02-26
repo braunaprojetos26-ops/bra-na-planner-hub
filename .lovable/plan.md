@@ -1,67 +1,59 @@
 
 
-## Plano: Registrar Relacionamento em Atividades Críticas
+## Plano: Dashboard de Métricas de Atividades Críticas
 
-### Contexto do problema
-Tarefas de atividade crítica baseadas em regra agrupam múltiplos clientes em uma única task por planejador (ex: "Clientes: João, Maria, Pedro"). Isso impossibilita vincular um `contact_id` único. Para resolver, precisamos de duas abordagens:
+### Dados disponíveis para métricas
+- `critical_activities`: título, urgency, rule_type, created_at, is_perpetual
+- `critical_activity_assignments`: activity_id, user_id, status, completed_at, created_at
+- `contact_interactions`: channel, user_id, task_id, interaction_date, created_at
+- `tasks` (com título `[Atividade Crítica]`): assigned_to, contact_id, status, completed_at, created_at, scheduled_at
+- `user_hierarchy`: user_id, manager_user_id (para agrupar por equipe)
+- `profiles`: full_name, position
 
-1. **Tasks com cliente único** (inadimplência, health score, renovação): já criam uma task por cliente - basta preencher o `contact_id` na task
-2. **Tasks com múltiplos clientes** (client_characteristic): atualmente agrupam - precisamos criar uma task **por cliente** em vez de por owner
+### Componentes a criar
 
-### Mudanças
+**1. Página/Tab de Métricas** (`src/components/critical-activities/CriticalActivitiesMetrics.tsx`)
+- Adicionar aba "Métricas" na página `CriticalActivities.tsx` usando Tabs (lista de atividades | métricas)
+- Filtros globais: período (meses), tipo de atividade (rule_type/urgency), planejador, equipe
 
-**1. Criar tabela `contact_interactions`**
-Nova tabela para registrar os relacionamentos/comunicações com clientes:
-- `id`, `contact_id` (FK contacts), `user_id` (quem registrou), `task_id` (FK tasks, opcional)
-- `interaction_date` (data do contato), `channel` (enum: ligacao, whatsapp, email, reuniao_presencial, reuniao_online)
-- `notes` (anotações), `created_at`
-- RLS: usuário pode inserir/ver suas próprias interações + hierarquia
+**2. Hook de dados** (`src/hooks/useCriticalActivityMetrics.ts`)
+- Query que busca:
+  - Tasks com prefixo `[Atividade Crítica]` + assignments + interactions
+  - Profiles e hierarquia para agrupamento por equipe
+- Processa métricas no client-side com os filtros aplicados
 
-**2. Preencher `contact_id` nas tasks de atividade crítica**
-- Edge functions `evaluate-perpetual-activities` e `evaluate-single-activity`: adicionar `contact_id` em todos os `INSERT INTO tasks`
-- Para `client_characteristic`: mudar de agrupar por owner para criar **uma task por cliente** (igual às demais regras), incluindo o nome do cliente no título
-- `distribute_critical_activity` (SQL function): sem mudança (não é baseada em regra/cliente)
+**3. Gráficos (usando recharts, já instalado)**
 
-**3. Componente `RegisterInteractionModal`**
-Modal com:
-- Data da interação (date picker, default hoje)
-- Canal utilizado (select: Ligação, WhatsApp, E-mail, Reunião Presencial, Reunião Online)
-- Anotações (textarea)
-- Ao salvar: insere em `contact_interactions` E em `contact_history` (action: 'interaction_registered')
+- **Atividades Criadas vs Atuadas por mês** (BarChart agrupado)
+  - Barras: criadas (assignments.created_at) vs atuadas (interactions ou completed)
+  - Filtro por rule_type
 
-**4. Atualizar `TasksListPage.tsx` - menu de ações**
-No dropdown de ações, para tasks que tenham `contact_id` preenchido:
-- Adicionar opção **"Registrar Relacionamento"** com ícone
-- Ao clicar, abre o `RegisterInteractionModal` passando `contact_id` e `task_id`
-- Manter "Marcar como concluída" e "Excluir" existentes
+- **Tempo médio de atuação** (LineChart)
+  - Diferença entre `created_at` da task/assignment e `interaction_date` da primeira interação
+  - Linha por mês, com filtro de tipo e planejador/equipe
 
-**5. Exibir interações no histórico do contato**
-As interações já vão aparecer no histórico do contato via `contact_history`. Adicionar ícone/formatação adequada para a action `interaction_registered`.
+- **Ranking de planejadores que mais atuaram** (BarChart horizontal)
+  - Contagem de `contact_interactions` por user_id
+  
+- **Ranking de planejadores com mais atividades em aberto** (BarChart horizontal)
+  - Contagem de assignments com status != 'completed' por user_id
 
-### Detalhes técnicos
+- **Ranking por equipe** (BarChart horizontal)
+  - Agrupa planejadores por manager (hierarquia) e soma atuações/pendências
 
-**Tabela `contact_interactions`:**
-```sql
-CREATE TABLE contact_interactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  contact_id UUID NOT NULL REFERENCES contacts(id),
-  user_id UUID NOT NULL REFERENCES profiles(user_id),
-  task_id UUID REFERENCES tasks(id),
-  interaction_date TIMESTAMPTZ NOT NULL DEFAULT now(),
-  channel TEXT NOT NULL CHECK (channel IN ('ligacao','whatsapp','email','reuniao_presencial','reuniao_online')),
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
+**4. Componentes de gráfico individuais**
+- `MetricsActivityOverTime.tsx` — barras criadas vs atuadas
+- `MetricsAvgResponseTime.tsx` — linha tempo médio
+- `MetricsTopPlanners.tsx` — ranking atuação
+- `MetricsOpenActivities.tsx` — ranking pendências
+- `MetricsTeamPerformance.tsx` — ranking equipes
 
-**Modificação nas edge functions:**
-- Inadimplência/Health Score/Renovação: adicionar `contact_id: contract.contact_id` (ou `score.contact_id`) no insert da task
-- Client Characteristic: criar uma task por par owner+contact em vez de agrupar
+### Alterações em arquivos existentes
+- `CriticalActivities.tsx`: adicionar Tabs para alternar entre "Atividades" e "Métricas"
 
-### Etapas de implementação
-1. Criar tabela `contact_interactions` com RLS
-2. Atualizar edge functions para preencher `contact_id` nas tasks e criar uma task por cliente
-3. Criar componente `RegisterInteractionModal`
-4. Atualizar `TasksListPage.tsx` com a opção "Registrar Relacionamento"
-5. Inserir registro em `contact_history` ao salvar interação
+### Etapas
+1. Criar hook `useCriticalActivityMetrics` com queries e processamento de dados
+2. Criar os 5 componentes de gráfico
+3. Criar componente container `CriticalActivitiesMetrics` com filtros + grid de gráficos
+4. Atualizar `CriticalActivities.tsx` com sistema de abas
 
