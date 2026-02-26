@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 
 export interface NotificationRecord {
   id: string;
@@ -15,23 +16,26 @@ export interface NotificationRecord {
 
 export function useAllNotifications() {
   const { user } = useAuth();
+  const { actingUser } = useActingUser();
+
+  const effectiveUserId = actingUser?.id || user?.id;
 
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['all-notifications-history', user?.id],
+    queryKey: ['all-notifications-history', effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .order('created_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
       return data as NotificationRecord[];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -45,11 +49,13 @@ export function useAllNotifications() {
 
 export function useMarkNotificationRead() {
   const { user } = useAuth();
+  const { actingUser } = useActingUser();
   const queryClient = useQueryClient();
+  const effectiveUserId = actingUser?.id || user?.id;
 
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      if (!user) return;
+      if (!effectiveUserId) return;
       
       const { error } = await supabase
         .from('notifications')
@@ -59,31 +65,33 @@ export function useMarkNotificationRead() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-notifications-history', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['all-notifications', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['all-notifications-history', effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ['all-notifications', effectiveUserId] });
     },
   });
 }
 
 export function useMarkAllNotificationsRead() {
   const { user } = useAuth();
+  const { actingUser } = useActingUser();
   const queryClient = useQueryClient();
+  const effectiveUserId = actingUser?.id || user?.id;
 
   return useMutation({
     mutationFn: async () => {
-      if (!user) return;
+      if (!effectiveUserId) return;
       
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .eq('is_read', false);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-notifications-history', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['all-notifications', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['all-notifications-history', effectiveUserId] });
+      queryClient.invalidateQueries({ queryKey: ['all-notifications', effectiveUserId] });
     },
   });
 }

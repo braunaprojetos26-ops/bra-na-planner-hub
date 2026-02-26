@@ -5,6 +5,7 @@ import { format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActingUser } from '@/contexts/ActingUserContext';
 
 export interface Notification {
   id: string;
@@ -19,20 +20,23 @@ export interface Notification {
 
 export function useNotifications() {
   const { user } = useAuth();
+  const { actingUser } = useActingUser();
   const queryClient = useQueryClient();
   const { data: tasks, isLoading: tasksLoading } = useUserTasks();
 
+  const effectiveUserId = actingUser?.id || user?.id;
+
   // Fetch all notifications from notifications table (tickets and contracts)
   const { data: dbNotifications = [], isLoading: dbLoading } = useQuery({
-    queryKey: ['all-notifications', user?.id],
+    queryKey: ['all-notifications', effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
-        .in('type', ['ticket_update', 'contract_update', 'payment', 'health_score_drop', 'birthday', 'project_invite', 'assignment'])
+        .eq('user_id', effectiveUserId)
+        .in('type', ['ticket_update', 'contract_update', 'payment', 'health_score_drop', 'birthday', 'project_invite', 'assignment', 'sla_breach'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -40,12 +44,12 @@ export function useNotifications() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Subscribe to realtime notifications
   useEffect(() => {
-    if (!user) return;
+    if (!effectiveUserId) return;
 
     const channel = supabase
       .channel('notifications-realtime')
@@ -55,10 +59,10 @@ export function useNotifications() {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
+          filter: `user_id=eq.${effectiveUserId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['all-notifications', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['all-notifications', effectiveUserId] });
         }
       )
       .subscribe();
@@ -66,7 +70,7 @@ export function useNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [effectiveUserId, queryClient]);
 
   const notifications = useMemo(() => {
     const notifs: Notification[] = [];
