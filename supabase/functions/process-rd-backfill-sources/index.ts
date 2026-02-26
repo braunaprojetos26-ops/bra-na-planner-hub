@@ -51,7 +51,7 @@ async function updateJob(jobId: string, updates: Record<string, unknown>) {
   if (error) console.error(`Failed to update job ${jobId}:`, error.message);
 }
 
-async function reinvokeSelf(jobId: string) {
+async function reinvokeSelf(jobId: string, rdUserId?: string) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   console.log(`[backfill-sources] Re-invoking self for job ${jobId}`);
@@ -62,7 +62,7 @@ async function reinvokeSelf(jobId: string) {
         "Authorization": `Bearer ${serviceRoleKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ jobId }),
+      body: JSON.stringify({ jobId, rdUserId }),
     });
     console.log(`[backfill-sources] Re-invoke response: ${res.status}`);
   } catch (err) {
@@ -79,6 +79,7 @@ interface CheckpointData {
   skipped?: number;
   errors?: number;
   error_details?: Array<{ name: string; error: string }>;
+  rd_user_id?: string;
 }
 
 const corsHeaders = {
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
   }
 
   const startTime = Date.now();
-  const { jobId } = await req.json();
+  const { jobId, rdUserId } = await req.json();
   if (!jobId) {
     return new Response(JSON.stringify({ error: "jobId required" }), {
       status: 400,
@@ -139,17 +140,24 @@ Deno.serve(async (req) => {
       let page = checkpoint.deals_page || 1;
       const dealIds: string[] = [];
 
-      while (page <= 200) {
+      // Store rdUserId in checkpoint for re-invocations
+      const filterUserId = rdUserId || (checkpoint as any).rd_user_id;
+
+      while (page <= 50) {
         if (isNearTimeout(startTime)) {
-          checkpoint = { phase: "fetching_deals", deals_page: page, deal_ids: dealIds };
+          checkpoint = { phase: "fetching_deals", deals_page: page, deal_ids: dealIds, rd_user_id: filterUserId };
           await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown>, deals_found: dealIds.length });
-          await reinvokeSelf(jobId);
+          await reinvokeSelf(jobId, filterUserId);
           return new Response(JSON.stringify({ ok: true, checkpoint: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const res = await rateLimitedFetch(`${BASE}/deals?token=${TOKEN}&limit=200&page=${page}`);
+        let dealUrl = `${BASE}/deals?token=${TOKEN}&limit=200&page=${page}`;
+        if (filterUserId) {
+          dealUrl += `&user_id=${filterUserId}`;
+        }
+        const res = await rateLimitedFetch(dealUrl);
         if (!res.ok) {
           const errText = await res.text();
           throw new Error(`Failed to fetch deals page ${page}: ${res.status} ${errText}`);
@@ -207,7 +215,7 @@ Deno.serve(async (req) => {
             contacts_skipped: skipped,
             contacts_errors: errors,
           });
-          await reinvokeSelf(jobId);
+          await reinvokeSelf(jobId, (checkpoint as any).rd_user_id);
           return new Response(JSON.stringify({ ok: true, checkpoint: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
