@@ -1,59 +1,38 @@
 
 
-## Plano: Marcar 33 negociações como vendidas + criar contratos + corrigir importador
+## Diagnóstico
 
-### Contexto
+Os 3 contratos de renovação do Abraão foram criados corretamente com produto "Planejamento Financeiro Completo", mas **nenhum client_plan foi criado**. Isso significa que o passo "Configurar Plano de Cliente" no modal de vitória foi **pulado** (o usuário clicou "Pular").
 
-Existem 33 oportunidades ativas no estágio "Planejamento Pago" do funil "VENDA - PLANEJAMENTO", todas do Abraão Lima Velozo. Cada uma já possui o valor do contrato em `proposal_value`. Todas já possuem oportunidades correspondentes no funil "MONTAGEM - PLANEJAMENTO" (importadas do RD), então não podemos duplicá-las.
+### Situação atual:
+| Contato | Contrato Renovação | Client Plan | Status |
+|---------|-------------------|-------------|--------|
+| Washington Igor | ✅ R$3.000 | ❌ Nenhum | Não é cliente ativo |
+| João Vitor | ✅ R$3.900 | ⚠️ Tem plan antigo (contrato R$3.480) | É cliente ativo pelo plan antigo |
+| Jonathan Lima | ✅ R$4.000 | ⚠️ Tem plan antigo (contrato R$3.600) | É cliente ativo pelo plan antigo |
 
-### O que será feito
+### Problemas identificados:
 
-**1. Edge function `bulk-mark-won`**
+1. **Washington não tem nenhum client_plan** — ele não aparece como cliente ativo
+2. **João Vitor e Jonathan** têm plans ativos vinculados aos contratos antigos, mas os novos contratos de renovação não têm plans vinculados
+3. O sistema permite pular a criação do client_plan, o que causa essa inconsistência
 
-Função que processa as 33 oportunidades em lote:
+## Plano de Correção
 
-Para cada oportunidade:
-- Cria um contrato vinculado ao produto "Planejamento Financeiro Completo" usando o `proposal_value` como `contract_value`
-- PBs calculados pela fórmula do produto: `contract_value / 100`
-- Payment type: `mensal` (padrão)
-- Status do contrato: `active`
-- Marca a oportunidade como `won` (status = 'won', converted_at = now)
-- Registra no `opportunity_history` com action 'won'
-- **Não cria** nova oportunidade em MONTAGEM (já existem)
+### 1. Correção imediata via banco de dados
+Criar client_plans para os 3 contratos de renovação:
+- Washington: criar client_plan novo vinculado ao contrato `6d87b0fe` (R$3.000)
+- João Vitor: criar client_plan novo vinculado ao contrato `1144bfa6` (R$3.900) — o plan antigo pode ser mantido como histórico ou fechado
+- Jonathan: criar client_plan novo vinculado ao contrato `b2537976` (R$4.000) — idem
 
-Parâmetros de entrada: funnel_id, stage_id (para filtrar quais oportunidades processar)
+Cada plan terá 12 reuniões padrão distribuídas ao longo de 12 meses a partir de hoje. Os plans antigos do João Vitor e Jonathan serão atualizados para status `closed` (já que foram renovados).
 
-**2. Correção no importador RD (`process-rd-import`)**
-
-Linha 676 atual:
-```
-if (rdStatus === "won") oppStatus = "converted";  // BUG: "converted" não é status válido
-```
-
-Corrigido para:
-```
-if (rdStatus === "won") oppStatus = "won";
-```
-
-Também adiciona `converted_at` quando o deal é won.
+### 2. Prevenção futura: tornar criação do client_plan obrigatória
+No `WonWithContractModal`, quando um contrato de "Planejamento" é detectado, **remover a opção "Pular"** e tornar a configuração do client_plan obrigatória. Se o contrato é de planejamento financeiro, o client_plan é essencial para que o cliente apareça na carteira.
 
 ### Detalhes técnicos
 
-```text
-Dados confirmados:
-- Produto: Planejamento Financeiro Completo (4b900185-...)
-- PB fórmula: {valor_total}/100
-- Funil VENDA: VENDA - PLANEJAMENTO
-- Estágio: Planejamento Pago
-- Owner: Abraão (b16ff462-...)
-- 33 oportunidades, todas com proposal_value preenchido
-- Todas já têm oportunidade espelho em MONTAGEM - PLANEJAMENTO
-```
+**Migração SQL:** Inserir 3 registros em `client_plans` e suas respectivas `client_plan_meetings` (12 reuniões cada), fechar os plans antigos do João Vitor e Jonathan.
 
-### Execução
-
-1. Criar e fazer deploy da edge function `bulk-mark-won`
-2. Corrigir o mapeamento de status no `process-rd-import`
-3. Executar a função para processar as 33 oportunidades
-4. Confirmar os resultados via consulta ao banco
+**Código:** No `WonWithContractModal.tsx`, na etapa `client_plan`, esconder o botão "Pular" quando o contrato é de planejamento — forçando o usuário a configurar o plano.
 
