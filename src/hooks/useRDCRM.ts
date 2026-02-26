@@ -144,9 +144,9 @@ export function useRDCRM() {
 
   // Start backfill sources job
   const startBackfillSourcesMutation = useMutation({
-    mutationFn: async (): Promise<string> => {
+    mutationFn: async (rdUserId?: string): Promise<string> => {
       const { data, error } = await supabase.functions.invoke('rd-crm', {
-        body: { action: 'start_backfill_sources' },
+        body: { action: 'start_backfill_sources', rd_user_id: rdUserId || null },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Falha ao iniciar backfill');

@@ -292,12 +292,14 @@ Deno.serve(async (req) => {
       }
 
       case "start_backfill_sources": {
+        const rdUserIdFilter = payload.rd_user_id || null;
+        
         // Create a job record for backfill
         const { data: job, error: jobError } = await supabase
           .from("import_jobs")
           .insert({
             created_by: userId,
-            rd_user_id: "backfill",
+            rd_user_id: rdUserIdFilter || "backfill",
             import_type: "backfill_sources",
             status: "pending",
           })
@@ -316,7 +318,7 @@ Deno.serve(async (req) => {
             "Authorization": `Bearer ${serviceRoleKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ jobId: job.id }),
+          body: JSON.stringify({ jobId: job.id, rdUserId: rdUserIdFilter }),
         }).catch((err) => {
           console.error("Failed to trigger process-rd-backfill-sources:", err);
         });

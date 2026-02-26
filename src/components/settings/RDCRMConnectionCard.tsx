@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { useRDCRM } from '@/hooks/useRDCRM';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRDCRM, type RDCRMUser } from '@/hooks/useRDCRM';
 import { useToast } from '@/hooks/use-toast';
 import { RDCRMImportDialog } from './RDCRMImportDialog';
 import { format } from 'date-fns';
@@ -23,6 +24,7 @@ export function RDCRMConnectionCard() {
     startBackfillSources,
     isStartingBackfill,
     pollJobStatus,
+    listUsers,
   } = useRDCRM();
   const { toast } = useToast();
 
@@ -31,6 +33,9 @@ export function RDCRMConnectionCard() {
   const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
   const [backfillProgress, setBackfillProgress] = useState<{ updated: number; skipped: number; errors: number; total: number } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [backfillRdUserId, setBackfillRdUserId] = useState<string>('');
+  const [backfillUsers, setBackfillUsers] = useState<RDCRMUser[]>([]);
+  const [loadingBackfillUsers, setLoadingBackfillUsers] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -38,9 +43,20 @@ export function RDCRMConnectionCard() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isConnected && backfillUsers.length === 0 && !loadingBackfillUsers) {
+      setLoadingBackfillUsers(true);
+      listUsers().then(users => {
+        setBackfillUsers(users);
+        setLoadingBackfillUsers(false);
+      }).catch(() => setLoadingBackfillUsers(false));
+    }
+  }, [isConnected]);
+
   const handleStartBackfill = async () => {
     try {
-      const jobId = await startBackfillSources();
+      const userId = backfillRdUserId && backfillRdUserId !== 'all' ? backfillRdUserId : undefined;
+      const jobId = await startBackfillSources(userId);
       setBackfillJobId(jobId);
       setBackfillStatus('pending');
       toast({ title: 'Atualização de fontes iniciada', description: 'Buscando negociações do RD CRM...' });
@@ -174,6 +190,19 @@ export function RDCRMConnectionCard() {
               <Separator />
               <div className="space-y-3">
                 <h4 className="text-sm font-medium">Ferramentas</h4>
+                <div className="space-y-2">
+                  <Select value={backfillRdUserId} onValueChange={setBackfillRdUserId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={loadingBackfillUsers ? "Carregando usuários..." : "Filtrar por usuário RD (opcional)"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os usuários</SelectItem>
+                      {backfillUsers.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button
                   variant="outline"
                   className="w-full justify-start"
