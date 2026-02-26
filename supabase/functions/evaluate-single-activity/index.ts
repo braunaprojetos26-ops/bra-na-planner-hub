@@ -184,24 +184,14 @@ async function handleClientCharacteristic(supabase: any, activity: any) {
     }));
   }
 
-  // Create tasks for each owner-contact pair
-  // Group by owner to avoid duplicate assignments
-  const ownerGroups = new Map<string, typeof ownerContactPairs>();
+  // Create one task per contact (instead of grouping by owner)
   for (const pair of ownerContactPairs) {
-    if (!ownerGroups.has(pair.owner_id)) ownerGroups.set(pair.owner_id, []);
-    ownerGroups.get(pair.owner_id)!.push(pair);
-  }
-
-  for (const [ownerId, contacts] of ownerGroups) {
-    const contactNames = contacts.map(c => c.contact_name).slice(0, 5);
-    const suffix = contacts.length > 5 ? ` (+${contacts.length - 5} outros)` : '';
-    const nameList = contactNames.join(", ") + suffix;
-
     await supabase.from("tasks").insert({
       created_by: activity.created_by,
-      assigned_to: ownerId,
-      title: `[Atividade Crítica] ${activity.title}`,
-      description: activity.description || `Clientes: ${nameList}`,
+      assigned_to: pair.owner_id,
+      contact_id: pair.contact_id,
+      title: `[Atividade Crítica] ${activity.title} - ${pair.contact_name}`,
+      description: activity.description || `Cliente: ${pair.contact_name}`,
       task_type: "other",
       scheduled_at: activity.deadline || new Date().toISOString(),
       status: "pending",
@@ -209,7 +199,7 @@ async function handleClientCharacteristic(supabase: any, activity: any) {
 
     await supabase.from("critical_activity_assignments").upsert({
       activity_id: activity.id,
-      user_id: ownerId,
+      user_id: pair.owner_id,
       status: "pending",
     }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
 
@@ -271,6 +261,7 @@ async function handleInadimplente(supabase: any, activity: any) {
     await supabase.from("tasks").insert({
       created_by: activity.created_by,
       assigned_to: userId,
+      contact_id: contract.contact_id,
       title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
       description: activity.description || `Cliente ${contact.full_name} está inadimplente.`,
       task_type: "other",
@@ -327,6 +318,7 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
     await supabase.from("tasks").insert({
       created_by: activity.created_by,
       assigned_to: userId,
+      contact_id: score.contact_id,
       title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
       description: activity.description || `Health Score de ${contact.full_name} está em ${score.total_score}.`,
       task_type: "other",
@@ -382,6 +374,7 @@ async function handleContratoVencendo(supabase: any, activity: any) {
     await supabase.from("tasks").insert({
       created_by: activity.created_by,
       assigned_to: userId,
+      contact_id: contract.contact_id,
       title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
       description: activity.description || `Contrato vence em ${endDate}.`,
       task_type: "other",

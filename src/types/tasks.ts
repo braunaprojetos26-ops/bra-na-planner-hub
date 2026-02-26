@@ -4,6 +4,7 @@ export type TaskStatus = 'pending' | 'completed' | 'overdue';
 export interface Task {
   id: string;
   opportunity_id: string;
+  contact_id?: string | null;
   created_by: string;
   assigned_to?: string | null;
   title: string;

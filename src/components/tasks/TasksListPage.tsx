@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -12,7 +13,8 @@ import {
   CheckCircle2,
   Trash2,
   ExternalLink,
-  CalendarCheck
+  CalendarCheck,
+  Handshake
 } from 'lucide-react';
 import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
@@ -34,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { RegisterInteractionModal } from './RegisterInteractionModal';
 const TASK_TYPE_ICONS: Record<TaskType, React.ComponentType<{ className?: string }>> = {
   call: Phone,
   email: Mail,
@@ -74,6 +76,12 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
   const { completeTask, deleteTask } = useTasks();
   const { actingUser } = useActingUser();
   const currentUserId = actingUser?.id;
+  const [interactionModal, setInteractionModal] = useState<{
+    open: boolean;
+    contactId: string;
+    contactName: string;
+    taskId: string;
+  }>({ open: false, contactId: '', contactName: '', taskId: '' });
 
   function getTaskTag(task: Task) {
     if (task.title.startsWith('[Atividade Crítica]')) {
@@ -217,6 +225,22 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                           </Link>
                         </DropdownMenuItem>
                       )}
+                      {task.contact_id && !isCompleted && (
+                        <DropdownMenuItem onClick={() => {
+                          const contactName = task.opportunity?.contact?.full_name || 
+                            task.title.replace('[Atividade Crítica] ', '').split(' - ').slice(1).join(' - ') || 
+                            'Cliente';
+                          setInteractionModal({
+                            open: true,
+                            contactId: task.contact_id!,
+                            contactName,
+                            taskId: task.id,
+                          });
+                        }}>
+                          <Handshake className="w-4 h-4 mr-2" />
+                          Registrar Relacionamento
+                        </DropdownMenuItem>
+                      )}
                       {!isCompleted && (
                         <DropdownMenuItem onClick={() => handleComplete(task.id)}>
                           <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -238,6 +262,13 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
           })}
         </TableBody>
       </Table>
+      <RegisterInteractionModal
+        open={interactionModal.open}
+        onOpenChange={(open) => setInteractionModal(prev => ({ ...prev, open }))}
+        contactId={interactionModal.contactId}
+        contactName={interactionModal.contactName}
+        taskId={interactionModal.taskId}
+      />
     </div>
   );
 }

@@ -402,6 +402,54 @@ export type Database = {
           },
         ]
       }
+      contact_interactions: {
+        Row: {
+          channel: string
+          contact_id: string
+          created_at: string
+          id: string
+          interaction_date: string
+          notes: string | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          contact_id: string
+          created_at?: string
+          id?: string
+          interaction_date?: string
+          notes?: string | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+          interaction_date?: string
+          notes?: string | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_interactions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_interactions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_prospection_list: {
         Row: {
           added_at: string
