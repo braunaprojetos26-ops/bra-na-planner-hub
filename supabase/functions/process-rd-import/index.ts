@@ -114,6 +114,8 @@ interface CheckpointData {
   errors?: number;
   error_details?: Array<{ name: string; error: string }>;
   contacts_found?: number;
+  // Map contact RD ID → deal source name (for source extraction)
+  contact_source_map?: Record<string, string>;
 }
 
 Deno.serve(async (req) => {
@@ -217,11 +219,12 @@ Deno.serve(async (req) => {
       const dealIds = checkpoint.user_deal_ids || [];
       const contactIds: string[] = [...(checkpoint.contact_ids || [])];
       const contactIdSet = new Set(contactIds);
+      const contactSourceMap: Record<string, string> = checkpoint.contact_source_map || {};
       let dealIndex = checkpoint.deal_index || 0;
 
       while (dealIndex < dealIds.length) {
         if (isNearTimeout(startTime)) {
-          checkpoint = { phase: "fetching_contacts", user_deal_ids: dealIds, deal_index: dealIndex, contact_ids: [...contactIdSet] };
+          checkpoint = { phase: "fetching_contacts", user_deal_ids: dealIds, deal_index: dealIndex, contact_ids: [...contactIdSet], contact_source_map: contactSourceMap };
           await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
           await reinvokeSelf(jobId);
           return new Response(JSON.stringify({ ok: true, checkpoint: true }), {
@@ -230,13 +233,33 @@ Deno.serve(async (req) => {
         }
 
         const dealId = dealIds[dealIndex];
+
+        // Fetch deal details to get deal_source
+        let dealSourceName: string | null = null;
+        try {
+          const dealRes = await rateLimitedFetch(`${BASE}/deals/${dealId}?token=${TOKEN}`);
+          if (dealRes.ok) {
+            const dealData = await dealRes.json() as Record<string, unknown>;
+            const dealSource = dealData.deal_source as { name?: string } | null;
+            dealSourceName = dealSource?.name || null;
+          }
+        } catch {
+          // ignore deal fetch errors
+        }
+
         const res = await rateLimitedFetch(`${BASE}/deals/${dealId}/contacts?token=${TOKEN}`);
         if (res.ok) {
           const data = await res.json();
           const contacts = data?.contacts || (Array.isArray(data) ? data : []);
           for (const c of contacts as Array<Record<string, unknown>>) {
             const cId = (c._id || c.id) as string;
-            if (cId) contactIdSet.add(cId);
+            if (cId) {
+              contactIdSet.add(cId);
+              // Store source only if we have one and contact doesn't have one yet
+              if (dealSourceName && !contactSourceMap[cId]) {
+                contactSourceMap[cId] = dealSourceName;
+              }
+            }
           }
         }
         dealIndex++;
@@ -244,7 +267,7 @@ Deno.serve(async (req) => {
 
       const uniqueContactIds = [...contactIdSet];
       await updateJob(jobId, { contacts_found: uniqueContactIds.length });
-      console.log(`[process-rd-import] Found ${uniqueContactIds.length} unique contacts`);
+      console.log(`[process-rd-import] Found ${uniqueContactIds.length} unique contacts, ${Object.keys(contactSourceMap).length} with sources`);
 
       checkpoint = {
         phase: "fetching_details",
@@ -254,6 +277,7 @@ Deno.serve(async (req) => {
         skipped: 0,
         errors: 0,
         error_details: [],
+        contact_source_map: contactSourceMap,
       };
       await updateJob(jobId, { checkpoint_data: checkpoint as unknown as Record<string, unknown> });
     }
@@ -262,6 +286,7 @@ Deno.serve(async (req) => {
     if (checkpoint.phase === "fetching_details" && importType === "contacts") {
       await updateJob(jobId, { status: "importing" });
       const contactIds = checkpoint.contact_ids || [];
+      const contactSourceMap: Record<string, string> = checkpoint.contact_source_map || {};
       let contactIndex = checkpoint.contact_index || 0;
       let imported = checkpoint.imported || 0;
       let skipped = checkpoint.skipped || 0;
@@ -276,6 +301,7 @@ Deno.serve(async (req) => {
             contact_index: contactIndex,
             imported, skipped, errors,
             error_details: errorDetails.slice(0, 100),
+            contact_source_map: contactSourceMap,
           };
           await updateJob(jobId, {
             checkpoint_data: checkpoint as unknown as Record<string, unknown>,
@@ -428,7 +454,7 @@ Deno.serve(async (req) => {
               marital_status: maritalStatus,
               address: addressCf,
               income,
-              source: "rd_crm",
+              source: contactSourceMap[cId] || "rd_crm",
               source_detail: `RD CRM ID: ${rdId}`,
               notes: noteParts.join(" | "),
               created_by: createdBy,

@@ -54,5 +54,8 @@ verify_jwt = false
 [functions.bulk-mark-won]
 verify_jwt = false
 
+[functions.process-rd-backfill-sources]
+verify_jwt = false
+
 [functions.sync-external-contracts]
 verify_jwt = false

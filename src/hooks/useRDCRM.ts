@@ -142,6 +142,25 @@ export function useRDCRM() {
     },
   });
 
+  // Start backfill sources job
+  const startBackfillSourcesMutation = useMutation({
+    mutationFn: async (): Promise<string> => {
+      const { data, error } = await supabase.functions.invoke('rd-crm', {
+        body: { action: 'start_backfill_sources' },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao iniciar backfill');
+      return data.data.job_id as string;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao iniciar atualização de fontes',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Start async import job
   const startImportMutation = useMutation({
     mutationFn: async (params: ImportParams): Promise<string> => {
@@ -190,5 +209,8 @@ export function useRDCRM() {
     startImport: startImportMutation.mutateAsync,
     isStartingImport: startImportMutation.isPending,
     pollJobStatus,
+    // Backfill sources
+    startBackfillSources: startBackfillSourcesMutation.mutateAsync,
+    isStartingBackfill: startBackfillSourcesMutation.isPending,
   };
 }
