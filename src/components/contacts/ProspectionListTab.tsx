@@ -83,24 +83,29 @@ export function ProspectionListTab() {
   return (
     <>
       {/* Calls-per-meeting insight card */}
-      {callsPerMeeting !== null && (
-        <Card className="mb-4 border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center gap-4 py-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <PhoneCall className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">
-                Você precisa fazer <span className="text-primary text-2xl font-bold">{callsPerMeeting}</span> ligações para agendar uma reunião.
-              </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Baseado na sua taxa de conversão de {analyticsData?.conversionRate.toFixed(1)}% nos últimos 90 dias
-                ({analyticsData?.totalConverted || 0} conversões em {analyticsData?.totalAdded || 0} contatos)
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="mb-4 border-primary/20 bg-primary/5">
+        <CardContent className="flex items-center gap-4 py-4">
+          <div className="p-3 rounded-full bg-primary/10">
+            <PhoneCall className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-foreground">
+              {callsPerMeeting !== null ? (
+                <>Você precisa fazer <span className="text-primary text-2xl font-bold">{callsPerMeeting}</span> ligações para agendar uma reunião.</>
+              ) : (
+                <>Ainda não há dados suficientes para calcular quantas ligações são necessárias para agendar uma reunião.</>
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {callsPerMeeting !== null ? (
+                <>Baseado na sua taxa de conversão de {analyticsData?.conversionRate.toFixed(1)}% nos últimos 90 dias ({analyticsData?.totalConverted || 0} conversões em {analyticsData?.totalAdded || 0} contatos)</>
+              ) : (
+                <>Adicione contatos à lista e registre conversões para gerar esta métrica</>
+              )}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Table>
         <TableHeader>
