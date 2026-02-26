@@ -794,7 +794,9 @@ export function WonWithContractModal({
               Configurar Cliente de Planejamento
             </DialogTitle>
             <DialogDescription>
-              Foi identificado um contrato de Planejamento Financeiro. Deseja configurar o cronograma de reuniões agora?
+              {planningContract?.is_planning
+                ? 'Foi identificado um contrato de Planejamento Financeiro. Configure o cronograma de reuniões para que o cliente apareça na carteira.'
+                : 'Foi identificado um contrato de Planejamento Financeiro. Deseja configurar o cronograma de reuniões agora?'}
             </DialogDescription>
           </DialogHeader>
 
@@ -840,14 +842,17 @@ export function WonWithContractModal({
           </div>
 
           <DialogFooter className="flex gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSkipClientPlan}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              Configurar depois
-            </Button>
+            {/* Hide skip button for planning products - client plan is mandatory */}
+            {!planningContract?.is_planning && (
+              <Button
+                variant="outline"
+                onClick={handleSkipClientPlan}
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                Configurar depois
+              </Button>
+            )}
             <Button
               onClick={handleCreateClientPlan}
               disabled={isSubmitting}
