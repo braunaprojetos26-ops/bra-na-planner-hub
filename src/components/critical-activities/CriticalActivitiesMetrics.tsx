@@ -23,6 +23,7 @@ export function CriticalActivitiesMetrics() {
     openRanking,
     teamRanking,
     avgResponseTime,
+    kpis,
     profiles,
     managers,
   } = useCriticalActivityMetrics({
@@ -33,13 +34,7 @@ export function CriticalActivitiesMetrics() {
     teamManagerId: teamManagerId && teamManagerId !== 'all' ? teamManagerId : undefined,
   });
 
-  // KPI calculations
-  const totalCreated = monthlyData.reduce((s, d) => s + d.created, 0);
-  const totalActed = monthlyData.reduce((s, d) => s + d.acted, 0);
-  const actPercentage = totalCreated > 0 ? Math.round((totalActed / totalCreated) * 100) : 0;
-  const avgTime = avgResponseTime.length > 0
-    ? Math.round(avgResponseTime.reduce((s, d) => s + d.avgHours, 0) / avgResponseTime.length)
-    : 0;
+  const { totalDistributed, totalActed, percentActed, avgResponseHours } = kpis;
 
   if (isLoading) {
     return (
@@ -88,7 +83,7 @@ export function CriticalActivitiesMetrics() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="manual_recurrence">Manual</SelectItem>
+            <SelectItem value="manual">Manual</SelectItem>
             <SelectItem value="inadimplente">Inadimplência</SelectItem>
             <SelectItem value="health_score">Health Score</SelectItem>
             <SelectItem value="contract_renewal">Renovação</SelectItem>
@@ -133,7 +128,7 @@ export function CriticalActivitiesMetrics() {
               <Activity className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{totalCreated}</p>
+              <p className="text-2xl font-bold text-foreground">{totalDistributed}</p>
               <p className="text-xs text-muted-foreground">Distribuídas</p>
             </div>
           </CardContent>
@@ -155,7 +150,7 @@ export function CriticalActivitiesMetrics() {
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{actPercentage}%</p>
+              <p className="text-2xl font-bold text-foreground">{percentActed}%</p>
               <p className="text-xs text-muted-foreground">% Atuação</p>
             </div>
           </CardContent>
@@ -166,7 +161,7 @@ export function CriticalActivitiesMetrics() {
               <Clock className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{avgTime}h</p>
+              <p className="text-2xl font-bold text-foreground">{avgResponseHours}h</p>
               <p className="text-xs text-muted-foreground">Tempo médio</p>
             </div>
           </CardContent>
