@@ -227,9 +227,9 @@ async function vindiFindSubscription(
   vindiUrl: string, auth: string, customerId: string
 ): Promise<string | null> {
   try {
-    // Try active subscriptions first
+    // Try active subscriptions first, sorted by most recent
     const res = await fetch(
-      `${vindiUrl}/subscriptions?query=customer_id:${customerId} status:active`,
+      `${vindiUrl}/subscriptions?query=customer_id:${customerId} status:active&sort_by=created_at&sort_order=desc`,
       { headers: { Authorization: auth, "Content-Type": "application/json" } }
     );
     if (res.ok) {
@@ -238,9 +238,9 @@ async function vindiFindSubscription(
         return String(data.subscriptions[0].id);
       }
     }
-    // Try any subscription
+    // Try any subscription, most recent first
     const res2 = await fetch(
-      `${vindiUrl}/subscriptions?query=customer_id:${customerId}`,
+      `${vindiUrl}/subscriptions?query=customer_id:${customerId}&sort_by=created_at&sort_order=desc`,
       { headers: { Authorization: auth, "Content-Type": "application/json" } }
     );
     if (res2.ok) {
