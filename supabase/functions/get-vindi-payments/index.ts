@@ -265,6 +265,21 @@ Deno.serve(async (req) => {
           });
         });
 
+        // Opportunistically save first_payment_at if not yet set
+        const firstPaidBill = bills.find(b => b.status === 'paid');
+        if (firstPaidBill) {
+          const firstCharge = firstPaidBill.charges?.[0];
+          const firstPaidAt = firstCharge?.paid_at || firstPaidBill.billing_at || firstPaidBill.due_at || firstPaidBill.created_at;
+          if (firstPaidAt) {
+            // Update contract if first_payment_at is not yet set
+            await supabase
+              .from('contracts')
+              .update({ first_payment_at: firstPaidAt })
+              .eq('id', contract.id)
+              .is('first_payment_at', null);
+          }
+        }
+
         vindiStatus = contract.vindi_status;
       } else if (contract.vindi_bill_id) {
         // Fetch single bill

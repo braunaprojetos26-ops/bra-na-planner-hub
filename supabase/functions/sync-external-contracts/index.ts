@@ -109,6 +109,11 @@ Deno.serve(async (req) => {
           if (vindiSubscriptionId) {
             result.vindi_subscription_id = vindiSubscriptionId;
             result.vindi = "linked";
+            // Fetch first payment date from bills
+            const firstPaymentDate = await vindiFindFirstPayment(vindiUrl, vindiAuth, vindiSubscriptionId);
+            if (firstPaymentDate) {
+              result.first_payment_at = firstPaymentDate;
+            }
           } else {
             // Check for bills
             const billId = await vindiFindBill(vindiUrl, vindiAuth, vindiCustomerId);
@@ -155,6 +160,9 @@ Deno.serve(async (req) => {
       if (result.vindi_subscription_id) {
         updates.vindi_subscription_id = result.vindi_subscription_id;
         updates.vindi_status = "active";
+      }
+      if (result.first_payment_at) {
+        updates.first_payment_at = result.first_payment_at;
       }
       if (result.vindi_bill_id) {
         updates.vindi_bill_id = result.vindi_bill_id;
@@ -271,6 +279,28 @@ async function vindiFindBill(
     }
   } catch (e) {
     console.error("Vindi bill search error:", e);
+  }
+  return null;
+}
+
+async function vindiFindFirstPayment(
+  vindiUrl: string, auth: string, subscriptionId: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${vindiUrl}/bills?query=subscription_id:${subscriptionId} status:paid&sort_by=created_at&sort_order=asc&per_page=1`,
+      { headers: { Authorization: auth, "Content-Type": "application/json" } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.bills?.length > 0) {
+        const bill = data.bills[0];
+        const charge = bill.charges?.[0];
+        return charge?.paid_at || bill.billing_at || bill.due_at || bill.created_at || null;
+      }
+    }
+  } catch (e) {
+    console.error("Vindi first payment search error:", e);
   }
   return null;
 }

@@ -76,6 +76,7 @@ export interface Contract {
   vindi_subscription_id: string | null;
   vindi_bill_id: string | null;
   vindi_status: string | null;
+  first_payment_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
