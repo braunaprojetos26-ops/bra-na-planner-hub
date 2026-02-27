@@ -53,18 +53,28 @@ export function useCreateDataCollection() {
         return existing;
       }
 
-      // Create new
+      // Create new (use upsert to handle race conditions)
       const { data, error } = await supabase
         .from('contact_data_collections')
-        .insert({
+        .upsert({
           contact_id: contactId,
           schema_id: DEFAULT_SCHEMA_ID,
           collected_by: user.id,
           status: 'draft',
           data_collection: {} as Json
-        })
+        }, { onConflict: 'contact_id', ignoreDuplicates: true })
         .select()
         .single();
+
+      // If upsert returned nothing (ignored duplicate), fetch existing
+      if (!data && !error) {
+        const { data: existingData } = await supabase
+          .from('contact_data_collections')
+          .select('*')
+          .eq('contact_id', contactId)
+          .single();
+        return existingData;
+      }
 
       if (error) throw error;
       return data;
