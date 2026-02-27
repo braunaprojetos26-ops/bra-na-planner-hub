@@ -1,59 +1,32 @@
 
 
-## Plano: Dashboard de Métricas de Atividades Críticas
+## Análise do Problema
 
-### Dados disponíveis para métricas
-- `critical_activities`: título, urgency, rule_type, created_at, is_perpetual
-- `critical_activity_assignments`: activity_id, user_id, status, completed_at, created_at
-- `contact_interactions`: channel, user_id, task_id, interaction_date, created_at
-- `tasks` (com título `[Atividade Crítica]`): assigned_to, contact_id, status, completed_at, created_at, scheduled_at
-- `user_hierarchy`: user_id, manager_user_id (para agrupar por equipe)
-- `profiles`: full_name, position
+A **Coleta de Dados** hoje só é acessível dentro do fluxo de Análise (`/contacts/:contactId/analise`, etapa 2). Para clientes importados que já têm plano ativo, não faz sentido passar pelo fluxo de vendas inteiro só para preencher a coleta.
 
-### Componentes a criar
+## Solução Proposta
 
-**1. Página/Tab de Métricas** (`src/components/critical-activities/CriticalActivitiesMetrics.tsx`)
-- Adicionar aba "Métricas" na página `CriticalActivities.tsx` usando Tabs (lista de atividades | métricas)
-- Filtros globais: período (meses), tipo de atividade (rule_type/urgency), planejador, equipe
+**Adicionar uma seção "Coleta de Dados" diretamente na página de detalhes do cliente** (`ClientDetail.tsx`).
 
-**2. Hook de dados** (`src/hooks/useCriticalActivityMetrics.ts`)
-- Query que busca:
-  - Tasks com prefixo `[Atividade Crítica]` + assignments + interactions
-  - Profiles e hierarquia para agrupamento por equipe
-- Processa métricas no client-side com os filtros aplicados
+O componente `DataCollectionForm` já é independente — recebe apenas `contactId` e funciona sozinho. Basta reutilizá-lo dentro de um card colapsável ou uma seção na página do cliente.
 
-**3. Gráficos (usando recharts, já instalado)**
+### Como ficaria
 
-- **Atividades Criadas vs Atuadas por mês** (BarChart agrupado)
-  - Barras: criadas (assignments.created_at) vs atuadas (interactions ou completed)
-  - Filtro por rule_type
+- Na página de detalhes do cliente (`/clients/:planId`), adicionar um **card expansível** com o título "Coleta de Dados"
+- Dentro dele, renderizar o `DataCollectionForm` existente (mesmo componente usado na Análise)
+- Mostrar um indicador de status (Rascunho / Concluída / Não iniciada) no header do card
+- O card começa **colapsado** para não poluir a página, e o planejador expande quando quiser preencher
 
-- **Tempo médio de atuação** (LineChart)
-  - Diferença entre `created_at` da task/assignment e `interaction_date` da primeira interação
-  - Linha por mês, com filtro de tipo e planejador/equipe
+### Passos de implementação
 
-- **Ranking de planejadores que mais atuaram** (BarChart horizontal)
-  - Contagem de `contact_interactions` por user_id
-  
-- **Ranking de planejadores com mais atividades em aberto** (BarChart horizontal)
-  - Contagem de assignments com status != 'completed' por user_id
+1. **Importar `DataCollectionForm`** no `ClientDetail.tsx`
+2. **Adicionar um `Collapsible` card** entre as seções existentes (após Health Score, antes de Goals)
+3. **Buscar o status** da coleta usando `useContactDataCollection(contactId)` para mostrar badge de status no header
+4. Renderizar o formulário completo quando expandido — funciona exatamente como na Análise, com auto-save, progresso, seções, painel de observações
 
-- **Ranking por equipe** (BarChart horizontal)
-  - Agrupa planejadores por manager (hierarquia) e soma atuações/pendências
+### Vantagens
 
-**4. Componentes de gráfico individuais**
-- `MetricsActivityOverTime.tsx` — barras criadas vs atuadas
-- `MetricsAvgResponseTime.tsx` — linha tempo médio
-- `MetricsTopPlanners.tsx` — ranking atuação
-- `MetricsOpenActivities.tsx` — ranking pendências
-- `MetricsTeamPerformance.tsx` — ranking equipes
-
-### Alterações em arquivos existentes
-- `CriticalActivities.tsx`: adicionar Tabs para alternar entre "Atividades" e "Métricas"
-
-### Etapas
-1. Criar hook `useCriticalActivityMetrics` com queries e processamento de dados
-2. Criar os 5 componentes de gráfico
-3. Criar componente container `CriticalActivitiesMetrics` com filtros + grid de gráficos
-4. Atualizar `CriticalActivities.tsx` com sistema de abas
+- **Zero duplicação** — reutiliza 100% do componente existente
+- **Mesmos dados** — grava na mesma tabela `contact_data_collections`, então se o cliente depois for para o fluxo de Análise, os dados já estarão lá
+- **Familiar** — mesma interface que o planejador já conhece
 
