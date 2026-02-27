@@ -79,7 +79,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       const [contactsRes, plansRes, productsRes] = await Promise.all([
         supabase.from('contacts').select('id, full_name, client_code'),
         supabase.from('client_plans').select('id, contact_id, total_meetings, status').eq('status', 'active'),
-        supabase.from('products').select('id, name').eq('is_active', true),
+        supabase.from('products').select('id, name, partner_name').eq('is_active', true),
       ]);
 
       const contacts = contactsRes.data || [];
@@ -99,9 +99,19 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
         planByContact.set(p.contact_id, { id: p.id, total_meetings: p.total_meetings });
       }
 
-      const productMap = new Map<string, string>(); // name lowercase -> id
+      // Build product display name: "Name (Partner)" when partner exists
+      const getProductDisplayName = (p: { name: string; partner_name: string | null }) =>
+        p.partner_name ? `${p.name} (${p.partner_name})` : p.name;
+
+      const productMap = new Map<string, string>(); // display name lowercase -> id
       for (const p of products) {
-        productMap.set(p.name.toLowerCase().trim(), p.id);
+        const displayName = getProductDisplayName(p);
+        productMap.set(displayName.toLowerCase().trim(), p.id);
+        // Also map by name alone if there's no ambiguity (no other product with same name)
+        const sameName = products.filter(x => x.name.toLowerCase().trim() === p.name.toLowerCase().trim());
+        if (sameName.length === 1) {
+          productMap.set(p.name.toLowerCase().trim(), p.id);
+        }
       }
 
       // Read file
@@ -229,12 +239,17 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
   }, [processFile]);
 
   const downloadTemplate = useCallback(async () => {
-    // Fetch products for reference sheet
+    // Fetch products for reference sheet (include partner_name)
     const { data: products } = await supabase
       .from('products')
-      .select('name')
+      .select('name, partner_name')
       .eq('is_active', true)
       .order('name');
+
+    // Build display names for products
+    const productDisplayNames = (products || []).map(p =>
+      p.partner_name ? `${p.name} (${p.partner_name})` : p.name
+    );
 
     const headers = [
       'Código do Cliente',
@@ -262,7 +277,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       'Tema Reunião 10': '',
       'Tema Reunião 11': '',
       'Tema Reunião 12': '',
-      'Produto 1': products?.[0]?.name || '',
+      'Produto 1': productDisplayNames[0] || '',
       'Valor R$ Produto 1': '1500',
       'Produto 2': '',
       'Valor R$ Produto 2': '',
@@ -278,17 +293,17 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
     ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 20) }));
 
     // Create reference sheet with valid options
-    const maxRows = Math.max(THEMES_LIST.length, products?.length || 0, VALID_TOTAL_MEETINGS.length);
+    const maxRows = Math.max(THEMES_LIST.length, productDisplayNames.length, VALID_TOTAL_MEETINGS.length);
     const refData: Record<string, string>[] = [];
     for (let i = 0; i < maxRows; i++) {
       refData.push({
         'Temas de Reunião Válidos': THEMES_LIST[i] || '',
         'Nº Reuniões Válidos': VALID_TOTAL_MEETINGS[i]?.toString() || '',
-        'Produtos Válidos': products?.[i]?.name || '',
+        'Produtos Válidos': productDisplayNames[i] || '',
       });
     }
     const wsRef = XLSX.utils.json_to_sheet(refData);
-    wsRef['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 40 }];
+    wsRef['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 50 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Dados dos Clientes');
