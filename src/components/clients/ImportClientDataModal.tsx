@@ -42,6 +42,7 @@ interface ParsedRow {
   themes: string[];
   products: string[];
   product_ids: string[];
+  product_values: number[];
 }
 
 const VALID_TOTAL_MEETINGS = [4, 6, 9, 12];
@@ -165,9 +166,10 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
           }
         }
 
-        // Parse products (Produto 1 ... Produto 5)
+        // Parse products (Produto 1 ... Produto 5) and their values
         const productNames: string[] = [];
         const productIds: string[] = [];
+        const productValues: number[] = [];
         for (let i = 1; i <= 5; i++) {
           const rawProduct = String(row[`Produto ${i}`] || '').trim();
           if (rawProduct) {
@@ -175,6 +177,9 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
             if (pid) {
               productNames.push(rawProduct);
               productIds.push(pid);
+              const rawValue = row[`Valor Produto ${i}`] || row[`Valor R$ Produto ${i}`] || 0;
+              const numValue = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+              productValues.push(numValue);
             } else {
               errors.push(`Produto ${i} não encontrado: "${rawProduct}"`);
             }
@@ -197,6 +202,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
           themes,
           products: productNames,
           product_ids: productIds,
+          product_values: productValues,
         };
       });
 
@@ -236,7 +242,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       'Nº Reuniões Contratadas',
       'Reunião Atual',
       ...Array.from({ length: 12 }, (_, i) => `Tema Reunião ${i + 1}`),
-      ...Array.from({ length: 5 }, (_, i) => `Produto ${i + 1}`),
+      ...Array.from({ length: 5 }, (_, i) => [`Produto ${i + 1}`, `Valor R$ Produto ${i + 1}`]).flat(),
     ];
 
     const exampleRow: Record<string, string> = {
@@ -257,10 +263,15 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       'Tema Reunião 11': '',
       'Tema Reunião 12': '',
       'Produto 1': products?.[0]?.name || '',
+      'Valor R$ Produto 1': '1500',
       'Produto 2': '',
+      'Valor R$ Produto 2': '',
       'Produto 3': '',
+      'Valor R$ Produto 3': '',
       'Produto 4': '',
+      'Valor R$ Produto 4': '',
       'Produto 5': '',
+      'Valor R$ Produto 5': '',
     };
 
     const ws = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
@@ -402,13 +413,15 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
 
           const existingProductIds = new Set(existingContracts?.map(c => c.product_id) || []);
 
-          for (const productId of row.product_ids) {
+          for (let pi = 0; pi < row.product_ids.length; pi++) {
+            const productId = row.product_ids[pi];
+            const contractValue = row.product_values[pi] || 0;
             if (!existingProductIds.has(productId)) {
               await supabase.from('contracts').insert({
                 contact_id: row.contact_id,
                 owner_id: user.id,
                 product_id: productId,
-                contract_value: 0,
+                contract_value: contractValue,
                 calculated_pbs: 0,
                 status: 'active',
                 notes: 'Importado via planilha de atualização',
