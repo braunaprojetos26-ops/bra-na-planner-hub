@@ -2,7 +2,6 @@ export type ClientPlanStatus = 'active' | 'suspended' | 'closed';
 export type ClientPlanMeetingStatus = 'pending' | 'scheduled' | 'completed' | 'overdue';
 
 export const CLIENT_PLAN_MEETING_THEMES = [
-  'Análise',
   'Gestão de Riscos',
   'Planejamento Macro',
   'Acompanhamento',
@@ -11,7 +10,9 @@ export const CLIENT_PLAN_MEETING_THEMES = [
   'Renovação',
   'Fechamento',
   'Aquisição de Bens',
-  'Montagem de Planejamento',
+  'Milhas e Cartão de Crédito',
+  'Separação PF e PJ',
+  'Prunus',
 ] as const;
 
 export type ClientPlanMeetingTheme = typeof CLIENT_PLAN_MEETING_THEMES[number];
