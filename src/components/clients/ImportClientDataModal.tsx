@@ -34,9 +34,11 @@ interface ParsedRow {
   _isValid: boolean;
   _clientCode: string;
   _clientName: string;
+  _planejadorEmail: string;
   // Matched data
   contact_id?: string;
   plan_id?: string;
+  owner_id?: string;
   total_meetings?: 4 | 6 | 9 | 12;
   current_meeting?: number;
   themes: string[];
@@ -75,17 +77,18 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
     setIsProcessing(true);
 
     try {
-      // Fetch contacts with client_code, existing plans, and products
-      const [contactsRes, plansRes, productsRes] = await Promise.all([
+      // Fetch contacts with client_code, existing plans, products, and profiles
+      const [contactsRes, plansRes, productsRes, profilesRes] = await Promise.all([
         supabase.from('contacts').select('id, full_name, client_code'),
         supabase.from('client_plans').select('id, contact_id, total_meetings, status').eq('status', 'active'),
         supabase.from('products').select('id, name, partner_name').eq('is_active', true),
+        supabase.from('profiles').select('user_id, full_name, email').eq('is_active', true),
       ]);
 
       const contacts = contactsRes.data || [];
       const plans = plansRes.data || [];
       const products = productsRes.data || [];
-
+      const profiles = profilesRes.data || [];
       // Build lookups
       const codeMap = new Map<string, { id: string; full_name: string }>();
       for (const c of contacts) {
@@ -97,6 +100,12 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       const planByContact = new Map<string, { id: string; total_meetings: number }>();
       for (const p of plans) {
         planByContact.set(p.contact_id, { id: p.id, total_meetings: p.total_meetings });
+      }
+
+      // Build email lookup for profiles
+      const emailMap = new Map<string, string>();
+      for (const p of profiles) {
+        if (p.email) emailMap.set(p.email.toLowerCase().trim(), p.user_id);
       }
 
       // Build product display name: "Name (Partner)" when partner exists
@@ -128,6 +137,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
         const rawName = String(row['Nome do Cliente'] || '').trim();
         const rawTotalMeetings = row['Nº Reuniões Contratadas'] || row['N Reunioes Contratadas'] || row['Total Reuniões'] || '';
         const rawCurrentMeeting = row['Reunião Atual'] || row['Reuniao Atual'] || '';
+        const rawPlanejador = String(row['Planejador (Email)'] || '').trim().toLowerCase();
 
         // Match contact
         const matchedContact = rawCode ? codeMap.get(rawCode) : undefined;
@@ -199,14 +209,27 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
         // Check existing plan
         const existingPlan = matchedContact ? planByContact.get(matchedContact.id) : undefined;
 
+        // Match planner by email
+        let ownerId: string | undefined;
+        if (rawPlanejador) {
+          const matchedOwner = emailMap.get(rawPlanejador);
+          if (matchedOwner) {
+            ownerId = matchedOwner;
+          } else {
+            errors.push(`Planejador "${rawPlanejador}" não encontrado`);
+          }
+        }
+
         return {
           _rowNumber: rowNumber,
           _errors: errors,
           _isValid: errors.length === 0,
           _clientCode: rawCode,
           _clientName: matchedContact?.full_name || rawName,
+          _planejadorEmail: rawPlanejador,
           contact_id: matchedContact?.id,
           plan_id: existingPlan?.id,
+          owner_id: ownerId,
           total_meetings: totalMeetings,
           current_meeting: currentMeeting,
           themes,
@@ -239,12 +262,11 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
   }, [processFile]);
 
   const downloadTemplate = useCallback(async () => {
-    // Fetch products for reference sheet (include partner_name)
-    const { data: products } = await supabase
-      .from('products')
-      .select('name, partner_name')
-      .eq('is_active', true)
-      .order('name');
+    // Fetch products and profiles for reference sheet
+    const [{ data: products }, { data: profiles }] = await Promise.all([
+      supabase.from('products').select('name, partner_name').eq('is_active', true).order('name'),
+      supabase.from('profiles').select('email').eq('is_active', true).order('full_name'),
+    ]);
 
     // Build display names for products
     const productDisplayNames = (products || []).map(p =>
@@ -254,6 +276,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
     const headers = [
       'Código do Cliente',
       'Nome do Cliente',
+      'Planejador (Email)',
       'Nº Reuniões Contratadas',
       'Reunião Atual',
       ...Array.from({ length: 12 }, (_, i) => `Tema Reunião ${i + 1}`),
@@ -263,11 +286,12 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
     const exampleRow: Record<string, string> = {
       'Código do Cliente': 'C000001',
       'Nome do Cliente': 'João Silva (referência)',
+      'Planejador (Email)': 'planejador@email.com',
       'Nº Reuniões Contratadas': '12',
       'Reunião Atual': '3',
-      'Tema Reunião 1': 'Análise',
+      'Tema Reunião 1': 'Planejamento Macro',
       'Tema Reunião 2': 'Gestão de Riscos',
-      'Tema Reunião 3': 'Planejamento Macro',
+      'Tema Reunião 3': 'Investimentos',
       'Tema Reunião 4': '',
       'Tema Reunião 5': '',
       'Tema Reunião 6': '',
@@ -277,12 +301,12 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       'Tema Reunião 10': '',
       'Tema Reunião 11': '',
       'Tema Reunião 12': '',
-      'Produto 1': productDisplayNames[0] || '',
-      'Valor R$ Produto 1': '1500',
-      'Produto 2': '',
-      'Valor R$ Produto 2': '',
-      'Produto 3': '',
-      'Valor R$ Produto 3': '',
+      'Produto 1': 'Planejamento Financeiro Completo (Braúna)',
+      'Valor R$ Produto 1': '10000',
+      'Produto 2': 'Icatu Horizonte (Icatu)',
+      'Valor R$ Produto 2': '2500',
+      'Produto 3': 'Consórcio Imobiliário - Parcela Cheia (Embracon)',
+      'Valor R$ Produto 3': '200000',
       'Produto 4': '',
       'Valor R$ Produto 4': '',
       'Produto 5': '',
@@ -293,17 +317,19 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
     ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 20) }));
 
     // Create reference sheet with valid options
-    const maxRows = Math.max(THEMES_LIST.length, productDisplayNames.length, VALID_TOTAL_MEETINGS.length);
+    const profileEmails = (profiles || []).map(p => p.email).filter(Boolean) as string[];
+    const maxRows = Math.max(THEMES_LIST.length, productDisplayNames.length, VALID_TOTAL_MEETINGS.length, profileEmails.length);
     const refData: Record<string, string>[] = [];
     for (let i = 0; i < maxRows; i++) {
       refData.push({
         'Temas de Reunião Válidos': THEMES_LIST[i] || '',
         'Nº Reuniões Válidos': VALID_TOTAL_MEETINGS[i]?.toString() || '',
         'Produtos Válidos': productDisplayNames[i] || '',
+        'Planejadores (Email)': profileEmails[i] || '',
       });
     }
     const wsRef = XLSX.utils.json_to_sheet(refData);
-    wsRef['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 50 }];
+    wsRef['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 50 }, { wch: 35 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Dados dos Clientes');
@@ -332,6 +358,11 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
           errors.push({ row: row._rowNumber, error: 'Dados obrigatórios ausentes' });
           failed++;
           continue;
+        }
+
+        // Update contact owner if planner specified
+        if (row.owner_id && row.contact_id) {
+          await supabase.from('contacts').update({ owner_id: row.owner_id }).eq('id', row.contact_id);
         }
 
         // Check if plan already exists
@@ -381,7 +412,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
             .from('client_plans')
             .insert({
               contact_id: row.contact_id,
-              owner_id: user.id,
+              owner_id: row.owner_id || user.id,
               created_by: user.id,
               contract_value: 0,
               total_meetings: row.total_meetings,
@@ -434,7 +465,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
             if (!existingProductIds.has(productId)) {
               await supabase.from('contracts').insert({
                 contact_id: row.contact_id,
-                owner_id: user.id,
+                owner_id: row.owner_id || user.id,
                 product_id: productId,
                 contract_value: contractValue,
                 calculated_pbs: 0,
@@ -531,6 +562,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
                 <li>Os nomes dos produtos devem corresponder exatamente aos cadastrados</li>
                 <li>Nº de reuniões aceitos: 4, 6, 9 ou 12</li>
                 <li>Se o cliente já possui um plano ativo, ele será atualizado</li>
+                <li>Coluna <strong>Planejador (Email)</strong>: e-mail do planejador responsável (opcional, veja aba "Valores Válidos")</li>
               </ul>
             </div>
           </div>
