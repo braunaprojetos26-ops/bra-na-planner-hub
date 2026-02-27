@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, User, DollarSign, Calendar, Phone, Mail, ExternalLink, HeartPulse, Star, Users, CreditCard, ShoppingBag, CalendarCheck, MessageCircle } from 'lucide-react';
+import { ArrowLeft, User, DollarSign, Calendar, Phone, Mail, ExternalLink, HeartPulse, Star, Users, CreditCard, ShoppingBag, CalendarCheck, MessageCircle, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ClientMeetingsTimeline } from '@/components/clients/ClientMeetingsTimeline';
 import { ClientTasksSection } from '@/components/clients/ClientTasksSection';
 import { ClientMinutesSection } from '@/components/clients/ClientMinutesSection';
@@ -13,6 +15,8 @@ import { ClientPaymentSection } from '@/components/clients/ClientPaymentSection'
 import { ClientProductsSection } from '@/components/clients/ClientProductsSection';
 import { ClientInvestmentsSection } from '@/components/clients/ClientInvestmentsSection';
 import { ClientGoalsSection } from '@/components/clients/ClientGoalsSection';
+import { DataCollectionForm } from '@/components/analysis/data-collection/DataCollectionForm';
+import { useContactDataCollection } from '@/hooks/useContactDataCollection';
 import { useClientPlan } from '@/hooks/useClients';
 import { useHealthScore, CATEGORY_CONFIG } from '@/hooks/useHealthScore';
 function formatCurrency(value: number): string {
@@ -27,6 +31,7 @@ export default function ClientDetail() {
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
   const { data: plan, isLoading } = useClientPlan(planId || '');
+  const [dataCollectionOpen, setDataCollectionOpen] = useState(false);
   
   // Fetch health score for this specific contact
   const contactId = plan?.contact_id;
@@ -34,6 +39,9 @@ export default function ClientDetail() {
     contactId ? { contactIds: [contactId] } : undefined
   );
   const clientHealth = healthData?.results?.[0];
+  
+  // Fetch data collection status
+  const { data: dataCollection } = useContactDataCollection(contactId);
 
   if (isLoading) {
     return (
@@ -255,6 +263,41 @@ export default function ClientDetail() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Data Collection Section */}
+      {contactId && (
+        <Collapsible open={dataCollectionOpen} onOpenChange={setDataCollectionOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5" />
+                    Coleta de Dados
+                    <Badge variant={
+                      dataCollection?.status === 'completed' ? 'default' : 
+                      dataCollection ? 'secondary' : 'outline'
+                    }>
+                      {dataCollection?.status === 'completed' ? 'Concluída' : 
+                       dataCollection ? 'Rascunho' : 'Não iniciada'}
+                    </Badge>
+                  </CardTitle>
+                  {dataCollectionOpen ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <DataCollectionForm contactId={contactId} />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       )}
 
       {/* Goals Section */}
