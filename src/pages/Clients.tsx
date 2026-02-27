@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Users, Columns3, Columns4, Filter } from 'lucide-react';
+import { Search, Plus, Users, Columns3, Columns4, Filter, FileSpreadsheet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import { ClientsTableView } from '@/components/clients/ClientsTableView';
 import { ClientsAdvancedFilters, EMPTY_FILTERS, type AdvancedFilters } from '@/components/clients/ClientsAdvancedFilters';
 import { NewClientModal } from '@/components/clients/NewClientModal';
 import { DelinquentClientsDrawer } from '@/components/clients/DelinquentClientsDrawer';
+import { ImportClientDataModal } from '@/components/clients/ImportClientDataModal';
 import { useClients, useClientMetrics, useDelinquentClients } from '@/hooks/useClients';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,7 @@ export default function Clients() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ClientPlanStatus | 'all'>('active');
   const [showNewClient, setShowNewClient] = useState(false);
+  const [showImportData, setShowImportData] = useState(false);
   const [showDelinquentDrawer, setShowDelinquentDrawer] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [selectedPlannerIds, setSelectedPlannerIds] = useState<string[]>([]);
@@ -68,10 +70,16 @@ export default function Clients() {
           <h1 className="text-2xl font-bold">{pageTitle}</h1>
         </div>
         {!isImpersonating && (
-          <Button onClick={() => setShowNewClient(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Cliente
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportData(true)}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Atualizar via Planilha
+            </Button>
+            <Button onClick={() => setShowNewClient(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Cliente
+            </Button>
+          </div>
         )}
       </div>
 
@@ -201,6 +209,7 @@ export default function Clients() {
       )}
 
       <NewClientModal open={showNewClient} onOpenChange={setShowNewClient} />
+      <ImportClientDataModal open={showImportData} onOpenChange={setShowImportData} />
       <DelinquentClientsDrawer 
         open={showDelinquentDrawer} 
         onOpenChange={setShowDelinquentDrawer}
