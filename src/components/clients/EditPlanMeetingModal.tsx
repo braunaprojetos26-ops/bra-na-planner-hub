@@ -119,7 +119,7 @@ export function EditPlanMeetingModal({
                         <SelectValue placeholder="Selecione o tema" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="max-h-60 overflow-y-auto">
                       {CLIENT_PLAN_MEETING_THEMES.map((theme) => (
                         <SelectItem key={theme} value={theme}>
                           {theme}
