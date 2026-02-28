@@ -186,11 +186,28 @@ export function useCriticalActivities() {
     },
   });
 
+  // Delete activity (cascade: tasks + assignments)
+  const deleteActivity = useMutation({
+    mutationFn: async (activityId: string) => {
+      const { error } = await supabase.rpc('delete_critical_activity', { p_activity_id: activityId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Atividade excluída com sucesso. Tarefas associadas foram removidas.');
+      queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao excluir atividade: ' + error.message);
+    },
+  });
+
   return {
     allActivities: allActivitiesQuery.data || [],
     allActivitiesLoading: allActivitiesQuery.isLoading,
     isAdmin,
     createActivity,
+    deleteActivity,
     useActivityDetail,
   };
 }

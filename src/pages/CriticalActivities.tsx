@@ -8,17 +8,20 @@ import { ActivityCard } from '@/components/critical-activities/ActivityCard';
 import { NewActivityModal } from '@/components/critical-activities/NewActivityModal';
 import { ActivityDetailModal } from '@/components/critical-activities/ActivityDetailModal';
 import { CriticalActivitiesMetrics } from '@/components/critical-activities/CriticalActivitiesMetrics';
+import { WikiDeleteConfirmModal } from '@/components/wiki/WikiDeleteConfirmModal';
 
 export default function CriticalActivities() {
   const {
     allActivities,
     allActivitiesLoading,
     createActivity,
+    deleteActivity,
   } = useCriticalActivities();
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [detailActivityId, setDetailActivityId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('activities');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -73,6 +76,7 @@ export default function CriticalActivities() {
                   activity={activity}
                   isAdmin
                   onViewDetail={setDetailActivityId}
+                  onDelete={(id) => setDeleteTarget({ id, title: activity.title })}
                 />
               ))}
             </div>
@@ -97,6 +101,19 @@ export default function CriticalActivities() {
         activityId={detailActivityId}
         open={!!detailActivityId}
         onOpenChange={(open) => { if (!open) setDetailActivityId(null); }}
+      />
+
+      <WikiDeleteConfirmModal
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteActivity.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+          }
+        }}
+        title={deleteTarget?.title || ''}
+        description="Todas as tarefas associadas a esta atividade serão removidas de todos os usuários."
+        isPending={deleteActivity.isPending}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import { format, formatDistanceToNow, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { AlertTriangle, Clock, CheckCircle2, Zap, AlertCircle, Info, Repeat, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, Zap, AlertCircle, Info, Repeat, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,12 @@ interface ActivityCardProps {
   };
   onComplete?: (activityId: string) => void;
   onViewDetail?: (activityId: string) => void;
+  onDelete?: (activityId: string) => void;
   isAdmin?: boolean;
   isCompleting?: boolean;
 }
 
-export function ActivityCard({ activity, onComplete, onViewDetail, isAdmin, isCompleting }: ActivityCardProps) {
+export function ActivityCard({ activity, onComplete, onViewDetail, onDelete, isAdmin, isCompleting }: ActivityCardProps) {
   const urgency = urgencyConfig[activity.urgency as keyof typeof urgencyConfig] || urgencyConfig.medium;
   const UrgencyIcon = urgency.icon;
   const deadlinePast = isPast(new Date(activity.deadline));
@@ -120,6 +121,12 @@ export function ActivityCard({ activity, onComplete, onViewDetail, isAdmin, isCo
           {isAdmin && onViewDetail && (
             <Button size="sm" variant="outline" onClick={() => onViewDetail(activity.id)}>
               Ver detalhes
+            </Button>
+          )}
+          {isAdmin && onDelete && (
+            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => onDelete(activity.id)}>
+              <Trash2 className="h-4 w-4 mr-1" />
+              Excluir
             </Button>
           )}
         </div>
