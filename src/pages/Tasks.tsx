@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { startOfWeek, endOfWeek, addDays, startOfMonth, endOfMonth } from 'date-fns';
-import { CheckSquare } from 'lucide-react';
+import { CheckSquare, List, CalendarDays } from 'lucide-react';
 import { TasksWeekSummary } from '@/components/tasks/TasksWeekSummary';
 import { TasksFilters, PeriodFilter } from '@/components/tasks/TasksFilters';
 import { TasksListPage } from '@/components/tasks/TasksListPage';
+import { TasksCalendarView } from '@/components/tasks/TasksCalendarView';
 import { useAllUserTasks, TaskFilters } from '@/hooks/useTasks';
 import { useTeamMembers } from '@/hooks/useTeamAnalytics';
 import { TaskType, TaskStatus } from '@/types/tasks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 function getDateRange(period: PeriodFilter): { startDate?: Date; endDate?: Date } {
   const now = new Date();
@@ -34,7 +36,10 @@ function getDateRange(period: PeriodFilter): { startDate?: Date; endDate?: Date 
   }
 }
 
+type ViewMode = 'list' | 'calendar';
+
 export default function Tasks() {
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [period, setPeriod] = useState<PeriodFilter>('this_week');
   const [taskType, setTaskType] = useState<TaskType | 'all'>('all');
   const [status, setStatus] = useState<TaskStatus | 'all'>('all');
@@ -52,7 +57,18 @@ export default function Tasks() {
     };
   }, [period, taskType, status, assignedTo]);
 
+  // For list view, use filtered tasks
   const { data: tasks = [], isLoading } = useAllUserTasks(filters);
+
+  // For calendar view, fetch all tasks (no date filter)
+  const calendarFilters: TaskFilters = useMemo(() => ({
+    taskType: taskType !== 'all' ? taskType : undefined,
+    status: status !== 'all' ? status : undefined,
+    assignedTo: assignedTo !== 'all' ? assignedTo : undefined,
+  }), [taskType, status, assignedTo]);
+  const { data: calendarTasks = [], isLoading: calendarLoading } = useAllUserTasks(
+    viewMode === 'calendar' ? calendarFilters : undefined
+  );
 
   // Calculate week summary (always based on current week, regardless of filters)
   const weekRange = useMemo(() => ({
@@ -78,13 +94,33 @@ export default function Tasks() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <CheckSquare className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CheckSquare className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Tarefas</h1>
+            <p className="text-muted-foreground text-sm">Gerencie suas atividades</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Tarefas</h1>
-          <p className="text-muted-foreground text-sm">Gerencie suas atividades</p>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-4 w-4 mr-1" />
+            Lista
+          </Button>
+          <Button
+            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('calendar')}
+          >
+            <CalendarDays className="h-4 w-4 mr-1" />
+            Calendário
+          </Button>
         </div>
       </div>
 
@@ -97,27 +133,31 @@ export default function Tasks() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle className="text-base font-medium">Lista de Tarefas</CardTitle>
-            <TasksFilters
-              period={period}
-              onPeriodChange={setPeriod}
-              taskType={taskType}
-              onTaskTypeChange={setTaskType}
-              status={status}
-              onStatusChange={setStatus}
-              assignedTo={assignedTo}
-              onAssignedToChange={setAssignedTo}
-              teamMembers={teamMemberOptions}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <TasksListPage tasks={tasks} isLoading={isLoading} />
-        </CardContent>
-      </Card>
+      {viewMode === 'list' ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle className="text-base font-medium">Lista de Tarefas</CardTitle>
+              <TasksFilters
+                period={period}
+                onPeriodChange={setPeriod}
+                taskType={taskType}
+                onTaskTypeChange={setTaskType}
+                status={status}
+                onStatusChange={setStatus}
+                assignedTo={assignedTo}
+                onAssignedToChange={setAssignedTo}
+                teamMembers={teamMemberOptions}
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TasksListPage tasks={tasks} isLoading={isLoading} />
+          </CardContent>
+        </Card>
+      ) : (
+        <TasksCalendarView tasks={calendarTasks} isLoading={calendarLoading} />
+      )}
     </div>
   );
 }
