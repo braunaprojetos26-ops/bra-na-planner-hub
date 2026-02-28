@@ -4032,6 +4032,10 @@ export type Database = {
         Args: { _target_user_id: string; _transfer_to_user_id: string }
         Returns: undefined
       }
+      delete_critical_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
       distribute_critical_activity: {
         Args: { p_activity_id: string }
         Returns: number
