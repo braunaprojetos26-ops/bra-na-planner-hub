@@ -6,6 +6,7 @@ import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { usePlannerGoals, PeriodType } from '@/hooks/usePlannerGoals';
 import { GoalGaugeChart } from '@/components/dashboard/GoalGaugeChart';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DailyTasksSummary } from '@/components/dashboard/DailyTasksSummary';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo, useState } from 'react';
@@ -118,6 +119,9 @@ export default function Index() {
   return (
     <div className="space-y-6">
       <DashboardHeader />
+
+      {/* Daily Tasks Summary */}
+      <DailyTasksSummary />
 
       {/* Financial Metrics Section */}
       <div className="space-y-3">
