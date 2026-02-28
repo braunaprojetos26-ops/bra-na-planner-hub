@@ -24,13 +24,14 @@ interface QuickTaskModalProps {
 interface BulkTaskItem {
   id: string;
   title: string;
+  description: string;
   time: string;
   taskType: TaskType;
 }
 
 let bulkIdCounter = 0;
 function newBulkItem(): BulkTaskItem {
-  return { id: `bulk-${++bulkIdCounter}`, title: '', time: '09:00', taskType: 'other' };
+  return { id: `bulk-${++bulkIdCounter}`, title: '', description: '', time: '09:00', taskType: 'other' };
 }
 
 export function QuickTaskModal({ open, onOpenChange, defaultDate }: QuickTaskModalProps) {
@@ -87,6 +88,7 @@ export function QuickTaskModal({ open, onOpenChange, defaultDate }: QuickTaskMod
 
         await createTask({
           title: item.title.trim(),
+          description: item.description.trim() || undefined,
           task_type: item.taskType,
           scheduled_at: scheduledAt.toISOString(),
         });
@@ -219,41 +221,51 @@ export function QuickTaskModal({ open, onOpenChange, defaultDate }: QuickTaskMod
               <ScrollArea className="max-h-[40vh]">
                 <div className="space-y-2 pr-2">
                   {bulkItems.map((item, idx) => (
-                    <div key={item.id} className="flex items-center gap-2 p-2 border rounded-lg bg-muted/30">
-                      <span className="text-xs text-muted-foreground w-5 shrink-0 text-center">{idx + 1}</span>
-                      <Input
-                        placeholder="Título da tarefa"
-                        value={item.title}
-                        onChange={(e) => updateBulkItem(item.id, 'title', e.target.value)}
-                        className="flex-1 h-8 text-sm"
-                      />
-                      <Input
-                        type="time"
-                        value={item.time}
-                        onChange={(e) => updateBulkItem(item.id, 'time', e.target.value)}
-                        className="w-24 h-8 text-sm"
-                      />
-                      <Select value={item.taskType} onValueChange={(v) => updateBulkItem(item.id, 'taskType', v)}>
-                        <SelectTrigger className="w-32 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(TASK_TYPE_LABELS).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {bulkItems.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeBulkItem(item.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
+                    <div key={item.id} className="space-y-1.5 p-2 border rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-5 shrink-0 text-center">{idx + 1}</span>
+                        <Input
+                          placeholder="Título da tarefa"
+                          value={item.title}
+                          onChange={(e) => updateBulkItem(item.id, 'title', e.target.value)}
+                          className="flex-1 h-8 text-sm"
+                        />
+                        <Input
+                          type="time"
+                          value={item.time}
+                          onChange={(e) => updateBulkItem(item.id, 'time', e.target.value)}
+                          className="w-24 h-8 text-sm"
+                        />
+                        <Select value={item.taskType} onValueChange={(v) => updateBulkItem(item.id, 'taskType', v)}>
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(TASK_TYPE_LABELS).map(([value, label]) => (
+                              <SelectItem key={value} value={value}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {bulkItems.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeBulkItem(item.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="pl-7">
+                        <Input
+                          placeholder="Descrição (opcional)"
+                          value={item.description}
+                          onChange={(e) => updateBulkItem(item.id, 'description', e.target.value)}
+                          className="h-7 text-xs"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
