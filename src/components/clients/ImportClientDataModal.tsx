@@ -91,10 +91,13 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       const profiles = profilesRes.data || [];
       // Build lookups
       const codeMap = new Map<string, { id: string; full_name: string }>();
+      const nameMap = new Map<string, { id: string; full_name: string; client_code: string | null }>();
       for (const c of contacts) {
         if (c.client_code) {
           codeMap.set(c.client_code.toUpperCase().trim(), { id: c.id, full_name: c.full_name });
         }
+        // Name lookup (lowercase, trimmed) for fallback
+        nameMap.set(c.full_name.toLowerCase().trim(), { id: c.id, full_name: c.full_name, client_code: c.client_code });
       }
 
       const planByContact = new Map<string, { id: string; total_meetings: number }>();
@@ -116,6 +119,11 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       for (const p of products) {
         const displayName = getProductDisplayName(p);
         productMap.set(displayName.toLowerCase().trim(), p.id);
+        // Also map "Partner - Name" format (e.g. "MAG - Vida toda")
+        if (p.partner_name) {
+          const altFormat = `${p.partner_name} - ${p.name}`.toLowerCase().trim();
+          productMap.set(altFormat, p.id);
+        }
         // Also map by name alone if there's no ambiguity (no other product with same name)
         const sameName = products.filter(x => x.name.toLowerCase().trim() === p.name.toLowerCase().trim());
         if (sameName.length === 1) {
@@ -133,18 +141,25 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
         const rowNumber = index + 2;
         const errors: string[] = [];
 
-        const rawCode = String(row['Código do Cliente'] || row['Codigo do Cliente'] || '').trim().toUpperCase();
+        // Strip brackets from client code (e.g. "[C000657]" -> "C000657")
+        const rawCode = String(row['Código do Cliente'] || row['Codigo do Cliente'] || '').trim().replace(/[\[\]]/g, '').toUpperCase();
         const rawName = String(row['Nome do Cliente'] || '').trim();
         const rawTotalMeetings = row['Nº Reuniões Contratadas'] || row['N Reunioes Contratadas'] || row['Total Reuniões'] || '';
         const rawCurrentMeeting = row['Reunião Atual'] || row['Reuniao Atual'] || '';
         const rawPlanejador = String(row['Planejador (Email)'] || '').trim().toLowerCase();
 
-        // Match contact
-        const matchedContact = rawCode ? codeMap.get(rawCode) : undefined;
-        if (!rawCode) {
-          errors.push('Código do cliente é obrigatório');
+        // Match contact by code first, then fallback to name
+        let matchedContact = rawCode ? codeMap.get(rawCode) : undefined;
+        if (!matchedContact && rawName) {
+          const nameMatch = nameMap.get(rawName.toLowerCase().trim());
+          if (nameMatch) {
+            matchedContact = { id: nameMatch.id, full_name: nameMatch.full_name };
+          }
+        }
+        if (!rawCode && !rawName) {
+          errors.push('Código ou nome do cliente é obrigatório');
         } else if (!matchedContact) {
-          errors.push(`Cliente "${rawCode}" não encontrado`);
+          errors.push(`Cliente "${rawCode || rawName}" não encontrado`);
         }
 
         // Validate total meetings
@@ -499,7 +514,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
             Atualizar Dados de Clientes
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && 'Importe uma planilha para atualizar reuniões e produtos dos clientes. Os clientes são identificados pelo código.'}
+            {step === 'upload' && 'Importe uma planilha para atualizar reuniões e produtos dos clientes. Os clientes são identificados pelo código ou nome.'}
             {step === 'preview' && 'Revise os dados antes de confirmar a importação.'}
             {step === 'importing' && 'Importando dados... Não feche esta janela.'}
             {step === 'result' && 'Resultado da importação.'}
@@ -557,8 +572,8 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm space-y-1">
               <p className="font-medium text-blue-700">ℹ️ Instruções importantes:</p>
               <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                <li>Preencha o <strong>Código do Cliente</strong> exatamente como aparece no sistema (ex: C000001)</li>
-                <li>Os temas de reunião devem ser copiados exatamente da aba "Valores Válidos"</li>
+                 <li>Preencha o <strong>Código do Cliente</strong> (ex: C000001) ou o <strong>Nome do Cliente</strong> exatamente como no sistema</li>
+                 <li>Códigos com colchetes [C000001] são aceitos automaticamente</li>
                 <li>Os nomes dos produtos devem corresponder exatamente aos cadastrados</li>
                 <li>Nº de reuniões aceitos: 4, 6, 9 ou 12</li>
                 <li>Se o cliente já possui um plano ativo, ele será atualizado</li>
@@ -583,7 +598,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
               )}
             </div>
 
-            <ScrollArea className="flex-1 border rounded-lg">
+            <ScrollArea className="flex-1 border rounded-lg max-h-[50vh]">
               <Table>
                 <TableHeader>
                   <TableRow>
