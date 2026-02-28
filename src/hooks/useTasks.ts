@@ -67,7 +67,7 @@ export function useTasks(opportunityId?: string) {
           opportunity_id: formData.opportunity_id || null,
           contact_id: formData.contact_id || null,
           created_by: user.id,
-        })
+        } as any)
         .select()
         .single();
 
@@ -89,7 +89,7 @@ export function useTasks(opportunityId?: string) {
     mutationFn: async ({ id, ...updates }: Partial<Task> & { id: string }) => {
       const { data, error } = await supabase
         .from('tasks')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
@@ -251,7 +251,7 @@ export function useAllUserTasks(filters?: TaskFilters) {
 
       // Apply task type filter
       if (filters?.taskType && filters.taskType !== 'all') {
-        query = query.eq('task_type', filters.taskType);
+        query = query.eq('task_type', filters.taskType as any);
       }
 
       // Apply status filter

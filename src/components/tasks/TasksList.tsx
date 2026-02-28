@@ -23,6 +23,7 @@ const TASK_TYPE_ICONS: Record<TaskType, React.ReactNode> = {
   document: <FileText className="w-4 h-4" />,
   whatsapp: <MessageCircle className="w-4 h-4" />,
   scheduling_analysis: <CalendarCheck className="w-4 h-4" />,
+  personal: <Circle className="w-4 h-4" />,
   other: <MoreHorizontal className="w-4 h-4" />,
 };
 
