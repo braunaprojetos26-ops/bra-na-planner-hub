@@ -6,13 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Task, TASK_TYPE_LABELS } from '@/types/tasks';
+import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { RegisterInteractionModal } from './RegisterInteractionModal';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface DaySummaryModalProps {
   open: boolean;
@@ -33,12 +34,36 @@ export function DaySummaryModal({ open, onOpenChange, date, tasks, onAddTask }: 
     taskId: string;
   }>({ open: false, contactId: '', contactName: '', taskId: '' });
 
-  if (!date) return null;
+  const sorted = useMemo(() => 
+    [...tasks].sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()),
+    [tasks]
+  );
 
-  const sorted = [...tasks].sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-  const completed = tasks.filter(t => t.status === 'completed').length;
-  const overdue = tasks.filter(t => t.status === 'overdue').length;
-  const pending = tasks.filter(t => t.status === 'pending').length;
+  const stats = useMemo(() => {
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const overdue = tasks.filter(t => t.status === 'overdue').length;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+
+    // Count by task type
+    const byType: Partial<Record<TaskType, number>> = {};
+    tasks.forEach(t => {
+      byType[t.task_type] = (byType[t.task_type] || 0) + 1;
+    });
+
+    // Count by urgency tag
+    let critical = 0;
+    let leader = 0;
+    let own = 0;
+    tasks.forEach(t => {
+      if (t.title.startsWith('[Atividade Crítica]')) critical++;
+      else if (t.created_by !== currentUserId && t.assigned_to === currentUserId) leader++;
+      else own++;
+    });
+
+    return { completed, overdue, pending, byType, critical, leader, own };
+  }, [tasks, currentUserId]);
+
+  if (!date) return null;
 
   function getTaskTag(task: Task) {
     if (task.title.startsWith('[Atividade Crítica]')) {
@@ -62,34 +87,82 @@ export function DaySummaryModal({ open, onOpenChange, date, tasks, onAddTask }: 
     }
   };
 
+  const typeEntries = Object.entries(stats.byType)
+    .sort(([, a], [, b]) => b - a) as [TaskType, number][];
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh]">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}</span>
+            <DialogTitle className="text-lg capitalize">
+              {format(date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Summary stats */}
+          {/* Status summary */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="text-center p-2 rounded-lg bg-muted/50">
-              <p className="text-lg font-bold">{pending}</p>
+            <div className="text-center p-3 rounded-lg bg-muted/50 border">
+              <p className="text-2xl font-bold">{stats.pending}</p>
               <p className="text-xs text-muted-foreground">Pendentes</p>
             </div>
-            <div className="text-center p-2 rounded-lg bg-destructive/10">
-              <p className="text-lg font-bold text-destructive">{overdue}</p>
+            <div className="text-center p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-2xl font-bold text-destructive">{stats.overdue}</p>
               <p className="text-xs text-muted-foreground">Atrasadas</p>
             </div>
-            <div className="text-center p-2 rounded-lg bg-emerald-500/10">
-              <p className="text-lg font-bold text-emerald-600">{completed}</p>
+            <div className="text-center p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-2xl font-bold text-emerald-600">{stats.completed}</p>
               <p className="text-xs text-muted-foreground">Concluídas</p>
             </div>
           </div>
 
+          {/* Breakdown: by type + by urgency */}
+          {tasks.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              {/* By task type */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Por tipo</p>
+                <div className="space-y-1.5">
+                  {typeEntries.map(([type, count]) => (
+                    <div key={type} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground truncate">{TASK_TYPE_LABELS[type]}</span>
+                      <Badge variant="secondary" className="text-xs h-5 px-1.5">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* By urgency / origin */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Por origem</p>
+                <div className="space-y-1.5">
+                  {stats.critical > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-orange-600 dark:text-orange-400">Atividade Crítica</span>
+                      <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 text-xs h-5 px-1.5">{stats.critical}</Badge>
+                    </div>
+                  )}
+                  {stats.leader > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-blue-600 dark:text-blue-400">Tarefa Líder</span>
+                      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs h-5 px-1.5">{stats.leader}</Badge>
+                    </div>
+                  )}
+                  {stats.own > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-emerald-600 dark:text-emerald-400">Tarefa Própria</span>
+                      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs h-5 px-1.5">{stats.own}</Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
           {/* Task list */}
-          <ScrollArea className="max-h-[50vh]">
+          <ScrollArea className="max-h-[40vh]">
             {sorted.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
