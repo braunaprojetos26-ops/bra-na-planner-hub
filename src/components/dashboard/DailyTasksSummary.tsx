@@ -98,7 +98,7 @@ export function DailyTasksSummary() {
         'transition-all',
         stats.overdue > 0 && 'border-destructive/30'
       )}>
-        <CardHeader className="pb-2">
+        <CardHeader className={cn("pb-2", !isOpen && "pb-6")}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ListChecks className="h-5 w-5 text-primary" />
