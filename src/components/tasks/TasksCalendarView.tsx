@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths,
-  addWeeks, subWeeks, format, isSameMonth, isSameDay, isToday, startOfDay, endOfDay,
-  getDay,
+  addWeeks, subWeeks, format, isSameMonth, isSameDay, isToday, startOfDay,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -11,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/tasks';
 import { QuickTaskModal } from './QuickTaskModal';
+import { DaySummaryModal } from './DaySummaryModal';
 
 type CalendarMode = 'month' | 'week' | 'day';
 
@@ -36,6 +36,7 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mode, setMode] = useState<CalendarMode>('month');
   const [quickTaskDate, setQuickTaskDate] = useState<Date | null>(null);
+  const [summaryDate, setSummaryDate] = useState<Date | null>(null);
 
   const tasksByDay = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -47,7 +48,6 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
     return map;
   }, [tasks]);
 
-  // Navigate
   const goNext = () => {
     if (mode === 'month') setCurrentDate(addMonths(currentDate, 1));
     else if (mode === 'week') setCurrentDate(addWeeks(currentDate, 1));
@@ -70,7 +70,6 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
     return format(currentDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   }, [currentDate, mode]);
 
-  // Generate days grid
   const days = useMemo(() => {
     if (mode === 'month') {
       const monthStart = startOfMonth(currentDate);
@@ -92,10 +91,26 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
     return [startOfDay(currentDate)];
   }, [currentDate, mode]);
 
+  const handleDayClick = (day: Date) => {
+    setSummaryDate(day);
+  };
+
+  const handleAddTaskFromSummary = () => {
+    const d = summaryDate;
+    setSummaryDate(null);
+    setQuickTaskDate(d);
+  };
+
+  const summaryTasks = useMemo(() => {
+    if (!summaryDate) return [];
+    const key = format(summaryDate, 'yyyy-MM-dd');
+    return tasksByDay.get(key) || [];
+  }, [summaryDate, tasksByDay]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={goPrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -124,7 +139,6 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
       {/* Calendar grid */}
       {mode === 'month' && (
         <div className="border rounded-lg overflow-hidden">
-          {/* Weekday headers */}
           <div className="grid grid-cols-7 bg-muted/50">
             {WEEKDAY_LABELS.map(label => (
               <div key={label} className="p-2 text-center text-xs font-medium text-muted-foreground border-b">
@@ -132,7 +146,6 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
               </div>
             ))}
           </div>
-          {/* Days grid */}
           <div className="grid grid-cols-7">
             {days.map((day, idx) => {
               const key = format(day, 'yyyy-MM-dd');
@@ -147,7 +160,7 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
                     'min-h-[100px] border-b border-r p-1 cursor-pointer hover:bg-muted/30 transition-colors',
                     !inMonth && 'bg-muted/20 opacity-50',
                   )}
-                  onClick={() => setQuickTaskDate(day)}
+                  onClick={() => handleDayClick(day)}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={cn(
@@ -211,7 +224,7 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
                 <div
                   key={idx}
                   className="min-h-[200px] border-r p-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => setQuickTaskDate(day)}
+                  onClick={() => handleDayClick(day)}
                 >
                   <div className="space-y-1">
                     {dayTasks.map(task => (
@@ -314,6 +327,14 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
         open={!!quickTaskDate}
         onOpenChange={(open) => { if (!open) setQuickTaskDate(null); }}
         defaultDate={quickTaskDate}
+      />
+
+      <DaySummaryModal
+        open={!!summaryDate}
+        onOpenChange={(open) => { if (!open) setSummaryDate(null); }}
+        date={summaryDate}
+        tasks={summaryTasks}
+        onAddTask={handleAddTaskFromSummary}
       />
     </div>
   );
