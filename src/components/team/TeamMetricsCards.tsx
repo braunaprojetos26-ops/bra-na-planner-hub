@@ -31,6 +31,11 @@ function perCapita(total: number, count: number): string {
   return formatNumber(Math.round((total / count) * 100) / 100);
 }
 
+function perCapitaCurrency(total: number, count: number): string {
+  if (count === 0) return 'R$ 0';
+  return formatCurrency(Math.round(total / count));
+}
+
 function MetricCard({ title, value, subValue, icon: Icon, iconBg, isPlaceholder = false }: {
   title: string; value: string | number; subValue?: string;
   icon: React.ElementType; iconBg: string; isPlaceholder?: boolean;
@@ -101,15 +106,15 @@ function ProductionTab({ metrics, isLoading }: { metrics: TeamMetrics | undefine
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <MetricCard title="Faturamento Total" value={formatCurrency(metrics?.totalRevenue || 0)}
-            icon={TrendingUp} iconBg="bg-amber-700" />
+            subValue={`p/ cabeça: ${perCapitaCurrency(metrics?.totalRevenue || 0, mc)}`} icon={TrendingUp} iconBg="bg-amber-700" />
           <MetricCard title="Planejamento" value={formatCurrency(metrics?.planningSalesValue || 0)}
-            subValue={`${metrics?.planningSales || 0} vendas`} icon={TrendingUp} iconBg="bg-blue-500" />
+            subValue={`${metrics?.planningSales || 0} vendas · p/ cabeça: ${perCapitaCurrency(metrics?.planningSalesValue || 0, mc)}`} icon={TrendingUp} iconBg="bg-blue-500" />
           <MetricCard title="Seguros" value={formatCurrency(metrics?.insuranceValue || 0)}
-            subValue={`${metrics?.insuranceSales || 0} vendas`} icon={TrendingUp} iconBg="bg-emerald-500" />
+            subValue={`${metrics?.insuranceSales || 0} vendas · p/ cabeça: ${perCapitaCurrency(metrics?.insuranceValue || 0, mc)}`} icon={TrendingUp} iconBg="bg-emerald-500" />
           <MetricCard title="Crédito" value={formatCurrency(metrics?.creditValue || 0)}
-            subValue={`${metrics?.creditSales || 0} vendas`} icon={TrendingUp} iconBg="bg-purple-500" />
+            subValue={`${metrics?.creditSales || 0} vendas · p/ cabeça: ${perCapitaCurrency(metrics?.creditValue || 0, mc)}`} icon={TrendingUp} iconBg="bg-purple-500" />
           <MetricCard title="Outros" value={formatCurrency(metrics?.othersValue || 0)}
-            subValue={`${metrics?.othersSales || 0} vendas`} icon={TrendingUp} iconBg="bg-gray-500" />
+            subValue={`${metrics?.othersSales || 0} vendas · p/ cabeça: ${perCapitaCurrency(metrics?.othersValue || 0, mc)}`} icon={TrendingUp} iconBg="bg-gray-500" />
         </div>
       </div>
     </div>
