@@ -148,18 +148,12 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
         const rawCurrentMeeting = row['Reunião Atual'] || row['Reuniao Atual'] || '';
         const rawPlanejador = String(row['Planejador (Email)'] || '').trim().toLowerCase();
 
-        // Match contact by code first, then fallback to name
-        let matchedContact = rawCode ? codeMap.get(rawCode) : undefined;
-        if (!matchedContact && rawName) {
-          const nameMatch = nameMap.get(rawName.toLowerCase().trim());
-          if (nameMatch) {
-            matchedContact = { id: nameMatch.id, full_name: nameMatch.full_name };
-          }
-        }
-        if (!rawCode && !rawName) {
-          errors.push('Código ou nome do cliente é obrigatório');
+        // Match contact only by client code - no name fallback
+        const matchedContact = rawCode ? codeMap.get(rawCode) : undefined;
+        if (!rawCode) {
+          errors.push('Código do cliente é obrigatório');
         } else if (!matchedContact) {
-          errors.push(`Cliente "${rawCode || rawName}" não encontrado`);
+          errors.push(`Cliente com código "${rawCode}" não encontrado`);
         }
 
         // Validate total meetings

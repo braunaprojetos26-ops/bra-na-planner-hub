@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Users, Columns3, Columns4, Filter, FileSpreadsheet } from 'lucide-react';
+import { Search, Users, Columns3, Columns4, Filter, FileSpreadsheet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ClientMetrics } from '@/components/clients/ClientMetrics';
 import { ClientsTableView } from '@/components/clients/ClientsTableView';
 import { ClientsAdvancedFilters, EMPTY_FILTERS, type AdvancedFilters } from '@/components/clients/ClientsAdvancedFilters';
-import { NewClientModal } from '@/components/clients/NewClientModal';
+// NewClientModal removed - clients are created only via the sales funnel flow
 import { DelinquentClientsDrawer } from '@/components/clients/DelinquentClientsDrawer';
 import { ImportClientDataModal } from '@/components/clients/ImportClientDataModal';
 import { useClients, useClientMetrics, useDelinquentClients } from '@/hooks/useClients';
@@ -70,16 +70,10 @@ export default function Clients() {
           <h1 className="text-2xl font-bold">{pageTitle}</h1>
         </div>
         {!isImpersonating && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowImportData(true)}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Atualizar via Planilha
-            </Button>
-            <Button onClick={() => setShowNewClient(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cliente
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setShowImportData(true)}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Atualizar via Planilha
+          </Button>
         )}
       </div>
 
@@ -208,7 +202,7 @@ export default function Clients() {
         />
       )}
 
-      <NewClientModal open={showNewClient} onOpenChange={setShowNewClient} />
+      
       <ImportClientDataModal open={showImportData} onOpenChange={setShowImportData} />
       <DelinquentClientsDrawer 
         open={showDelinquentDrawer} 
