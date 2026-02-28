@@ -48,7 +48,7 @@ export function useTeamTasks(teamMemberIds: string[], filters?: TeamTaskFilters)
 
       // Apply task type filter
       if (filters?.taskType && filters.taskType !== 'all') {
-        query = query.eq('task_type', filters.taskType);
+        query = query.eq('task_type', filters.taskType as any);
       }
 
       // Apply status filter
@@ -147,7 +147,7 @@ export function useCreateTeamTask() {
           assigned_to: formData.assigned_to,
           created_by: user.id,
           status: 'pending',
-        })
+        } as any)
         .select()
         .single();
 

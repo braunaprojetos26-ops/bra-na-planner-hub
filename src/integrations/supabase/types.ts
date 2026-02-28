@@ -4089,6 +4089,7 @@ export type Database = {
         | "whatsapp"
         | "other"
         | "scheduling_analysis"
+        | "personal"
       user_position:
         | "planejador_financeiro"
         | "planejador_prime"
@@ -4247,6 +4248,7 @@ export const Constants = {
         "whatsapp",
         "other",
         "scheduling_analysis",
+        "personal",
       ],
       user_position: [
         "planejador_financeiro",
