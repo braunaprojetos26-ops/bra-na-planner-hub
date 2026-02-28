@@ -51,7 +51,12 @@ function getDefaultView(): ViewMode {
 }
 
 export default function Tasks() {
-  const [viewMode, setViewMode] = useState<ViewMode>(getDefaultView);
+  const [viewMode, setViewModeState] = useState<ViewMode>(getDefaultView);
+
+  const setViewMode = (mode: ViewMode) => {
+    setViewModeState(mode);
+    try { localStorage.setItem(STORAGE_KEY, mode); } catch {}
+  };
   const [period, setPeriod] = useState<PeriodFilter>('this_week');
   const [taskType, setTaskType] = useState<TaskType | 'all'>('all');
   const [status, setStatus] = useState<TaskStatus | 'all'>('all');
