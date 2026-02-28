@@ -97,7 +97,7 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, birthdayCount, projectInviteCount, dbUnreadCount, isLoading } = useNotifications();
+  const { notifications, todayCount, overdueCount, ticketCount, contractCount, paymentCount, healthScoreDropCount, birthdayCount, projectInviteCount, dbUnreadCount, totalCount, isLoading } = useNotifications();
   const navigate = useNavigate();
 
   const handleClose = () => setOpen(false);
@@ -107,21 +107,21 @@ export function NotificationCenter() {
     handleClose();
   };
 
-  // Badge shows only DB notifications (can be marked as read)
-  // But uses destructive color if there are overdue tasks
+  // Badge shows total notification count (tasks + DB notifications)
   const hasTasks = todayCount > 0 || overdueCount > 0;
+  const badgeCount = totalCount;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {dbUnreadCount > 0 && (
+          {badgeCount > 0 && (
             <Badge
               variant={overdueCount > 0 ? 'destructive' : 'default'}
               className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs flex items-center justify-center"
             >
-              {dbUnreadCount > 99 ? '99+' : dbUnreadCount}
+              {badgeCount > 99 ? '99+' : badgeCount}
             </Badge>
           )}
         </Button>
