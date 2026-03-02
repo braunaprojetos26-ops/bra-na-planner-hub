@@ -117,6 +117,7 @@ export function useCreateMeeting() {
           end: endTime,
           attendees: meetingData.participants,
           body: `<p>Reunião de <strong>${meetingData.meeting_type}</strong> com <strong>${contactName}</strong></p>`,
+          isOnlineMeeting: true,
         });
       }
 
@@ -235,6 +236,7 @@ export function useRescheduleMeeting() {
         end: endTime,
         attendees: newData.participants,
         body: `<p>Reunião reagendada de <strong>${newData.meeting_type}</strong> com <strong>${contactName}</strong></p>`,
+        isOnlineMeeting: true,
       });
 
       // Add entry to contact_history

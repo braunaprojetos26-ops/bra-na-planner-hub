@@ -160,6 +160,7 @@ export function useCreateTeamTask() {
           title: formData.title,
           scheduledAt: new Date(formData.scheduled_at),
           description: formData.description || undefined,
+          taskType: formData.task_type,
         });
       }
 

@@ -117,6 +117,7 @@ export function useCreateOneOnOneMeeting() {
           start: startDate,
           end: endDate,
           body: `<p>Reunião 1:1 com <strong>${plannerProfile?.full_name || 'Planejador'}</strong></p>`,
+          isOnlineMeeting: true,
         });
       }
     },
