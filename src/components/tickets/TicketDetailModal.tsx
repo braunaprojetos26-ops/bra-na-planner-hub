@@ -93,7 +93,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} modal={false}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col pointer-events-auto overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
         {ticketLoading ? (
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : ticket ? (
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {/* Ticket Info */}
             <div className="space-y-4 pb-4 border-b">
               <div>
