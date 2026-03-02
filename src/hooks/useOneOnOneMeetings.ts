@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { syncMeetingToOutlook } from '@/lib/outlookSync';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 
@@ -98,6 +99,26 @@ export function useCreateOneOnOneMeeting() {
         });
       
       if (error) throw error;
+
+      // Sync to Outlook calendar (non-blocking)
+      if (data.scheduledDate) {
+        const startDate = new Date(data.scheduledDate);
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour default
+        
+        // Get planner name for the subject
+        const { data: plannerProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', data.plannerId)
+          .single();
+
+        syncMeetingToOutlook({
+          subject: `1:1 - ${plannerProfile?.full_name || 'Planejador'}`,
+          start: startDate,
+          end: endDate,
+          body: `<p>Reunião 1:1 com <strong>${plannerProfile?.full_name || 'Planejador'}</strong></p>`,
+        });
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['one-on-one-meetings', variables.plannerId] });

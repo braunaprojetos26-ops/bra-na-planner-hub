@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskStatus, TaskType, TeamTaskFormData } from '@/types/tasks';
+import { syncTaskToOutlook } from '@/lib/outlookSync';
 import { toast } from 'sonner';
 
 export interface TeamTaskFilters {
@@ -152,6 +153,16 @@ export function useCreateTeamTask() {
         .single();
 
       if (error) throw error;
+
+      // Sync to Outlook calendar (non-blocking)
+      if (formData.scheduled_at) {
+        syncTaskToOutlook({
+          title: formData.title,
+          scheduledAt: new Date(formData.scheduled_at),
+          description: formData.description || undefined,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {

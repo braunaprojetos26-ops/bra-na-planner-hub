@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFormData, TaskStatus, TaskType } from '@/types/tasks';
 import { useActingUser } from '@/contexts/ActingUserContext';
+import { syncTaskToOutlook } from '@/lib/outlookSync';
 import { toast } from 'sonner';
 
 export interface TaskFormDataExtended extends Omit<TaskFormData, 'opportunity_id'> {
@@ -72,6 +73,16 @@ export function useTasks(opportunityId?: string) {
         .single();
 
       if (error) throw error;
+
+      // Sync to Outlook calendar (non-blocking)
+      if (formData.scheduled_at) {
+        syncTaskToOutlook({
+          title: formData.title,
+          scheduledAt: new Date(formData.scheduled_at),
+          description: formData.description || undefined,
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
