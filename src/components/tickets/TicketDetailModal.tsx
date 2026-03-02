@@ -11,14 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useTicket, useTicketMessages, useUpdateTicket, useAddTicketMessage } from '@/hooks/useTickets';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -100,7 +92,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={false}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -215,17 +207,16 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
               {isOperations && ticket.status !== 'closed' && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Alterar status:</span>
-                  <Select value={ticket.status} onValueChange={(v) => handleStatusChange(v as TicketStatus)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[9999] pointer-events-auto">
-                      <SelectItem value="open">Aberto</SelectItem>
-                      <SelectItem value="in_progress">Em andamento</SelectItem>
-                      <SelectItem value="resolved">Resolvido</SelectItem>
-                      <SelectItem value="closed">Fechado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={ticket.status}
+                    onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
+                    className="h-10 w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="open">Aberto</option>
+                    <option value="in_progress">Em andamento</option>
+                    <option value="resolved">Resolvido</option>
+                    <option value="closed">Fechado</option>
+                  </select>
                 </div>
               )}
             </div>
@@ -233,7 +224,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
             {/* Messages */}
             <div className="flex-1 min-h-0 py-4">
               <h4 className="font-medium mb-2">Mensagens</h4>
-              <ScrollArea className="h-[200px] pr-4">
+              <div className="h-[200px] overflow-y-auto pr-4 pointer-events-auto">
                 {messagesLoading ? (
                   <div className="text-center text-muted-foreground py-4">Carregando mensagens...</div>
                 ) : messages.length === 0 ? (
@@ -267,12 +258,12 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
                     ))}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </div>
 
             {/* New message */}
             {ticket.status !== 'closed' && (
-              <div className="pt-4 border-t space-y-2">
+              <div className="pt-4 border-t space-y-2 pointer-events-auto">
                 <Textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
