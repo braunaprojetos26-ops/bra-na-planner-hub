@@ -15,7 +15,8 @@ import {
   ExternalLink,
   CalendarCheck,
   Handshake,
-  Circle
+  Circle,
+  CalendarClock
 } from 'lucide-react';
 import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
@@ -38,6 +39,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegisterInteractionModal } from './RegisterInteractionModal';
+import { RescheduleTaskDialog } from './RescheduleTaskDialog';
 const TASK_TYPE_ICONS: Record<TaskType, React.ComponentType<{ className?: string }>> = {
   call: Phone,
   email: Mail,
@@ -75,7 +77,7 @@ function formatScheduledDate(dateStr: string): string {
 }
 
 export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
-  const { completeTask, deleteTask } = useTasks();
+  const { completeTask, deleteTask, updateTask, isUpdating } = useTasks();
   const { actingUser } = useActingUser();
   const currentUserId = actingUser?.id;
   const [interactionModal, setInteractionModal] = useState<{
@@ -84,6 +86,7 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
     contactName: string;
     taskId: string;
   }>({ open: false, contactId: '', contactName: '', taskId: '' });
+  const [rescheduleTask, setRescheduleTask] = useState<{ open: boolean; taskId: string; currentDate: string }>({ open: false, taskId: '', currentDate: '' });
 
   function getTaskTag(task: Task) {
     if (task.title.startsWith('[Atividade Crítica]')) {
@@ -249,6 +252,12 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                           Marcar como concluída
                         </DropdownMenuItem>
                       )}
+                      {!task.title.startsWith('[Atividade Crítica]') && !isCompleted && (
+                        <DropdownMenuItem onClick={() => setRescheduleTask({ open: true, taskId: task.id, currentDate: task.scheduled_at })}>
+                          <CalendarClock className="w-4 h-4 mr-2" />
+                          Reagendar
+                        </DropdownMenuItem>
+                      )}
                       {!task.contact_id && (
                         <DropdownMenuItem 
                           onClick={() => handleDelete(task.id)}
@@ -272,6 +281,16 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
         contactId={interactionModal.contactId}
         contactName={interactionModal.contactName}
         taskId={interactionModal.taskId}
+      />
+      <RescheduleTaskDialog
+        open={rescheduleTask.open}
+        onOpenChange={(open) => setRescheduleTask(prev => ({ ...prev, open }))}
+        currentDate={rescheduleTask.currentDate}
+        isLoading={isUpdating}
+        onConfirm={async (newDate) => {
+          await updateTask({ id: rescheduleTask.taskId, scheduled_at: newDate, status: 'pending' });
+          setRescheduleTask({ open: false, taskId: '', currentDate: '' });
+        }}
       />
     </div>
   );

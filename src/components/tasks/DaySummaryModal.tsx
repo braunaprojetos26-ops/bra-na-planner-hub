@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, Trash2, Plus, Clock, ExternalLink, Handshake, MoreHorizontal } from 'lucide-react';
+import { CheckCircle2, Trash2, Plus, Clock, ExternalLink, Handshake, MoreHorizontal, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
 import { useActingUser } from '@/contexts/ActingUserContext';
 import { RegisterInteractionModal } from './RegisterInteractionModal';
+import { RescheduleTaskDialog } from './RescheduleTaskDialog';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 
@@ -24,7 +25,7 @@ interface DaySummaryModalProps {
 }
 
 export function DaySummaryModal({ open, onOpenChange, date, tasks, onAddTask }: DaySummaryModalProps) {
-  const { completeTask, deleteTask } = useTasks();
+  const { completeTask, deleteTask, updateTask, isUpdating } = useTasks();
   const { actingUser } = useActingUser();
   const currentUserId = actingUser?.id;
   const [interactionModal, setInteractionModal] = useState<{
@@ -33,6 +34,7 @@ export function DaySummaryModal({ open, onOpenChange, date, tasks, onAddTask }: 
     contactName: string;
     taskId: string;
   }>({ open: false, contactId: '', contactName: '', taskId: '' });
+  const [rescheduleTask, setRescheduleTask] = useState<{ open: boolean; taskId: string; currentDate: string }>({ open: false, taskId: '', currentDate: '' });
 
   const sorted = useMemo(() => 
     [...tasks].sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()),
@@ -254,6 +256,12 @@ export function DaySummaryModal({ open, onOpenChange, date, tasks, onAddTask }: 
                               Marcar como concluída
                             </DropdownMenuItem>
                           )}
+                          {!task.title.startsWith('[Atividade Crítica]') && !isCompleted && (
+                            <DropdownMenuItem onClick={() => setRescheduleTask({ open: true, taskId: task.id, currentDate: task.scheduled_at })}>
+                              <CalendarClock className="w-4 h-4 mr-2" />
+                              Reagendar
+                            </DropdownMenuItem>
+                          )}
                           {!task.contact_id && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(task.id)}
@@ -284,6 +292,16 @@ export function DaySummaryModal({ open, onOpenChange, date, tasks, onAddTask }: 
         contactId={interactionModal.contactId}
         contactName={interactionModal.contactName}
         taskId={interactionModal.taskId}
+      />
+      <RescheduleTaskDialog
+        open={rescheduleTask.open}
+        onOpenChange={(open) => setRescheduleTask(prev => ({ ...prev, open }))}
+        currentDate={rescheduleTask.currentDate}
+        isLoading={isUpdating}
+        onConfirm={async (newDate) => {
+          await updateTask({ id: rescheduleTask.taskId, scheduled_at: newDate, status: 'pending' });
+          setRescheduleTask({ open: false, taskId: '', currentDate: '' });
+        }}
       />
     </>
   );
