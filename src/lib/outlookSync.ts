@@ -24,6 +24,7 @@ export async function syncMeetingToOutlook(meeting: {
   attendees?: string[];
   body?: string;
   location?: string;
+  isOnlineMeeting?: boolean;
 }): Promise<string | null> {
   try {
     if (!(await isOutlookConnected())) {
@@ -41,6 +42,7 @@ export async function syncMeetingToOutlook(meeting: {
           attendees: meeting.attendees || [],
           body: meeting.body,
           location: meeting.location,
+          isOnlineMeeting: meeting.isOnlineMeeting ?? false,
         },
       },
     });
@@ -63,15 +65,18 @@ export async function syncTaskToOutlook(task: {
   scheduledAt: Date;
   description?: string;
   durationMinutes?: number;
+  taskType?: string;
 }): Promise<string | null> {
   const durationMs = (task.durationMinutes || 30) * 60 * 1000;
   const endDate = new Date(task.scheduledAt.getTime() + durationMs);
+  const isMeeting = task.taskType === 'meeting';
 
   return syncMeetingToOutlook({
-    subject: `📋 ${task.title}`,
+    subject: isMeeting ? task.title : `📋 ${task.title}`,
     start: task.scheduledAt,
     end: endDate,
     body: task.description ? `<p>${task.description}</p>` : undefined,
+    isOnlineMeeting: isMeeting,
   });
 }
 

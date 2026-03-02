@@ -202,8 +202,12 @@ async function createCalendarEvent(accessToken: string, userEmail: string, event
       emailAddress: { address: email },
       type: "required",
     })) || [],
-    isOnlineMeeting: true,
-    onlineMeetingProvider: "teamsForBusiness",
+    ...(event.isOnlineMeeting ? {
+      isOnlineMeeting: true,
+      onlineMeetingProvider: "teamsForBusiness",
+    } : {
+      isOnlineMeeting: false,
+    }),
   };
 
   const response = await fetch(`${GRAPH_API_BASE}/users/${userEmail}/events`, {
