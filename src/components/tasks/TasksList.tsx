@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, Circle, Clock, Trash2, Phone, Mail, Calendar, MessageCircle, FileText, Send, MoreHorizontal, AlertTriangle, CalendarCheck } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Trash2, Phone, Mail, Calendar, MessageCircle, FileText, Send, MoreHorizontal, AlertTriangle, CalendarCheck, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Task, TaskType, TASK_TYPE_LABELS } from '@/types/tasks';
 import { useTasks } from '@/hooks/useTasks';
+import { RescheduleTaskDialog } from './RescheduleTaskDialog';
 import { cn } from '@/lib/utils';
 
 interface TasksListProps {
@@ -28,8 +29,9 @@ const TASK_TYPE_ICONS: Record<TaskType, React.ReactNode> = {
 };
 
 export function TasksList({ opportunityId }: TasksListProps) {
-  const { tasks, isLoading, completeTask, deleteTask } = useTasks(opportunityId);
+  const { tasks, isLoading, completeTask, deleteTask, updateTask, isUpdating } = useTasks(opportunityId);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [rescheduleTask, setRescheduleTask] = useState<{ open: boolean; taskId: string; currentDate: string }>({ open: false, taskId: '', currentDate: '' });
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Carregando tarefas...</div>;
@@ -124,6 +126,24 @@ export function TasksList({ opportunityId }: TasksListProps) {
                     </span>
                   </div>
                 </div>
+
+                {!task.title.startsWith('[Atividade Crítica]') && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
+                          onClick={() => setRescheduleTask({ open: true, taskId: task.id, currentDate: task.scheduled_at })}
+                        >
+                          <CalendarClock className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Reagendar tarefa</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
 
                 <TooltipProvider>
                   <Tooltip>
@@ -223,6 +243,17 @@ export function TasksList({ opportunityId }: TasksListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RescheduleTaskDialog
+        open={rescheduleTask.open}
+        onOpenChange={(open) => setRescheduleTask(prev => ({ ...prev, open }))}
+        currentDate={rescheduleTask.currentDate}
+        isLoading={isUpdating}
+        onConfirm={async (newDate) => {
+          await updateTask({ id: rescheduleTask.taskId, scheduled_at: newDate, status: 'pending' });
+          setRescheduleTask({ open: false, taskId: '', currentDate: '' });
+        }}
+      />
     </div>
   );
 }
