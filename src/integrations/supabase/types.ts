@@ -410,6 +410,7 @@ export type Database = {
           id: string
           interaction_date: string
           notes: string | null
+          plan_meeting_id: string | null
           task_id: string | null
           user_id: string
         }
@@ -420,6 +421,7 @@ export type Database = {
           id?: string
           interaction_date?: string
           notes?: string | null
+          plan_meeting_id?: string | null
           task_id?: string | null
           user_id: string
         }
@@ -430,6 +432,7 @@ export type Database = {
           id?: string
           interaction_date?: string
           notes?: string | null
+          plan_meeting_id?: string | null
           task_id?: string | null
           user_id?: string
         }
@@ -439,6 +442,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_interactions_plan_meeting_id_fkey"
+            columns: ["plan_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "client_plan_meetings"
             referencedColumns: ["id"]
           },
           {

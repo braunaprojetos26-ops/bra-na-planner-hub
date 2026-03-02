@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Phone, MessageSquare, Mail, Users, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useActingUser } from '@/contexts/ActingUserContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import {
@@ -30,6 +31,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
+import { MeetingCycleLinkSection } from './MeetingCycleLinkSection';
 
 const CHANNEL_OPTIONS = [
   { value: 'ligacao', label: 'Ligação', icon: Phone },
@@ -38,6 +41,8 @@ const CHANNEL_OPTIONS = [
   { value: 'reuniao_presencial', label: 'Reunião Presencial', icon: Users },
   { value: 'reuniao_online', label: 'Reunião Online', icon: Monitor },
 ] as const;
+
+const MEETING_CHANNELS = ['reuniao_presencial', 'reuniao_online'];
 
 interface RegisterInteractionModalProps {
   open: boolean;
@@ -55,10 +60,23 @@ export function RegisterInteractionModal({
   taskId,
 }: RegisterInteractionModalProps) {
   const { actingUser } = useActingUser();
+  const queryClient = useQueryClient();
   const [date, setDate] = useState<Date>(new Date());
   const [channel, setChannel] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkToCycle, setLinkToCycle] = useState(false);
+  const [selectedPlanMeetingId, setSelectedPlanMeetingId] = useState<string>('');
+
+  const isMeetingChannel = MEETING_CHANNELS.includes(channel);
+
+  // Reset cycle linking when channel changes away from meeting
+  useEffect(() => {
+    if (!isMeetingChannel) {
+      setLinkToCycle(false);
+      setSelectedPlanMeetingId('');
+    }
+  }, [isMeetingChannel]);
 
   // Fix Radix UI bug: body keeps pointer-events:none after Dialog closes
   const handleOpenChange = (open: boolean) => {
@@ -76,7 +94,6 @@ export function RegisterInteractionModal({
       return;
     }
     
-    // Get the actual authenticated user for DB operations
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
     if (!userId) {
@@ -86,6 +103,8 @@ export function RegisterInteractionModal({
 
     setIsSubmitting(true);
     try {
+      const planMeetingId = linkToCycle && selectedPlanMeetingId ? selectedPlanMeetingId : null;
+
       // Insert into contact_interactions
       const { error: interactionError } = await supabase
         .from('contact_interactions')
@@ -96,9 +115,23 @@ export function RegisterInteractionModal({
           interaction_date: date.toISOString(),
           channel,
           notes: notes.trim() || null,
+          plan_meeting_id: planMeetingId,
         });
 
       if (interactionError) throw interactionError;
+
+      // If linked to a cycle meeting, mark it as completed
+      if (planMeetingId) {
+        const { error: meetingUpdateError } = await supabase
+          .from('client_plan_meetings')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          })
+          .eq('id', planMeetingId);
+
+        if (meetingUpdateError) throw meetingUpdateError;
+      }
 
       // Insert into contact_history
       const channelLabel = CHANNEL_OPTIONS.find(c => c.value === channel)?.label || channel;
@@ -115,11 +148,21 @@ export function RegisterInteractionModal({
 
       if (historyError) throw historyError;
 
+      // Invalidate relevant caches
+      if (planMeetingId) {
+        queryClient.invalidateQueries({ queryKey: ['plan-meetings'] });
+        queryClient.invalidateQueries({ queryKey: ['client-plan'] });
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
+        queryClient.invalidateQueries({ queryKey: ['client-metrics'] });
+      }
+
       toast.success('Relacionamento registrado com sucesso');
       handleOpenChange(false);
       setChannel('');
       setNotes('');
       setDate(new Date());
+      setLinkToCycle(false);
+      setSelectedPlanMeetingId('');
     } catch (error) {
       console.error('Error registering interaction:', error);
       toast.error('Erro ao registrar relacionamento');
@@ -187,6 +230,17 @@ export function RegisterInteractionModal({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Meeting Cycle Link Section */}
+          {isMeetingChannel && (
+            <MeetingCycleLinkSection
+              contactId={contactId}
+              linkToCycle={linkToCycle}
+              onLinkToCycleChange={setLinkToCycle}
+              selectedPlanMeetingId={selectedPlanMeetingId}
+              onSelectedPlanMeetingIdChange={setSelectedPlanMeetingId}
+            />
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
