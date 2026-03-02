@@ -8,8 +8,55 @@ const corsHeaders = {
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
 
+// Cache app token in memory (edge function instance lifetime)
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function getAppToken(): Promise<string> {
+  // Return cached token if still valid (with 5 min buffer)
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 5 * 60 * 1000) {
+    return cachedToken.token;
+  }
+
+  const MS_CLIENT_ID = Deno.env.get("MS_CLIENT_ID");
+  const MS_CLIENT_SECRET = Deno.env.get("MS_CLIENT_SECRET");
+  const MS_TENANT_ID = Deno.env.get("MS_TENANT_ID");
+
+  if (!MS_CLIENT_ID || !MS_CLIENT_SECRET || !MS_TENANT_ID) {
+    throw new Error("Configuração do Microsoft incompleta");
+  }
+
+  const tokenEndpoint = `https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/token`;
+
+  const params = new URLSearchParams({
+    client_id: MS_CLIENT_ID,
+    client_secret: MS_CLIENT_SECRET,
+    scope: "https://graph.microsoft.com/.default",
+    grant_type: "client_credentials",
+  });
+
+  const response = await fetch(tokenEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Token request failed:", response.status, errorText);
+    throw new Error("Erro ao obter token da Microsoft");
+  }
+
+  const data = await response.json();
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + data.expires_in * 1000,
+  };
+
+  console.log("App token obtained successfully");
+  return data.access_token;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -40,36 +87,25 @@ serve(async (req) => {
       );
     }
 
-    // Get user's Outlook connection
+    // Get user's Outlook connection to find their Microsoft email
     const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const { data: connection, error: connError } = await supabaseAdmin
       .from("outlook_connections")
-      .select("*")
+      .select("microsoft_email")
       .eq("user_id", user.id)
       .single();
 
-    if (connError || !connection) {
+    if (connError || !connection?.microsoft_email) {
       return new Response(
-        JSON.stringify({ error: "Outlook não conectado" }),
+        JSON.stringify({ error: "Outlook não conectado. Configure seu email do Microsoft 365 nas configurações." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if token is expired and refresh if needed
-    let accessToken = connection.access_token;
-    const expiresAt = new Date(connection.expires_at);
-    
-    if (expiresAt <= new Date()) {
-      // Token expired, try to refresh
-      const refreshed = await refreshToken(connection.refresh_token, supabaseAdmin, user.id);
-      if (!refreshed) {
-        return new Response(
-          JSON.stringify({ error: "Token expirado. Reconecte o Outlook." }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      accessToken = refreshed;
-    }
+    const microsoftEmail = connection.microsoft_email;
+
+    // Get app-level token via client_credentials
+    const accessToken = await getAppToken();
 
     // Parse request body
     const body = await req.json();
@@ -77,7 +113,7 @@ serve(async (req) => {
 
     switch (action) {
       case "create-event": {
-        const event = await createCalendarEvent(accessToken, body.event);
+        const event = await createCalendarEvent(accessToken, microsoftEmail, body.event);
         return new Response(
           JSON.stringify({ event }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -85,7 +121,7 @@ serve(async (req) => {
       }
 
       case "delete-event": {
-        await deleteCalendarEvent(accessToken, body.eventId);
+        await deleteCalendarEvent(accessToken, microsoftEmail, body.eventId);
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -93,9 +129,18 @@ serve(async (req) => {
       }
 
       case "check-availability": {
-        const events = await getCalendarEvents(accessToken, body.start, body.end);
+        const events = await getCalendarEvents(accessToken, microsoftEmail, body.start, body.end);
         return new Response(
           JSON.stringify({ events }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "test-connection": {
+        // Test if we can access the user's calendar
+        const calendars = await testCalendarAccess(accessToken, microsoftEmail);
+        return new Response(
+          JSON.stringify({ success: true, calendars }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -110,68 +155,30 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in outlook-calendar:", error);
     return new Response(
-      JSON.stringify({ error: "Erro ao processar requisição" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro ao processar requisição" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
-async function refreshToken(refreshToken: string, supabaseAdmin: any, userId: string): Promise<string | null> {
-  const MS_CLIENT_ID = Deno.env.get("MS_CLIENT_ID");
-  const MS_CLIENT_SECRET = Deno.env.get("MS_CLIENT_SECRET");
-  const MS_TENANT_ID = Deno.env.get("MS_TENANT_ID");
+async function testCalendarAccess(accessToken: string, userEmail: string) {
+  const response = await fetch(`${GRAPH_API_BASE}/users/${userEmail}/calendars`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-  if (!MS_CLIENT_ID || !MS_CLIENT_SECRET || !MS_TENANT_ID) {
-    console.error("Missing Microsoft OAuth secrets for refresh");
-    return null;
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("Error testing calendar access:", response.status, error);
+    throw new Error("Não foi possível acessar o calendário deste email. Verifique se o email está correto.");
   }
 
-  try {
-    const tokenEndpoint = `https://login.microsoftonline.com/${MS_TENANT_ID}/oauth2/v2.0/token`;
-    
-    const params = new URLSearchParams({
-      client_id: MS_CLIENT_ID,
-      client_secret: MS_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-      scope: "offline_access https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read",
-    });
-
-    const response = await fetch(tokenEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-    });
-
-    if (!response.ok) {
-      console.error("Token refresh failed:", await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
-
-    // Update tokens in database
-    await supabaseAdmin
-      .from("outlook_connections")
-      .update({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token || refreshToken,
-        expires_at: expiresAt,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
-
-    console.log("Token refreshed for user:", userId);
-    return data.access_token;
-
-  } catch (error) {
-    console.error("Error refreshing token:", error);
-    return null;
-  }
+  const data = await response.json();
+  return data.value?.map((c: any) => ({ id: c.id, name: c.name })) || [];
 }
 
-async function createCalendarEvent(accessToken: string, event: any) {
+async function createCalendarEvent(accessToken: string, userEmail: string, event: any) {
   const { subject, start, end, attendees, body, location } = event;
 
   const graphEvent = {
@@ -199,7 +206,7 @@ async function createCalendarEvent(accessToken: string, event: any) {
     onlineMeetingProvider: "teamsForBusiness",
   };
 
-  const response = await fetch(`${GRAPH_API_BASE}/me/events`, {
+  const response = await fetch(`${GRAPH_API_BASE}/users/${userEmail}/events`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -226,8 +233,8 @@ async function createCalendarEvent(accessToken: string, event: any) {
   };
 }
 
-async function deleteCalendarEvent(accessToken: string, eventId: string) {
-  const response = await fetch(`${GRAPH_API_BASE}/me/events/${eventId}`, {
+async function deleteCalendarEvent(accessToken: string, userEmail: string, eventId: string) {
+  const response = await fetch(`${GRAPH_API_BASE}/users/${userEmail}/events/${eventId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -243,7 +250,7 @@ async function deleteCalendarEvent(accessToken: string, eventId: string) {
   console.log("Event deleted:", eventId);
 }
 
-async function getCalendarEvents(accessToken: string, start: string, end: string) {
+async function getCalendarEvents(accessToken: string, userEmail: string, start: string, end: string) {
   const params = new URLSearchParams({
     startDateTime: start,
     endDateTime: end,
@@ -251,7 +258,7 @@ async function getCalendarEvents(accessToken: string, start: string, end: string
     $orderby: "start/dateTime",
   });
 
-  const response = await fetch(`${GRAPH_API_BASE}/me/calendarView?${params}`, {
+  const response = await fetch(`${GRAPH_API_BASE}/users/${userEmail}/calendarView?${params}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Prefer: 'outlook.timezone="America/Sao_Paulo"',

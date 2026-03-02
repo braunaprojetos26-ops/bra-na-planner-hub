@@ -1,22 +1,35 @@
-import { Mail, Check, AlertCircle, Loader2, RefreshCw, Unlink } from 'lucide-react';
+import { useState } from 'react';
+import { Mail, Check, Loader2, Unlink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useOutlookConnection } from '@/hooks/useOutlookConnection';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function OutlookConnectionCard() {
+  const { user } = useAuth();
   const {
     connection,
     isLoading,
     isConnected,
-    isExpired,
     isConnecting,
     connect,
     disconnect,
     isDisconnecting,
   } = useOutlookConnection();
+
+  // Default to user's profile email
+  const [email, setEmail] = useState('');
+
+  const handleConnect = async () => {
+    const emailToUse = email.trim() || user?.email || '';
+    if (!emailToUse) return;
+    await connect(emailToUse);
+  };
 
   if (isLoading) {
     return (
@@ -57,12 +70,6 @@ export function OutlookConnectionCard() {
                   Conectado
                 </Badge>
               )}
-              {isExpired && (
-                <Badge variant="destructive" className="bg-amber-500/20 text-amber-600 border-amber-500/30">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Expirado
-                </Badge>
-              )}
             </div>
             <CardDescription>
               Sincronize reuniões com seu calendário do Microsoft 365
@@ -71,41 +78,39 @@ export function OutlookConnectionCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground">
-          <p>
-            Ao conectar sua conta do Outlook, as reuniões agendadas no CRM serão automaticamente 
-            adicionadas ao seu calendário e os convites enviados para os participantes.
-          </p>
-        </div>
+        {!isConnected ? (
+          <>
+            <div className="text-sm text-muted-foreground">
+              <p>
+                Informe seu email corporativo do Microsoft 365 para vincular 
+                seu calendário. As reuniões agendadas no CRM serão automaticamente 
+                adicionadas ao seu calendário e os convites enviados aos participantes.
+              </p>
+            </div>
 
-        {isConnected && connection && (
-          <div className="rounded-lg border bg-muted/50 p-3 text-sm">
-            <p className="text-muted-foreground">
-              Conectado em{' '}
-              <span className="font-medium text-foreground">
-                {format(new Date(connection.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-              </span>
-            </p>
-            <p className="text-muted-foreground mt-1">
-              Token válido até{' '}
-              <span className="font-medium text-foreground">
-                {format(new Date(connection.expires_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </span>
-            </p>
-          </div>
-        )}
+            <div className="space-y-2">
+              <Label htmlFor="ms-email">Email do Microsoft 365</Label>
+              <Input
+                id="ms-email"
+                type="email"
+                placeholder={user?.email || 'seu.email@braunaplanejamento.com.br'}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Deixe em branco para usar seu email de login: {user?.email}
+              </p>
+            </div>
 
-        <div className="flex gap-2">
-          {!isConnected ? (
-            <Button 
-              onClick={connect} 
+            <Button
+              onClick={handleConnect}
               disabled={isConnecting}
               className="w-full"
             >
               {isConnecting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Conectando...
+                  Verificando acesso...
                 </>
               ) : (
                 <>
@@ -114,48 +119,44 @@ export function OutlookConnectionCard() {
                 </>
               )}
             </Button>
-          ) : (
-            <>
-              {isExpired && (
-                <Button 
-                  onClick={connect} 
-                  disabled={isConnecting}
-                  className="flex-1"
-                >
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Reconectando...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Reconectar
-                    </>
-                  )}
-                </Button>
+          </>
+        ) : (
+          <>
+            <div className="rounded-lg border bg-muted/50 p-3 text-sm">
+              <p className="text-muted-foreground">
+                Email vinculado:{' '}
+                <span className="font-medium text-foreground">
+                  {connection?.microsoft_email}
+                </span>
+              </p>
+              <p className="text-muted-foreground mt-1">
+                Conectado em{' '}
+                <span className="font-medium text-foreground">
+                  {connection?.created_at && format(new Date(connection.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </span>
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => disconnect()}
+              disabled={isDisconnecting}
+              className="w-full"
+            >
+              {isDisconnecting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Desconectando...
+                </>
+              ) : (
+                <>
+                  <Unlink className="mr-2 h-4 w-4" />
+                  Desconectar
+                </>
               )}
-              <Button 
-                variant="outline" 
-                onClick={() => disconnect()}
-                disabled={isDisconnecting}
-                className={isExpired ? '' : 'w-full'}
-              >
-                {isDisconnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Desconectando...
-                  </>
-                ) : (
-                  <>
-                    <Unlink className="mr-2 h-4 w-4" />
-                    Desconectar
-                  </>
-                )}
-              </Button>
-            </>
-          )}
-        </div>
+            </Button>
+          </>
+        )}
       </CardContent>
     </Card>
   );
