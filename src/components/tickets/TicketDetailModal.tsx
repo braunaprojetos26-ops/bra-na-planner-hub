@@ -90,9 +90,18 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
 
   if (!ticketId) return null;
 
+  const handleOpenChange = (value: boolean) => {
+    onOpenChange(value);
+    if (!value) {
+      setTimeout(() => {
+        document.body.style.pointerEvents = '';
+      }, 100);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -210,7 +219,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
                     <SelectTrigger className="w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[9999] pointer-events-auto">
                       <SelectItem value="open">Aberto</SelectItem>
                       <SelectItem value="in_progress">Em andamento</SelectItem>
                       <SelectItem value="resolved">Resolvido</SelectItem>
@@ -269,6 +278,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Digite sua mensagem..."
                   rows={3}
+                  className="pointer-events-auto"
                 />
                 <div className="flex justify-between items-center">
                   {isOperations && (
