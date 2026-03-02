@@ -19,7 +19,8 @@ interface RescheduleTaskDialogProps {
 }
 
 export function RescheduleTaskDialog({ open, onOpenChange, currentDate, onConfirm, isLoading }: RescheduleTaskDialogProps) {
-  const current = new Date(currentDate);
+  const parsedDate = currentDate ? new Date(currentDate) : null;
+  const current = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(current);
   const [time, setTime] = useState(format(current, 'HH:mm'));
 
