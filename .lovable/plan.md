@@ -1,32 +1,37 @@
 
 
-## Análise do Problema
+## Plano: Vincular Relacionamento ao Ciclo de Reuniões do Cliente
 
-A **Coleta de Dados** hoje só é acessível dentro do fluxo de Análise (`/contacts/:contactId/analise`, etapa 2). Para clientes importados que já têm plano ativo, não faz sentido passar pelo fluxo de vendas inteiro só para preencher a coleta.
+### Contexto
+O modal `RegisterInteractionModal` registra interações com clientes. Quando o canal selecionado for "reunião presencial" ou "reunião online", queremos mostrar uma seção opcional para vincular essa interação a uma das reuniões pendentes do ciclo do cliente (tabela `client_plan_meetings`), marcando-a como concluída.
 
-## Solução Proposta
+### Estrutura de Dados Existente
+- `client_plans` → plano do cliente com `contact_id` e `total_meetings`
+- `client_plan_meetings` → reuniões individuais do ciclo com `meeting_number`, `status`, `scheduled_date`
+- O modal já recebe `contactId`, que pode ser usado para buscar o plano ativo e suas reuniões pendentes
 
-**Adicionar uma seção "Coleta de Dados" diretamente na página de detalhes do cliente** (`ClientDetail.tsx`).
+### Alterações
 
-O componente `DataCollectionForm` já é independente — recebe apenas `contactId` e funciona sozinho. Basta reutilizá-lo dentro de um card colapsável ou uma seção na página do cliente.
+**1. Atualizar `RegisterInteractionModal.tsx`**
+- Quando `channel` for `reuniao_presencial` ou `reuniao_online`:
+  - Buscar o plano ativo do contato (`client_plans` com `status = 'active'`)
+  - Buscar as reuniões pendentes desse plano (`client_plan_meetings` com `status != 'completed'`)
+  - Exibir um toggle/checkbox: "Deseja vincular esse relacionamento ao ciclo de reuniões do cliente?"
+  - Se ativado, mostrar um Select com as reuniões pendentes (ex: "Reunião 3 - 15/04/2026")
+- No submit, se uma reunião do ciclo foi selecionada:
+  - Marcar essa `client_plan_meeting` como `completed` (status + completed_at)
+  - Salvar o `plan_meeting_id` na interação para rastreabilidade
 
-### Como ficaria
+**2. Migração de Banco de Dados**
+- Adicionar coluna `plan_meeting_id` (uuid, nullable, FK para `client_plan_meetings`) na tabela `contact_interactions` para registrar o vínculo
 
-- Na página de detalhes do cliente (`/clients/:planId`), adicionar um **card expansível** com o título "Coleta de Dados"
-- Dentro dele, renderizar o `DataCollectionForm` existente (mesmo componente usado na Análise)
-- Mostrar um indicador de status (Rascunho / Concluída / Não iniciada) no header do card
-- O card começa **colapsado** para não poluir a página, e o planejador expande quando quiser preencher
+**3. Invalidação de Cache**
+- Após o submit com vínculo, invalidar queries `plan-meetings`, `client-plan`, `clients` e `client-metrics` para refletir a conclusão da reunião no ciclo
 
-### Passos de implementação
-
-1. **Importar `DataCollectionForm`** no `ClientDetail.tsx`
-2. **Adicionar um `Collapsible` card** entre as seções existentes (após Health Score, antes de Goals)
-3. **Buscar o status** da coleta usando `useContactDataCollection(contactId)` para mostrar badge de status no header
-4. Renderizar o formulário completo quando expandido — funciona exatamente como na Análise, com auto-save, progresso, seções, painel de observações
-
-### Vantagens
-
-- **Zero duplicação** — reutiliza 100% do componente existente
-- **Mesmos dados** — grava na mesma tabela `contact_data_collections`, então se o cliente depois for para o fluxo de Análise, os dados já estarão lá
-- **Familiar** — mesma interface que o planejador já conhece
+### Fluxo do Usuário
+1. Usuário abre "Registrar Relacionamento" em uma tarefa crítica
+2. Seleciona canal "Reunião Presencial" ou "Reunião Online"
+3. Aparece seção: "Deseja vincular ao ciclo de reuniões?"
+4. Se sim, seleciona qual reunião do ciclo (ex: "Reunião 5 - Pendente")
+5. Ao salvar, a interação é registrada E a reunião do ciclo é marcada como concluída
 
