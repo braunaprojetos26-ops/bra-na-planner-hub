@@ -2127,29 +2127,32 @@ export type Database = {
       }
       outlook_connections: {
         Row: {
-          access_token: string
+          access_token: string | null
           created_at: string
           expires_at: string
           id: string
-          refresh_token: string
+          microsoft_email: string | null
+          refresh_token: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
           created_at?: string
           expires_at: string
           id?: string
-          refresh_token: string
+          microsoft_email?: string | null
+          refresh_token?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
           created_at?: string
           expires_at?: string
           id?: string
-          refresh_token?: string
+          microsoft_email?: string | null
+          refresh_token?: string | null
           updated_at?: string
           user_id?: string
         }

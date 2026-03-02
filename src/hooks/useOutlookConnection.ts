@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 interface OutlookConnection {
   id: string;
   user_id: string;
-  expires_at: string;
+  microsoft_email: string;
   created_at: string;
   updated_at: string;
 }
@@ -26,7 +26,7 @@ export function useOutlookConnection() {
 
       const { data, error } = await supabase
         .from('outlook_connections')
-        .select('id, user_id, expires_at, created_at, updated_at')
+        .select('id, user_id, microsoft_email, created_at, updated_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -40,74 +40,69 @@ export function useOutlookConnection() {
     enabled: !!user?.id,
   });
 
-  // Check if token is expired
-  const isExpired = connection ? new Date(connection.expires_at) < new Date() : false;
-  const isConnected = !!connection && !isExpired;
+  const isConnected = !!connection?.microsoft_email;
 
-  // Start OAuth flow
-  const connect = useCallback(async () => {
+  // Connect - save Microsoft email and test access
+  const connect = async (microsoftEmail: string) => {
     if (!user?.id) {
       toast({
         title: 'Erro',
         description: 'Você precisa estar logado para conectar o Outlook.',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
     setIsConnecting(true);
 
     try {
-      // Get session token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('Sessão não encontrada');
+      // First save the email
+      const { error: upsertError } = await supabase
+        .from('outlook_connections')
+        .upsert(
+          {
+            user_id: user.id,
+            microsoft_email: microsoftEmail,
+            access_token: null,
+            refresh_token: null,
+            expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (upsertError) throw upsertError;
+
+      // Test the connection
+      const { data, error } = await supabase.functions.invoke('outlook-calendar', {
+        body: { action: 'test-connection' },
+      });
+
+      if (error || !data?.success) {
+        // Rollback - remove the connection
+        await supabase.from('outlook_connections').delete().eq('user_id', user.id);
+        throw new Error(data?.error || 'Não foi possível acessar o calendário');
       }
 
-      // Call edge function to get auth URL
-      const { data, error } = await supabase.functions.invoke('get-outlook-auth-url', {
-        body: { userId: user.id },
+      toast({
+        title: 'Outlook conectado!',
+        description: 'Seu calendário do Microsoft 365 foi vinculado com sucesso.',
       });
 
-      if (error) throw error;
-      if (!data?.authUrl) throw new Error('URL de autenticação não retornada');
-
-      // Build URL with state containing user info
-      const authUrl = new URL(data.authUrl);
-      authUrl.searchParams.set('state', `${user.id}:${session.access_token}`);
-
-      // Open popup
-      const width = 600;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
-
-      const popup = window.open(
-        authUrl.toString(),
-        'outlook-oauth',
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-      );
-
-      // Poll for popup close
-      const checkPopup = setInterval(() => {
-        if (!popup || popup.closed) {
-          clearInterval(checkPopup);
-          setIsConnecting(false);
-          // Refetch connection status
-          setTimeout(() => refetch(), 1000);
-        }
-      }, 500);
-
-    } catch (error) {
-      console.error('Error starting OAuth flow:', error);
+      await refetch();
+      return true;
+    } catch (error: any) {
+      console.error('Error connecting Outlook:', error);
       toast({
         title: 'Erro ao conectar',
-        description: 'Não foi possível iniciar a conexão com o Outlook. Tente novamente.',
+        description: error.message || 'Não foi possível conectar o Outlook. Verifique o email e tente novamente.',
         variant: 'destructive',
       });
+      return false;
+    } finally {
       setIsConnecting(false);
     }
-  }, [user?.id, toast, refetch]);
+  };
 
   // Disconnect mutation
   const disconnectMutation = useMutation({
@@ -142,7 +137,7 @@ export function useOutlookConnection() {
     connection,
     isLoading,
     isConnected,
-    isExpired,
+    isExpired: false, // No longer relevant with client_credentials
     isConnecting,
     connect,
     disconnect: disconnectMutation.mutate,
