@@ -212,7 +212,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
             <Label>
               Cliente Relacionado {isContactRequired ? <span className="text-destructive">*</span> : '(opcional)'}
             </Label>
-            <Popover open={contactOpen} onOpenChange={setContactOpen}>
+            <Popover open={contactOpen} onOpenChange={setContactOpen} modal={true}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -234,7 +234,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[350px] p-0" align="start">
+              <PopoverContent className="w-[350px] p-0 z-[9999]" align="start">
                 <Command>
                   <CommandInput placeholder="Buscar cliente..." />
                   <CommandList>
