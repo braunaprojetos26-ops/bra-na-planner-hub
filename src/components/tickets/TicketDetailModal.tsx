@@ -93,7 +93,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} modal={false}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col pointer-events-auto overflow-hidden">
+      <DialogContent className="max-w-3xl w-[min(96vw,56rem)] h-[min(92dvh,760px)] flex flex-col pointer-events-auto overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -104,9 +104,9 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
         {ticketLoading ? (
           <div className="py-8 text-center text-muted-foreground">Carregando...</div>
         ) : ticket ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Ticket Info */}
-            <div className="space-y-4 pb-4 border-b">
+            <div className="space-y-4 pb-4 border-b shrink-0 max-h-[45%] overflow-y-auto pr-1">
               <div>
                 <h3 className="font-semibold text-lg">{ticket.title}</h3>
                 <p className="text-sm text-muted-foreground mt-1">{ticket.description}</p>
@@ -222,9 +222,9 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
             </div>
 
             {/* Messages */}
-            <div className="flex-1 min-h-0 py-4">
+            <div className="flex-1 min-h-0 py-4 flex flex-col overflow-hidden">
               <h4 className="font-medium mb-2">Mensagens</h4>
-              <div className="h-[200px] overflow-y-auto pr-4 pointer-events-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-2 pointer-events-auto">
                 {messagesLoading ? (
                   <div className="text-center text-muted-foreground py-4">Carregando mensagens...</div>
                 ) : messages.length === 0 ? (
@@ -263,7 +263,7 @@ export function TicketDetailModal({ ticketId, open, onOpenChange }: TicketDetail
 
             {/* New message */}
             {ticket.status !== 'closed' && (
-              <div className="pt-4 border-t space-y-2 pointer-events-auto">
+              <div className="pt-3 border-t space-y-2 pointer-events-auto shrink-0">
                 <Textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
