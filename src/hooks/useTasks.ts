@@ -133,14 +133,30 @@ export function useTasks(opportunityId?: string) {
       if (error) throw error;
       return data;
     },
+    onMutate: async (taskId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      const previousQueries = queryClient.getQueriesData({ queryKey: ['tasks'] });
+      queryClient.setQueriesData({ queryKey: ['tasks'] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((t: any) =>
+          t.id === taskId ? { ...t, status: 'completed', completed_at: new Date().toISOString() } : t
+        );
+      });
+      return { previousQueries };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
       queryClient.invalidateQueries({ queryKey: ['critical-activity-detail'] });
       toast.success('Tarefa concluída!');
     },
-    onError: (error) => {
+    onError: (error, _taskId, context) => {
       console.error('Error completing task:', error);
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
       toast.error('Erro ao concluir tarefa');
     },
   });
