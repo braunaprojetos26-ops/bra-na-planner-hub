@@ -3,6 +3,8 @@ import {
   Rocket, 
   ArrowLeft,
   Users,
+  DollarSign,
+  ShieldCheck,
 } from 'lucide-react';
 import braunaLogo from '@/assets/brauna-logo.png';
 import { NavLink } from '@/components/NavLink';
@@ -25,7 +27,8 @@ import {
 const planningNavItems = [
   { title: 'Clientes', path: '/planning', icon: Users, exact: true },
   { title: 'Meu Futuro', path: 'futuro', icon: Rocket, requiresClient: true },
-  // Futuras telas serão adicionadas aqui
+  { title: 'Orçamento', path: 'orcamento', icon: DollarSign, requiresClient: true },
+  { title: 'Reserva de Emergência', path: 'reserva', icon: ShieldCheck, requiresClient: true },
 ];
 
 export function PlanningSidebar() {
