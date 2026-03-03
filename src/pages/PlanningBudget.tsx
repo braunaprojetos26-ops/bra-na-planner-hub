@@ -121,23 +121,52 @@ export default function PlanningBudget() {
   );
   const [monthlyIncome, setMonthlyIncome] = useState<number>(0);
 
-  // Pull income from data collection
+  // Pull income and expenses from data collection (cash_flow structure)
   useEffect(() => {
-    if (dataCollection?.data_collection) {
-      const income = getValueByPath(dataCollection.data_collection, 'pessoal.renda_mensal');
-      if (typeof income === 'number') {
-        setMonthlyIncome(income);
-      }
+    if (!dataCollection?.data_collection) return;
+    const dc = dataCollection.data_collection;
 
-      // Try to pull existing expense data
-      const expenses = getValueByPath(dataCollection.data_collection, 'financeiro.despesas_mensais');
-      if (typeof expenses === 'number' && currentBudget.every(c => c.items.length === 0)) {
-        // Set a generic "Despesas informadas" item if we have a total but no breakdown
-        setCurrentBudget(prev => prev.map(c =>
-          c.id === 'outros'
-            ? { ...c, items: [{ id: generateId(), name: 'Despesas informadas na coleta', value: expenses }] }
-            : c
-        ));
+    // --- Income ---
+    const incomeList = getValueByPath(dc, 'cash_flow.income') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
+    if (Array.isArray(incomeList)) {
+      const totalIncome = incomeList.reduce((sum, item) => sum + (item.value_monthly_brl ?? 0), 0);
+      if (totalIncome > 0) setMonthlyIncome(totalIncome);
+    }
+
+    // --- Expenses (only populate if budget is empty) ---
+    if (currentBudget.every(c => c.items.length === 0)) {
+      const fixedExpenses = getValueByPath(dc, 'cash_flow.fixed_expenses') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
+      const variableExpenses = getValueByPath(dc, 'cash_flow.variable_expenses') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
+
+      const mapToItems = (list: Array<{ name: string; value_monthly_brl: number | null }> | undefined) =>
+        (list ?? [])
+          .filter(i => i.value_monthly_brl != null && i.value_monthly_brl > 0)
+          .map(i => ({ id: generateId(), name: i.name, value: i.value_monthly_brl ?? 0 }));
+
+      const expenseNameToCategory: Record<string, string> = {
+        'Aluguel': 'moradia', 'Condomínio': 'moradia', 'Energia Elétrica': 'moradia', 'Água': 'moradia', 'Gás': 'moradia', 'Internet': 'moradia',
+        'Combustível': 'transporte', 'Transporte': 'transporte',
+        'Alimentação': 'alimentacao', 'Supermercado': 'alimentacao',
+        'Plano de Saúde': 'saude', 'Farmácia': 'saude',
+        'Escola/Faculdade': 'educacao',
+        'Lazer': 'lazer', 'Streaming (Netflix, Spotify, etc)': 'lazer',
+        'Academia': 'pessoal', 'Telefone': 'pessoal', 'Presentes': 'pessoal',
+        'Pensão Alimentícia': 'dividas',
+        'Empregada/Diarista': 'moradia',
+      };
+
+      const allExpenseItems = [...mapToItems(fixedExpenses), ...mapToItems(variableExpenses)];
+
+      if (allExpenseItems.length > 0) {
+        setCurrentBudget(prev => {
+          const updated = prev.map(c => ({ ...c, items: [...c.items] }));
+          for (const item of allExpenseItems) {
+            const catId = expenseNameToCategory[item.name] || 'outros';
+            const cat = updated.find(c => c.id === catId);
+            if (cat) cat.items.push(item);
+          }
+          return updated;
+        });
       }
     }
   }, [dataCollection]);
