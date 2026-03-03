@@ -15,7 +15,7 @@ import {
   Headphones,
   ChevronDown,
   ChevronRight,
-  Map,
+  
   Heart,
   FolderKanban,
   UserMinus,
@@ -56,7 +56,7 @@ const mainNavItems = [
 const analyticsSubItems = [
   { title: 'Dashboard de Funis', url: '/analytics', icon: BarChart3 },
   { title: 'Health Score', url: '/analytics/health-score', icon: Heart },
-  { title: 'Mapa de Oportunidades', url: '/analytics/opportunity-map', icon: Map },
+  
   { title: 'Lista de Prospecção', url: '/analytics/prospection', icon: Users },
   { title: 'Cancelamentos', url: '/analytics/churn', icon: UserMinus },
   { title: 'NPS', url: '/analytics/nps', icon: Star },

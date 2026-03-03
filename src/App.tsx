@@ -35,7 +35,7 @@ import PlannerDetail from "./pages/PlannerDetail";
 import Tickets from "./pages/Tickets";
 import MeuFuturo from "./pages/MeuFuturo";
 import NotificationHistory from "./pages/NotificationHistory";
-import OpportunityMap from "./pages/OpportunityMap";
+
 import ProspectionAnalytics from "./pages/ProspectionAnalytics";
 import ChurnAnalytics from "./pages/ChurnAnalytics";
 import NpsAnalytics from "./pages/NpsAnalytics";
@@ -98,7 +98,7 @@ const App = () => (
                 <Route path="/contracts" element={<ProtectedPage><Contracts /></ProtectedPage>} />
                 <Route path="/analytics" element={<ProtectedPage><Analytics /></ProtectedPage>} />
                 <Route path="/analytics/health-score" element={<ProtectedPage><HealthScore /></ProtectedPage>} />
-                <Route path="/analytics/opportunity-map" element={<ProtectedPage><OpportunityMap /></ProtectedPage>} />
+                
                 <Route path="/analytics/prospection" element={<ProtectedPage><ProspectionAnalytics /></ProtectedPage>} />
                 <Route path="/analytics/churn" element={<ProtectedPage><ChurnAnalytics /></ProtectedPage>} />
                 <Route path="/analytics/nps" element={<ProtectedPage><NpsAnalytics /></ProtectedPage>} />
