@@ -6,8 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ActingUserProvider } from "@/contexts/ActingUserContext";
+import { AppViewProvider } from "@/contexts/AppViewContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PlanningLayout } from "@/components/layout/PlanningLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorOverlay } from "@/components/GlobalErrorOverlay";
 import Index from "./pages/Index";
@@ -50,6 +52,7 @@ import TrainingRankings from "./pages/TrainingRankings";
 import Settings from "./pages/Settings";
 import InvestmentManagement from "./pages/InvestmentManagement";
 import CriticalActivities from "./pages/CriticalActivities";
+import PlanningHome from "./pages/PlanningHome";
 const queryClient = new QueryClient();
 
 const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
@@ -57,6 +60,14 @@ const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
     <AppLayout>
       <ErrorBoundary>{children}</ErrorBoundary>
     </AppLayout>
+  </ProtectedRoute>
+);
+
+const PlanningPage = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <PlanningLayout>
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </PlanningLayout>
   </ProtectedRoute>
 );
 
@@ -70,6 +81,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <ActingUserProvider>
+              <AppViewProvider>
               <Routes>
                 {/* Public routes */}
                 <Route path="/auth" element={<Auth />} />
@@ -111,7 +123,11 @@ const App = () => (
                 <Route path="/tickets" element={<ProtectedPage><Tickets /></ProtectedPage>} />
                 <Route path="/investments" element={<ProtectedPage><InvestmentManagement /></ProtectedPage>} />
                 <Route path="/notifications" element={<ProtectedPage><NotificationHistory /></ProtectedPage>} />
-                <Route path="/meu-futuro" element={<ProtectedPage><MeuFuturo /></ProtectedPage>} />
+                <Route path="/meu-futuro" element={<Navigate to="/planning" replace />} />
+                
+                {/* Planning module routes */}
+                <Route path="/planning" element={<PlanningPage><PlanningHome /></PlanningPage>} />
+                <Route path="/planning/:clientId/futuro" element={<PlanningPage><MeuFuturo /></PlanningPage>} />
                 <Route path="/projects" element={<ProtectedPage><Projects /></ProtectedPage>} />
                 <Route path="/projects/:projectId" element={<ProtectedPage><ProjectDetail /></ProtectedPage>} />
                 <Route path="/projects/:projectId/pages/:pageId" element={<ProtectedPage><ProjectPageDetail /></ProtectedPage>} />
@@ -124,6 +140,7 @@ const App = () => (
                 <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </AppViewProvider>
             </ActingUserProvider>
           </AuthProvider>
         </BrowserRouter>

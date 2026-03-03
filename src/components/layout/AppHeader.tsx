@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { NotificationCenter } from './NotificationCenter';
+import { ViewSwitcher } from './ViewSwitcher';
 
 const roleLabels: Record<string, string> = {
   planejador: 'Planejador',
@@ -44,6 +45,7 @@ export function AppHeader() {
     <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 sticky top-0 z-10 print:hidden">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+        <ViewSwitcher />
       </div>
 
       <div className="flex items-center gap-3">
