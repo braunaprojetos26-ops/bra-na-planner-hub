@@ -42,7 +42,7 @@ export function useClientGoals(contactId: string | undefined) {
       if (!data?.data_collection) return [];
 
       const dc = data.data_collection as Record<string, unknown>;
-      const goalsList = (dc as any)?.objectives?.goals_list;
+      const goalsList = (dc as any)?.goals?.list || (dc as any)?.objectives?.goals_list;
       if (!Array.isArray(goalsList)) return [];
 
       return goalsList.map((g: any, i: number) => ({
