@@ -76,6 +76,7 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
   const [expandedGoals, setExpandedGoals] = useState<Set<number>>(new Set());
   const [addModalGoal, setAddModalGoal] = useState<ClientGoal | null>(null);
   const [proofMilestone, setProofMilestone] = useState<GoalMilestone | null>(null);
+  const [completingGoal, setCompletingGoal] = useState<ClientGoal | null>(null);
 
   // New milestone form state
   const [newTitle, setNewTitle] = useState('');
@@ -128,7 +129,6 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
 
   const handleToggleStatus = (milestone: GoalMilestone) => {
     if (milestone.status === 'completed') {
-      // Allow uncompleting
       updateMilestone.mutate({
         id: milestone.id,
         contactId,
@@ -136,8 +136,45 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
         completed_at: null,
       });
     } else {
-      // Open proof dialog instead of directly completing
       setProofMilestone(milestone);
+    }
+  };
+
+  const handleCompleteShortTermGoal = (goal: ClientGoal) => {
+    // Find or create a milestone for this short-term goal
+    const existing = milestones.find(m => m.goal_index === goal.index);
+    if (existing) {
+      if (existing.status === 'completed') {
+        updateMilestone.mutate({
+          id: existing.id,
+          contactId,
+          status: 'pending',
+          completed_at: null,
+        });
+      } else {
+        setProofMilestone(existing);
+      }
+    } else {
+      // Create a milestone first, then open proof dialog
+      setCompletingGoal(goal);
+      createMilestone.mutate({
+        contact_id: contactId,
+        goal_index: goal.index,
+        goal_name: goal.goal_type || goal.name,
+        title: goal.name || goal.goal_type || 'Conclusão do objetivo',
+        target_value: goal.target_value_brl || null,
+        target_date: goal.target_date || new Date().toISOString().split('T')[0],
+        notes: null,
+      }, {
+        onSuccess: (data) => {
+          setCompletingGoal(null);
+          setProofMilestone(data as unknown as GoalMilestone);
+        },
+        onError: () => {
+          setCompletingGoal(null);
+          toast.error('Erro ao registrar conclusão');
+        },
+      });
     }
   };
 
@@ -243,12 +280,54 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
                   <CollapsibleContent>
                     <div className="border-t px-4 py-3 space-y-2 bg-muted/20">
                       {!longTerm ? (
-                        <div className="flex items-center gap-2 py-3 justify-center text-muted-foreground">
-                          <Lock className="h-4 w-4" />
-                          <p className="text-xs text-center">
-                            Sonhos com prazo inferior a 24 meses são contabilizados como realização única, sem marcos intermediários.
-                          </p>
-                        </div>
+                        (() => {
+                          const goalMilestone = milestones.find(m => m.goal_index === goal.index);
+                          const isCompleted = goalMilestone?.status === 'completed';
+                          return (
+                            <div className="space-y-3 py-3">
+                              <div className="flex items-center gap-2 justify-center text-muted-foreground">
+                                <Lock className="h-4 w-4" />
+                                <p className="text-xs text-center">
+                                  Sonhos com prazo inferior a 24 meses são contabilizados como realização única, sem marcos intermediários.
+                                </p>
+                              </div>
+                              {isCompleted ? (
+                                <div className="flex items-center justify-between p-3 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                    <div>
+                                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Objetivo concluído</p>
+                                      {goalMilestone?.completed_at && (
+                                        <p className="text-xs text-muted-foreground">
+                                          em {format(parseISO(goalMilestone.completed_at), "dd/MM/yyyy")}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => handleCompleteShortTermGoal(goal)}
+                                  >
+                                    Desfazer
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  disabled={completingGoal?.index === goal.index}
+                                  onClick={() => handleCompleteShortTermGoal(goal)}
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                  {completingGoal?.index === goal.index ? 'Registrando...' : 'Marcar como Concluído'}
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })()
                       ) : (
                         <>
                           {goalMilestones.length === 0 ? (
