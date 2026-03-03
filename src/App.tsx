@@ -53,6 +53,8 @@ import Settings from "./pages/Settings";
 import InvestmentManagement from "./pages/InvestmentManagement";
 import CriticalActivities from "./pages/CriticalActivities";
 import PlanningHome from "./pages/PlanningHome";
+import PlanningBudget from "./pages/PlanningBudget";
+import PlanningEmergencyReserve from "./pages/PlanningEmergencyReserve";
 const queryClient = new QueryClient();
 
 const ProtectedPage = ({ children }: { children: React.ReactNode }) => (
@@ -128,6 +130,8 @@ const App = () => (
                 {/* Planning module routes */}
                 <Route path="/planning" element={<PlanningPage><PlanningHome /></PlanningPage>} />
                 <Route path="/planning/:clientId/futuro" element={<PlanningPage><MeuFuturo /></PlanningPage>} />
+                <Route path="/planning/:clientId/orcamento" element={<PlanningPage><PlanningBudget /></PlanningPage>} />
+                <Route path="/planning/:clientId/reserva" element={<PlanningPage><PlanningEmergencyReserve /></PlanningPage>} />
                 <Route path="/projects" element={<ProtectedPage><Projects /></ProtectedPage>} />
                 <Route path="/projects/:projectId" element={<ProtectedPage><ProjectDetail /></ProtectedPage>} />
                 <Route path="/projects/:projectId/pages/:pageId" element={<ProtectedPage><ProjectPageDetail /></ProtectedPage>} />
