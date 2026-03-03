@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, parseISO, differenceInMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Target, Plus, ChevronDown, ChevronRight, Flag, CheckCircle2, Circle, CalendarIcon, Lock } from 'lucide-react';
+import { Target, Plus, ChevronDown, ChevronRight, Flag, CheckCircle2, Circle, CalendarIcon, Lock, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +67,19 @@ function isLongTermGoal(goal: ClientGoal): boolean {
   }
 }
 
+const GOAL_EVIDENCE_RULES = [
+  { category: 'Adquirir Bem', examples: 'Comprar casa, apartamento, carro, moto, terreno, imóvel de veraneio, reformar imóvel', evidence: 'Contrato de compra, nota fiscal, comprovante de pagamento, registro do bem, foto do bem adquirido' },
+  { category: 'Quitar Dívidas', examples: 'Quitar financiamento, quitar cartão de crédito, renegociar dívidas, limpar nome no Serasa', evidence: 'Comprovante de quitação, declaração de baixa de dívida, extrato de conta sem débitos, print de CPF sem restrições' },
+  { category: 'Reserva de Emergência', examples: 'Criar ou completar reserva de emergência, alcançar valor definido de segurança financeira', evidence: 'Print de extrato de conta ou investimento com saldo atingido, planilha de metas cumpridas, evidência de constituição da reserva' },
+  { category: 'Aumentar Patrimônio / Investimentos', examples: 'Ampliar carteira de investimentos, diversificar aplicações, atingir valor-alvo em conta', evidence: 'Print de extrato, relatório de corretora, histórico de aportes, gráfico de evolução de saldo' },
+  { category: 'Aposentadoria / Independência Financeira', examples: 'Planejar aposentadoria, garantir renda passiva, atingir estabilidade financeira', evidence: 'Print de carteira consolidada, plano de renda mensal atingido, comprovante de adesão à previdência, planilha de metas cumpridas' },
+  { category: 'Proteger Patrimônio', examples: 'Contratar seguro de vida, previdência privada, seguro residencial, plano sucessório', evidence: 'Apólice, comprovante de adesão, print de vigência, documentação do plano' },
+  { category: 'Experiência Pessoal', examples: 'Viagem nacional ou internacional, intercâmbio, projeto pessoal, festa, participação em evento', evidence: 'Passagem, reserva de hospedagem, recibo de agência, comprovante de inscrição, foto ou print do evento' },
+  { category: 'Desenvolvimento Pessoal', examples: 'Formação, pagar faculdade, curso de especialização, MBA, intercâmbio educacional', evidence: 'Comprovante de matrícula, pagamento de mensalidade, certificado, e-mail de confirmação' },
+  { category: 'Empreendedorismo', examples: 'Abrir o próprio negócio, investir em franquia, sair do emprego para empreender', evidence: 'CNPJ aberto, comprovante de investimento inicial, contrato social, nota fiscal da primeira venda' },
+  { category: 'Outros Sonhos Pessoais', examples: 'Adotar um pet, mudar de cidade, realizar sonho familiar, causas pessoais', evidence: 'Evidência que demonstre o atingimento (foto, print, e-mail, declaração do cliente etc.)' },
+];
+
 export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
   const { data: goals = [], isLoading: goalsLoading } = useClientGoals(contactId);
   const { data: milestones = [], isLoading: milestonesLoading } = useGoalMilestones(contactId);
@@ -77,6 +90,7 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
   const [addModalGoal, setAddModalGoal] = useState<ClientGoal | null>(null);
   const [proofMilestone, setProofMilestone] = useState<GoalMilestone | null>(null);
   const [completingGoal, setCompletingGoal] = useState<ClientGoal | null>(null);
+  const [showRules, setShowRules] = useState(false);
 
   // New milestone form state
   const [newTitle, setNewTitle] = useState('');
@@ -216,6 +230,16 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
             <Target className="h-5 w-5" />
             Objetivos do Cliente
             <Badge variant="secondary" className="ml-1">{goals.length}</Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={() => setShowRules(true)} className="ml-auto p-1 rounded-md hover:bg-muted transition-colors">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Regras e evidências aceitas</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -492,6 +516,39 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
           contactId={contactId}
         />
       )}
+      {/* Rules Dialog */}
+      <Dialog open={showRules} onOpenChange={setShowRules}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Regras de Objetivos e Evidências</DialogTitle>
+            <DialogDescription>
+              Tipos de objetivos e as evidências aceitas para comprovação de conclusão.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="rounded-md border text-sm">
+              <div className="grid grid-cols-[140px_1fr_1fr] gap-0 border-b bg-muted/50 font-medium">
+                <div className="p-2 border-r">Categoria</div>
+                <div className="p-2 border-r">Exemplos</div>
+                <div className="p-2">Evidências Aceitas</div>
+              </div>
+              {GOAL_EVIDENCE_RULES.map((rule) => (
+                <div key={rule.category} className="grid grid-cols-[140px_1fr_1fr] gap-0 border-b last:border-b-0">
+                  <div className="p-2 border-r font-medium text-xs">{rule.category}</div>
+                  <div className="p-2 border-r text-xs text-muted-foreground">{rule.examples}</div>
+                  <div className="p-2 text-xs text-muted-foreground">{rule.evidence}</div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-md bg-muted/50 p-3 space-y-1.5 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground text-sm">Regras gerais</p>
+              <p>• Sonhos com prazo inferior a 24 meses são contabilizados como realização única, sem marcos intermediários.</p>
+              <p>• Sonhos com prazo igual ou superior a 24 meses permitem o cadastro de marcos intermediários.</p>
+              <p>• Toda conclusão (marco ou realização) exige o envio de comprovação: texto, imagem ou arquivo.</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
