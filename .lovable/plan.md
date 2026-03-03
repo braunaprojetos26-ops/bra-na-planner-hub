@@ -1,37 +1,82 @@
 
 
-## Plano: Vincular Relacionamento ao Ciclo de Reuniões do Cliente
+## Plano: Sistema de Dupla Visualização — Central do Planejador + Montagem de Planejamento
 
-### Contexto
-O modal `RegisterInteractionModal` registra interações com clientes. Quando o canal selecionado for "reunião presencial" ou "reunião online", queremos mostrar uma seção opcional para vincular essa interação a uma das reuniões pendentes do ciclo do cliente (tabela `client_plan_meetings`), marcando-a como concluída.
+### Conceito
 
-### Estrutura de Dados Existente
-- `client_plans` → plano do cliente com `contact_id` e `total_meetings`
-- `client_plan_meetings` → reuniões individuais do ciclo com `meeting_number`, `status`, `scheduled_date`
-- O modal já recebe `contactId`, que pode ser usado para buscar o plano ativo e suas reuniões pendentes
+Criar um mecanismo de **troca de visualização** no sistema, permitindo alternar entre:
+1. **Central do Planejador** (CRM atual — tudo que já existe)
+2. **Montagem de Planejamento** (novo módulo de construção de planejamento financeiro)
 
-### Alterações
+Cada visualização terá seu próprio sidebar, header contextual e rotas. Ambas compartilham autenticação, dados e infraestrutura.
 
-**1. Atualizar `RegisterInteractionModal.tsx`**
-- Quando `channel` for `reuniao_presencial` ou `reuniao_online`:
-  - Buscar o plano ativo do contato (`client_plans` com `status = 'active'`)
-  - Buscar as reuniões pendentes desse plano (`client_plan_meetings` com `status != 'completed'`)
-  - Exibir um toggle/checkbox: "Deseja vincular esse relacionamento ao ciclo de reuniões do cliente?"
-  - Se ativado, mostrar um Select com as reuniões pendentes (ex: "Reunião 3 - 15/04/2026")
-- No submit, se uma reunião do ciclo foi selecionada:
-  - Marcar essa `client_plan_meeting` como `completed` (status + completed_at)
-  - Salvar o `plan_meeting_id` na interação para rastreabilidade
+### Arquitetura
 
-**2. Migração de Banco de Dados**
-- Adicionar coluna `plan_meeting_id` (uuid, nullable, FK para `client_plan_meetings`) na tabela `contact_interactions` para registrar o vínculo
+```text
+┌─────────────────────────────────────────────┐
+│  AppViewContext (view: 'crm' | 'planning')  │
+├─────────────┬───────────────────────────────┤
+│  view=crm   │  view=planning                │
+│  AppSidebar │  PlanningSidebar              │
+│  AppHeader  │  PlanningHeader               │
+│  /contacts  │  /planning/:clientId/futuro   │
+│  /pipeline  │  /planning/:clientId/...      │
+│  /clients   │                               │
+│  ...        │                               │
+└─────────────┴───────────────────────────────┘
+```
 
-**3. Invalidação de Cache**
-- Após o submit com vínculo, invalidar queries `plan-meetings`, `client-plan`, `clients` e `client-metrics` para refletir a conclusão da reunião no ciclo
+### Implementação
 
-### Fluxo do Usuário
-1. Usuário abre "Registrar Relacionamento" em uma tarefa crítica
-2. Seleciona canal "Reunião Presencial" ou "Reunião Online"
-3. Aparece seção: "Deseja vincular ao ciclo de reuniões?"
-4. Se sim, seleciona qual reunião do ciclo (ex: "Reunião 5 - Pendente")
-5. Ao salvar, a interação é registrada E a reunião do ciclo é marcada como concluída
+#### 1. Contexto de Visualização (`AppViewContext`)
+- Novo contexto com estado `view: 'crm' | 'planning'` e função `switchView()`
+- Persistido em `localStorage` para manter a escolha entre recarregamentos
+- Envolver `App.tsx` com este provider
+
+#### 2. Switcher de Visualização
+- Componente compacto no **header** (ou sidebar header) com ícone/botão que alterna entre as duas visões
+- Visual claro: nome do módulo ativo + ícone de troca
+- Posicionamento: no header, ao lado do SidebarTrigger, ou no topo do sidebar
+
+#### 3. Layout de Planejamento (`PlanningLayout`)
+- Novo layout similar ao `AppLayout`, mas usando `PlanningSidebar` em vez de `AppSidebar`
+- Reutiliza `AppHeader` com indicação visual do modo ativo + switcher
+
+#### 4. Sidebar de Planejamento (`PlanningSidebar`)
+- Menu lateral exclusivo com itens como:
+  - **Seleção de Cliente** (dropdown/busca no topo — filtra apenas clientes ativos com contrato de planejamento pago)
+  - **Meu Futuro** (tela já existente, rota `/planning/:clientId/futuro`)
+  - Futuramente: Reserva de Emergência, Aposentadoria, Investimentos, Objetivos, etc.
+- Header do sidebar com logo + "Montagem de Planejamento" + botão de voltar à Central
+
+#### 5. Rotas de Planejamento
+- Prefixo `/planning` para todas as rotas do novo módulo
+- Estrutura: `/planning` (seleção de cliente), `/planning/:clientId/futuro` (Meu Futuro adaptado)
+- Componente wrapper `PlanningPage` similar ao `ProtectedPage` mas usando `PlanningLayout`
+
+#### 6. Seleção de Cliente no Módulo de Planejamento
+- O sidebar terá um seletor de cliente no topo
+- Filtra apenas clientes com `client_plans` ativos e contrato de planejamento com pagamento confirmado
+- Ao selecionar, os dados da coleta (`data_collection`) são carregados como base para o planejamento
+- O clientId fica na URL e disponível via contexto/params
+
+#### 7. Migração da tela Meu Futuro
+- A rota `/meu-futuro` será mantida (compatibilidade) mas redirecionará para `/planning`
+- No módulo de planejamento, o componente receberá `clientId` como parâmetro e carregará dados do cliente (idade, patrimônio, sonhos da coleta de dados) como valores iniciais
+
+### Arquivos a criar
+- `src/contexts/AppViewContext.tsx` — contexto de visualização
+- `src/components/layout/PlanningLayout.tsx` — layout do módulo
+- `src/components/layout/PlanningSidebar.tsx` — sidebar do módulo
+- `src/components/layout/ViewSwitcher.tsx` — componente de troca de visão
+
+### Arquivos a modificar
+- `src/App.tsx` — adicionar provider + rotas `/planning/*`
+- `src/components/layout/AppHeader.tsx` — adicionar ViewSwitcher
+- `src/components/layout/AppLayout.tsx` — adicionar provider
+- `src/pages/MeuFuturo.tsx` — adaptar para receber clientId
+
+### Observações
+- Nenhuma mudança de banco de dados é necessária neste momento — os dados de clientes e coleta já existem
+- As próximas telas do módulo de planejamento (reserva de emergência, aposentadoria, etc.) serão adicionadas incrementalmente depois dessa estrutura base estar pronta
 
