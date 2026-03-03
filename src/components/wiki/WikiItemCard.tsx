@@ -54,6 +54,14 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Globe,
 };
 
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+
+function isImageFile(item: WikiItem): boolean {
+  if (item.item_type !== 'file') return false;
+  const ext = (item.file_type || '').toLowerCase();
+  return IMAGE_EXTENSIONS.includes(ext);
+}
+
 export function WikiItemCard({ item, onClick, onEdit, onDelete, viewMode = 'grid' }: WikiItemCardProps) {
   const { role } = useAuth();
   const isSuperadmin = role === 'superadmin';
@@ -91,6 +99,62 @@ export function WikiItemCard({ item, onClick, onEdit, onDelete, viewMode = 'grid
     e.stopPropagation();
     onDelete?.();
   };
+
+  // Render image files as large inline previews
+  if (isImageFile(item)) {
+    const imageUrl = item.file_path ? getFileDownloadUrl(item.file_path) : '';
+    
+    return (
+      <div className="col-span-full">
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <img
+            src={imageUrl}
+            alt={item.title}
+            className="w-full max-h-[70vh] object-contain bg-muted/30"
+            loading="lazy"
+          />
+          <div className="p-4 flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-foreground">{item.title}</div>
+              {item.description && (
+                <div className="text-sm text-muted-foreground">{item.description}</div>
+              )}
+              {item.keywords.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {item.keywords.map((keyword) => (
+                    <Badge key={keyword} variant="outline" className="text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 ml-4 shrink-0">
+              {item.file_size && (
+                <span className="text-xs text-muted-foreground">
+                  {formatFileSize(item.file_size)}
+                </span>
+              )}
+              <Button variant="ghost" size="sm" onClick={handleDownload}>
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </Button>
+              {isSuperadmin && (
+                <>
+                  <Button variant="ghost" size="icon" onClick={handleEdit}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleDelete}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (viewMode === 'list') {
     return (

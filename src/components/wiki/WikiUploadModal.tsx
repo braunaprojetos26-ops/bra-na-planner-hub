@@ -176,7 +176,7 @@ export function WikiUploadModal({
                 </p>
                 <Input
                   type="file"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg"
                   onChange={handleFileChange}
                   className="cursor-pointer"
                 />
