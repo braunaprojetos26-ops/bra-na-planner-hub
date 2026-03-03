@@ -1795,6 +1795,47 @@ export type Database = {
           },
         ]
       }
+      milestone_proofs: {
+        Row: {
+          created_at: string
+          created_by: string
+          file_name: string | null
+          file_path: string | null
+          id: string
+          milestone_id: string
+          proof_type: string
+          text_content: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          milestone_id: string
+          proof_type: string
+          text_content?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          milestone_id?: string
+          proof_type?: string
+          text_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestone_proofs_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "goal_milestones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string

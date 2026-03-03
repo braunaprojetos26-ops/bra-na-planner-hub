@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Target, Plus, ChevronDown, ChevronRight, Flag, CheckCircle2, Circle, CalendarIcon } from 'lucide-react';
+import { Target, Plus, ChevronDown, ChevronRight, Flag, CheckCircle2, Circle, CalendarIcon, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,16 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import {
   useClientGoals,
   useGoalMilestones,
   useCreateMilestone,
   useUpdateMilestone,
-  
   ClientGoal,
   GoalMilestone,
 } from '@/hooks/useClientGoals';
+import { MilestoneProofDialog } from './MilestoneProofDialog';
 import { toast } from 'sonner';
 
 interface ClientGoalsSectionProps {
@@ -46,12 +47,6 @@ const MILESTONE_TITLES = [
   'Outros',
 ];
 
-const MILESTONE_STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pendente' },
-  { value: 'in_progress', label: 'Em andamento' },
-  { value: 'completed', label: 'Concluído' },
-];
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -60,15 +55,27 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+/** Returns true if goal has >= 24 months until target_date from today */
+function isLongTermGoal(goal: ClientGoal): boolean {
+  if (!goal.target_date) return false;
+  try {
+    const target = parseISO(goal.target_date);
+    const months = differenceInMonths(target, new Date());
+    return months >= 24;
+  } catch {
+    return false;
+  }
+}
+
 export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
   const { data: goals = [], isLoading: goalsLoading } = useClientGoals(contactId);
   const { data: milestones = [], isLoading: milestonesLoading } = useGoalMilestones(contactId);
   const createMilestone = useCreateMilestone();
   const updateMilestone = useUpdateMilestone();
-  
 
   const [expandedGoals, setExpandedGoals] = useState<Set<number>>(new Set());
   const [addModalGoal, setAddModalGoal] = useState<ClientGoal | null>(null);
+  const [proofMilestone, setProofMilestone] = useState<GoalMilestone | null>(null);
 
   // New milestone form state
   const [newTitle, setNewTitle] = useState('');
@@ -113,7 +120,6 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
       onSuccess: () => {
         toast.success('Marco cadastrado!');
         setAddModalGoal(null);
-        // Auto-expand the goal
         setExpandedGoals(prev => new Set(prev).add(addModalGoal.index));
       },
       onError: () => toast.error('Erro ao cadastrar marco'),
@@ -121,15 +127,19 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
   };
 
   const handleToggleStatus = (milestone: GoalMilestone) => {
-    const nextStatus = milestone.status === 'completed' ? 'pending' : 'completed';
-    updateMilestone.mutate({
-      id: milestone.id,
-      contactId,
-      status: nextStatus,
-      completed_at: nextStatus === 'completed' ? new Date().toISOString() : null,
-    });
+    if (milestone.status === 'completed') {
+      // Allow uncompleting
+      updateMilestone.mutate({
+        id: milestone.id,
+        contactId,
+        status: 'pending',
+        completed_at: null,
+      });
+    } else {
+      // Open proof dialog instead of directly completing
+      setProofMilestone(milestone);
+    }
   };
-
 
   const isLoading = goalsLoading || milestonesLoading;
 
@@ -178,6 +188,7 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
             const totalMilestones = goalMilestones.length;
             const progressPercent = totalMilestones > 0 ? Math.round((completedCount / totalMilestones) * 100) : 0;
             const isExpanded = expandedGoals.has(goal.index);
+            const longTerm = isLongTermGoal(goal);
 
             return (
               <Collapsible key={goal.index} open={isExpanded} onOpenChange={() => toggleGoal(goal.index)}>
@@ -197,6 +208,11 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
                           <span className="font-medium text-sm truncate">
                             {goal.name || goal.goal_type}
                           </span>
+                          {!longTerm && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Curto prazo
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           {goal.target_value_brl > 0 && (
@@ -208,7 +224,7 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
                               {format(parseISO(goal.target_date), "MMM/yyyy", { locale: ptBR })}
                             </span>
                           )}
-                          {totalMilestones > 0 && (
+                          {longTerm && totalMilestones > 0 && (
                             <span className="flex items-center gap-1">
                               <Flag className="h-3 w-3" />
                               {completedCount}/{totalMilestones} marcos
@@ -216,7 +232,7 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
                           )}
                         </div>
                       </div>
-                      {totalMilestones > 0 && (
+                      {longTerm && totalMilestones > 0 && (
                         <div className="w-16 shrink-0">
                           <Progress value={progressPercent} className="h-1.5" />
                         </div>
@@ -226,58 +242,78 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
 
                   <CollapsibleContent>
                     <div className="border-t px-4 py-3 space-y-2 bg-muted/20">
-                      {goalMilestones.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-2">
-                          Nenhum marco cadastrado
-                        </p>
+                      {!longTerm ? (
+                        <div className="flex items-center gap-2 py-3 justify-center text-muted-foreground">
+                          <Lock className="h-4 w-4" />
+                          <p className="text-xs text-center">
+                            Sonhos com prazo inferior a 24 meses são contabilizados como realização única, sem marcos intermediários.
+                          </p>
+                        </div>
                       ) : (
-                        goalMilestones.map((milestone) => (
-                          <div
-                            key={milestone.id}
-                            className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 group"
-                          >
-                            <button
-                              onClick={() => handleToggleStatus(milestone)}
-                              className="shrink-0"
-                            >
-                              {milestone.status === 'completed' ? (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                              ) : (
-                                <Circle className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <p className={cn(
-                                "text-sm font-medium",
-                                milestone.status === 'completed' && "line-through text-muted-foreground"
-                              )}>
-                                {milestone.title}
-                              </p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>{format(parseISO(milestone.target_date), "dd/MM/yyyy")}</span>
-                                {milestone.target_value && (
-                                  <span>• {formatCurrency(Number(milestone.target_value))}</span>
-                                )}
-                                {milestone.status === 'completed' && milestone.completed_at && (
-                                  <Badge variant="secondary" className="text-[10px] h-4">
-                                    Concluído em {format(parseISO(milestone.completed_at), "dd/MM/yy")}
-                                  </Badge>
-                                )}
+                        <>
+                          {goalMilestones.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              Nenhum marco cadastrado
+                            </p>
+                          ) : (
+                            goalMilestones.map((milestone) => (
+                              <div
+                                key={milestone.id}
+                                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 group"
+                              >
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        onClick={() => handleToggleStatus(milestone)}
+                                        className="shrink-0"
+                                      >
+                                        {milestone.status === 'completed' ? (
+                                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                        ) : (
+                                          <Circle className="h-5 w-5 text-muted-foreground" />
+                                        )}
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {milestone.status === 'completed' ? 'Desfazer conclusão' : 'Concluir com comprovação'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn(
+                                    "text-sm font-medium",
+                                    milestone.status === 'completed' && "line-through text-muted-foreground"
+                                  )}>
+                                    {milestone.title}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{format(parseISO(milestone.target_date), "dd/MM/yyyy")}</span>
+                                    {milestone.target_value && (
+                                      <span>• {formatCurrency(Number(milestone.target_value))}</span>
+                                    )}
+                                    {milestone.status === 'completed' && milestone.completed_at && (
+                                      <Badge variant="secondary" className="text-[10px] h-4">
+                                        Concluído em {format(parseISO(milestone.completed_at), "dd/MM/yy")}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                            ))
+                          )}
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-1"
-                        onClick={() => openAddModal(goal)}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        Adicionar Marco
-                      </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-1"
+                            onClick={() => openAddModal(goal)}
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Adicionar Marco
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CollapsibleContent>
                 </div>
@@ -367,6 +403,16 @@ export function ClientGoalsSection({ contactId }: ClientGoalsSectionProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Proof Dialog */}
+      {proofMilestone && (
+        <MilestoneProofDialog
+          open={!!proofMilestone}
+          onOpenChange={(open) => !open && setProofMilestone(null)}
+          milestone={proofMilestone}
+          contactId={contactId}
+        />
+      )}
     </>
   );
 }
