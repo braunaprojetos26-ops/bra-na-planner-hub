@@ -271,40 +271,84 @@ export function DynamicField({ field, value, data, onChange }: DynamicFieldProps
         // Verificar se é uma lista simples (nome + valor)
         if (isSimpleList(itemSchema)) {
           const valueKey = Object.keys(itemSchema).find(k => k !== 'name') as string;
+          const nameIsSearchable = itemSchema.name === 'searchable_select';
+          const sourceType = (field.options?.nameSourceType as string) || '';
+          const categoryOptions = nameIsSearchable
+            ? (cashFlowCategories || [])
+                .filter(c => c.type === sourceType)
+                .map(c => ({ value: c.name, label: c.name }))
+            : [];
           
           return (
             <div className="space-y-1">
-              {items.map((item, index) => (
-                <div key={index} className="flex items-center gap-2 group">
-                  <Input
-                    placeholder={getFieldLabel('name')}
-                    value={(item.name as string) ?? ''}
-                    onChange={(e) => {
-                      const newItems = [...items];
-                      newItems[index] = { ...item, name: e.target.value };
-                      onChange(newItems);
-                    }}
-                    className="flex-1 h-9"
-                  />
-                  <CurrencyInput
-                    value={(item[valueKey] as number) ?? null}
-                    onChange={(val) => {
-                      const newItems = [...items];
-                      newItems[index] = { ...item, [valueKey]: val };
-                      onChange(newItems);
-                    }}
-                    className="w-36 h-9"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 opacity-50 hover:opacity-100 hover:text-destructive"
-                    onClick={() => onChange(items.filter((_, i) => i !== index))}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+              {items.map((item, index) => {
+                const currentName = (item.name as string) ?? '';
+                const isKnownOption = categoryOptions.some(o => o.value === currentName);
+                const isOther = nameIsSearchable && currentName !== '' && !isKnownOption && currentName !== 'Outros';
+                
+                return (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center gap-2 group">
+                      {nameIsSearchable ? (
+                        <div className="flex-1">
+                          <SearchableSelect
+                            value={isOther ? 'Outros' : currentName}
+                            onValueChange={(val) => {
+                              const newItems = [...items];
+                              newItems[index] = { ...item, name: val };
+                              onChange(newItems);
+                            }}
+                            options={categoryOptions}
+                            placeholder="Selecione a categoria..."
+                            searchPlaceholder="Pesquisar categoria..."
+                          />
+                        </div>
+                      ) : (
+                        <Input
+                          placeholder={getFieldLabel('name')}
+                          value={currentName}
+                          onChange={(e) => {
+                            const newItems = [...items];
+                            newItems[index] = { ...item, name: e.target.value };
+                            onChange(newItems);
+                          }}
+                          className="flex-1 h-9"
+                        />
+                      )}
+                      <CurrencyInput
+                        value={(item[valueKey] as number) ?? null}
+                        onChange={(val) => {
+                          const newItems = [...items];
+                          newItems[index] = { ...item, [valueKey]: val };
+                          onChange(newItems);
+                        }}
+                        className="w-36 h-9"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 opacity-50 hover:opacity-100 hover:text-destructive"
+                        onClick={() => onChange(items.filter((_, i) => i !== index))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {/* Input para "Outros" */}
+                    {nameIsSearchable && (currentName === 'Outros' || isOther) && (
+                      <Input
+                        placeholder="Digite o nome da categoria..."
+                        value={currentName === 'Outros' ? '' : currentName}
+                        onChange={(e) => {
+                          const newItems = [...items];
+                          newItems[index] = { ...item, name: e.target.value || 'Outros' };
+                          onChange(newItems);
+                        }}
+                        className="h-9 ml-0"
+                      />
+                    )}
+                  </div>
+                );
+              })}
               <Button
                 variant="ghost"
                 size="sm"
