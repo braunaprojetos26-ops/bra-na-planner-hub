@@ -37,6 +37,8 @@ const isSimpleList = (itemSchema: Record<string, string>): boolean => {
 };
 
 export function DynamicField({ field, value, data, onChange }: DynamicFieldProps) {
+  const { data: cashFlowCategories } = useCashFlowCategories();
+  
   const renderField = () => {
     switch (field.field_type) {
       case 'text':
