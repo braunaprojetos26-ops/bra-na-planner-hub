@@ -133,41 +133,76 @@ export default function PlanningBudget() {
       if (totalIncome > 0) setMonthlyIncome(totalIncome);
     }
 
-    // --- Expenses (only populate if budget is empty) ---
-    if (currentBudget.every(c => c.items.length === 0)) {
-      const fixedExpenses = getValueByPath(dc, 'cash_flow.fixed_expenses') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
-      const variableExpenses = getValueByPath(dc, 'cash_flow.variable_expenses') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
+    // --- Expenses: always rebuild from data collection ---
+    const fixedExpenses = getValueByPath(dc, 'cash_flow.fixed_expenses') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
+    const variableExpenses = getValueByPath(dc, 'cash_flow.variable_expenses') as Array<{ name: string; value_monthly_brl: number | null }> | undefined;
 
-      const mapToItems = (list: Array<{ name: string; value_monthly_brl: number | null }> | undefined) =>
-        (list ?? [])
-          .filter(i => i.value_monthly_brl != null && i.value_monthly_brl > 0)
-          .map(i => ({ id: generateId(), name: i.name, value: i.value_monthly_brl ?? 0 }));
+    const mapToItems = (list: Array<{ name: string; value_monthly_brl: number | null }> | undefined) =>
+      (list ?? [])
+        .filter(i => i.name && i.value_monthly_brl != null && i.value_monthly_brl > 0)
+        .map(i => ({ id: generateId(), name: i.name, value: i.value_monthly_brl ?? 0 }));
 
-      const expenseNameToCategory: Record<string, string> = {
-        'Aluguel': 'moradia', 'Condomínio': 'moradia', 'Energia Elétrica': 'moradia', 'Água': 'moradia', 'Gás': 'moradia', 'Internet': 'moradia',
-        'Combustível': 'transporte', 'Transporte': 'transporte',
-        'Alimentação': 'alimentacao', 'Supermercado': 'alimentacao',
-        'Plano de Saúde': 'saude', 'Farmácia': 'saude',
-        'Escola/Faculdade': 'educacao',
-        'Lazer': 'lazer', 'Streaming (Netflix, Spotify, etc)': 'lazer',
-        'Academia': 'pessoal', 'Telefone': 'pessoal', 'Presentes': 'pessoal',
-        'Pensão Alimentícia': 'dividas',
-        'Empregada/Diarista': 'moradia',
-      };
+    const expenseNameToCategory: Record<string, string> = {
+      // Moradia
+      'Aluguel': 'moradia', 'Condomínio': 'moradia', 'IPTU': 'moradia',
+      'Financiamento Imobiliário': 'moradia', 'Energia Elétrica': 'moradia',
+      'Água / Esgoto': 'moradia', 'Água': 'moradia', 'Gás': 'moradia',
+      'Internet': 'moradia', 'Telefone / Celular': 'moradia', 'Telefone': 'moradia',
+      'TV a Cabo / Streaming': 'moradia', 'Streaming (Netflix, Spotify, etc)': 'moradia',
+      'Empregada / Diarista': 'moradia', 'Empregada/Diarista': 'moradia',
+      'Babá': 'moradia', 'Seguro Residencial': 'moradia',
+      'Manutenção da Casa': 'moradia', 'Móveis / Decoração': 'moradia',
+      // Transporte
+      'Combustível': 'transporte', 'Transporte': 'transporte',
+      'Transporte (Uber/Táxi)': 'transporte', 'Transporte Público': 'transporte',
+      'Financiamento de Veículo': 'transporte', 'Seguro do Carro': 'transporte',
+      'Seguro Carro': 'transporte', 'IPVA': 'transporte', 'Licenciamento': 'transporte',
+      'Manutenção do Carro': 'transporte', 'Estacionamento Mensal': 'transporte',
+      'Transporte Escolar': 'transporte',
+      // Alimentação
+      'Supermercado': 'alimentacao', 'Alimentação': 'alimentacao',
+      'Alimentação Fora de Casa': 'alimentacao', 'Feira / Hortifruti': 'alimentacao',
+      'Delivery / Aplicativos de Comida': 'alimentacao',
+      // Saúde
+      'Plano de Saúde': 'saude', 'Plano Odontológico': 'saude',
+      'Farmácia': 'saude', 'Consultas Médicas': 'saude',
+      'Medicamentos Contínuos': 'saude', 'Terapia / Psicólogo': 'saude',
+      // Educação
+      'Escola / Faculdade': 'educacao', 'Escola/Faculdade': 'educacao',
+      'Curso / Pós-graduação': 'educacao', 'Material Escolar': 'educacao',
+      'Livros / Revistas': 'educacao',
+      // Lazer
+      'Lazer': 'lazer', 'Lazer / Entretenimento': 'lazer',
+      'Viagens': 'lazer', 'Festas / Eventos': 'lazer',
+      'Hobbies': 'lazer',
+      // Pessoal
+      'Academia': 'pessoal', 'Academia / Esporte': 'pessoal',
+      'Vestuário': 'pessoal', 'Calçados': 'pessoal',
+      'Cuidados Pessoais (salão, barbearia)': 'pessoal',
+      'Cosméticos / Perfumaria': 'pessoal', 'Presentes': 'pessoal',
+      'Assinaturas Diversas': 'pessoal', 'Eletrônicos / Tecnologia': 'pessoal',
+      'Despesas com Pet': 'pessoal', 'Pet (ração/plano)': 'pessoal',
+      'Doações / Caridade': 'pessoal',
+      // Dívidas / Financeiro
+      'Pensão Alimentícia': 'dividas', 'Pensão Alimentícia Paga': 'dividas',
+      'Parcela de Empréstimo': 'dividas', 'Parcela de Cartão de Crédito': 'dividas',
+      'Consórcio': 'dividas', 'Previdência Privada': 'dividas',
+      'Seguro de Vida': 'dividas',
+      'Dízimo / Contribuição Religiosa': 'outros',
+      'Clube / Associação': 'outros',
+      'Sindicato / Associação Profissional': 'outros',
+    };
 
-      const allExpenseItems = [...mapToItems(fixedExpenses), ...mapToItems(variableExpenses)];
+    const allExpenseItems = [...mapToItems(fixedExpenses), ...mapToItems(variableExpenses)];
 
-      if (allExpenseItems.length > 0) {
-        setCurrentBudget(prev => {
-          const updated = prev.map(c => ({ ...c, items: [...c.items] }));
-          for (const item of allExpenseItems) {
-            const catId = expenseNameToCategory[item.name] || 'outros';
-            const cat = updated.find(c => c.id === catId);
-            if (cat) cat.items.push(item);
-          }
-          return updated;
-        });
+    if (allExpenseItems.length > 0) {
+      const updated = DEFAULT_CATEGORIES.map(c => ({ ...c, items: [] as BudgetItem[] }));
+      for (const item of allExpenseItems) {
+        const catId = expenseNameToCategory[item.name] || 'outros';
+        const cat = updated.find(c => c.id === catId);
+        if (cat) cat.items.push(item);
       }
+      setCurrentBudget(updated);
     }
   }, [dataCollection]);
 
