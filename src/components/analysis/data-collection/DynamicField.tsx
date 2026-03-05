@@ -10,6 +10,7 @@ import { DataCollectionField } from '@/types/dataCollection';
 import { Badge } from '@/components/ui/badge';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useCashFlowCategories } from '@/hooks/useCashFlowCategories';
 
 interface DynamicFieldProps {
   field: DataCollectionField;
