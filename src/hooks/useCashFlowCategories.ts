@@ -7,6 +7,7 @@ export interface CashFlowCategory {
   type: 'income' | 'fixed_expense' | 'variable_expense';
   is_active: boolean;
   order_position: number;
+  budget_group: string;
 }
 
 export function useCashFlowCategories() {
