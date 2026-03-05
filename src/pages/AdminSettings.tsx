@@ -84,6 +84,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
               <FileQuestion className="h-4 w-4 hidden sm:inline" />
               Pré-Qual
             </TabsTrigger>
+            <TabsTrigger value="cash-flow-categories" className="gap-2">
+              <Wallet className="h-4 w-4 hidden sm:inline" />
+              Fluxo de Caixa
+            </TabsTrigger>
           </TabsList>
         </div>
 
