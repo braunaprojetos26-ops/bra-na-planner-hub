@@ -20,6 +20,7 @@ export function usePendingUsers() {
         .from('profiles')
         .select('user_id, full_name, email, created_at')
         .eq('is_active', false)
+        .is('deactivated_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
