@@ -1,82 +1,73 @@
 
 
-## Plano: Sistema de Dupla Visualização — Central do Planejador + Montagem de Planejamento
+## Plano: Seletores Pesquisáveis no Fluxo de Caixa + Migração de Dados Existentes
 
-### Conceito
+### Situação Atual
 
-Criar um mecanismo de **troca de visualização** no sistema, permitindo alternar entre:
-1. **Central do Planejador** (CRM atual — tudo que já existe)
-2. **Montagem de Planejamento** (novo módulo de construção de planejamento financeiro)
+Os campos de receita (`income`), despesas fixas (`fixed_expenses`) e gastos variáveis (`variable_expenses`) no Fluxo de Caixa usam **inputs de texto livre** para o nome do item. O `itemSchema` define `name: string/text` + `value_monthly_brl: currency`, o que resulta em um layout "simples" (input de texto + campo monetário).
 
-Cada visualização terá seu próprio sidebar, header contextual e rotas. Ambas compartilham autenticação, dados e infraestrutura.
+Dados existentes já preenchidos incluem nomes como "Aluguel", "Plano de Saúde", "Supermercado", "Medicina", etc.
 
-### Arquitetura
+### Mudanças Propostas
 
-```text
-┌─────────────────────────────────────────────┐
-│  AppViewContext (view: 'crm' | 'planning')  │
-├─────────────┬───────────────────────────────┤
-│  view=crm   │  view=planning                │
-│  AppSidebar │  PlanningSidebar              │
-│  AppHeader  │  PlanningHeader               │
-│  /contacts  │  /planning/:clientId/futuro   │
-│  /pipeline  │  /planning/:clientId/...      │
-│  /clients   │                               │
-│  ...        │                               │
-└─────────────┴───────────────────────────────┘
+#### 1. Criar tabela `cash_flow_categories` no banco
+
+Nova tabela para armazenar categorias de receita e despesa, gerenciáveis via configurações:
+
+```
+cash_flow_categories
+- id (uuid, PK)
+- name (text) — ex: "Aluguel", "Plano de Saúde"
+- type (enum: 'income' | 'fixed_expense' | 'variable_expense')
+- is_active (boolean, default true)
+- order_position (integer)
+- created_at, updated_at
 ```
 
-### Implementação
+Pré-popular com ~60-80 categorias baseadas nos dados existentes e categorias comuns de planejamento financeiro (moradia, transporte, alimentação, saúde, educação, lazer, seguros, etc.).
 
-#### 1. Contexto de Visualização (`AppViewContext`)
-- Novo contexto com estado `view: 'crm' | 'planning'` e função `switchView()`
-- Persistido em `localStorage` para manter a escolha entre recarregamentos
-- Envolver `App.tsx` com este provider
+#### 2. Atualizar `itemSchema` dos campos no banco
 
-#### 2. Switcher de Visualização
-- Componente compacto no **header** (ou sidebar header) com ícone/botão que alterna entre as duas visões
-- Visual claro: nome do módulo ativo + ícone de troca
-- Posicionamento: no header, ao lado do SidebarTrigger, ou no topo do sidebar
+Alterar o `itemSchema` dos 3 campos de lista (income, fixed_expenses, variable_expenses) de `name: text/string` para `name: searchable_select`, e adicionar nas `options` as referências às categorias (ex: `nameSourceTable: 'cash_flow_categories'`).
 
-#### 3. Layout de Planejamento (`PlanningLayout`)
-- Novo layout similar ao `AppLayout`, mas usando `PlanningSidebar` em vez de `AppSidebar`
-- Reutiliza `AppHeader` com indicação visual do modo ativo + switcher
+#### 3. Atualizar `DynamicField.tsx` — Renderização de listas
 
-#### 4. Sidebar de Planejamento (`PlanningSidebar`)
-- Menu lateral exclusivo com itens como:
-  - **Seleção de Cliente** (dropdown/busca no topo — filtra apenas clientes ativos com contrato de planejamento pago)
-  - **Meu Futuro** (tela já existente, rota `/planning/:clientId/futuro`)
-  - Futuramente: Reserva de Emergência, Aposentadoria, Investimentos, Objetivos, etc.
-- Header do sidebar com logo + "Montagem de Planejamento" + botão de voltar à Central
+No bloco de lista simples (`isSimpleList`), quando o tipo do campo `name` for `searchable_select`:
+- Renderizar um `SearchableSelect` com as categorias carregadas do banco, filtradas pelo tipo (income/fixed/variable)
+- Incluir opção "Outros" com fallback para input de texto livre
+- Manter o campo `value_monthly_brl` como `CurrencyInput` ao lado
 
-#### 5. Rotas de Planejamento
-- Prefixo `/planning` para todas as rotas do novo módulo
-- Estrutura: `/planning` (seleção de cliente), `/planning/:clientId/futuro` (Meu Futuro adaptado)
-- Componente wrapper `PlanningPage` similar ao `ProtectedPage` mas usando `PlanningLayout`
+#### 4. Hook `useCashFlowCategories`
 
-#### 6. Seleção de Cliente no Módulo de Planejamento
-- O sidebar terá um seletor de cliente no topo
-- Filtra apenas clientes com `client_plans` ativos e contrato de planejamento com pagamento confirmado
-- Ao selecionar, os dados da coleta (`data_collection`) são carregados como base para o planejamento
-- O clientId fica na URL e disponível via contexto/params
+Novo hook que busca as categorias da tabela `cash_flow_categories`, agrupadas por tipo, com cache via React Query.
 
-#### 7. Migração da tela Meu Futuro
-- A rota `/meu-futuro` será mantida (compatibilidade) mas redirecionará para `/planning`
-- No módulo de planejamento, o componente receberá `clientId` como parâmetro e carregará dados do cliente (idade, patrimônio, sonhos da coleta de dados) como valores iniciais
+#### 5. Migração de dados existentes
 
-### Arquivos a criar
-- `src/contexts/AppViewContext.tsx` — contexto de visualização
-- `src/components/layout/PlanningLayout.tsx` — layout do módulo
-- `src/components/layout/PlanningSidebar.tsx` — sidebar do módulo
-- `src/components/layout/ViewSwitcher.tsx` — componente de troca de visão
+Script SQL (via insert tool) que:
+- Lê todos os `name` distintos já usados em `cash_flow.income`, `cash_flow.fixed_expenses` e `cash_flow.variable_expenses`
+- Para cada nome encontrado, verifica se já existe uma categoria correspondente
+- Se não existir, cria automaticamente na tabela `cash_flow_categories` com o tipo correto
+- Os dados dos clientes **não precisam ser alterados** — o campo `name` continua guardando o texto, e o seletor simplesmente reconhece valores que existem na lista
 
-### Arquivos a modificar
-- `src/App.tsx` — adicionar provider + rotas `/planning/*`
-- `src/components/layout/AppHeader.tsx` — adicionar ViewSwitcher
-- `src/components/layout/AppLayout.tsx` — adicionar provider
-- `src/pages/MeuFuturo.tsx` — adaptar para receber clientId
+#### 6. Tela de Configurações (futuramente editável)
 
-### Observações
-- Nenhuma mudança de banco de dados é necessária neste momento — os dados de clientes e coleta já existem
-- As próximas telas do módulo de planejamento (reserva de emergência, aposentadoria, etc.) serão adicionadas incrementalmente depois dessa estrutura base estar pronta
+Adicionar uma seção na área de administração para gerenciar categorias de receita/despesa (adicionar, renomear, desativar). Isso será uma listagem simples com CRUD na tabela `cash_flow_categories`.
+
+### Categorias Pré-populadas (exemplos)
+
+**Receitas**: Salário Líquido, Pró-labore, Aluguéis, Dividendos, Pensão, PLR/Bônus, Freelance/Autônomo, Aposentadoria/INSS, Vale-Alimentação, Outros
+
+**Despesas Fixas**: Aluguel, Condomínio, IPTU, Financiamento Imobiliário, Financiamento Veículo, Plano de Saúde, Seguro de Vida, Seguro Carro, Escola/Faculdade, Energia Elétrica, Água, Gás, Internet, Telefone, Streaming, Academia, Empregada/Diarista, Pensão Alimentícia, Dízimo/Contribuição Religiosa, Clube, Outros
+
+**Despesas Variáveis**: Supermercado, Alimentação Fora, Combustível, Transporte, Farmácia, Vestuário, Lazer, Viagens, Presentes, Manutenção Casa, Manutenção Carro, Cuidados Pessoais, Outros
+
+### Arquivos
+
+- **Criar**: migração SQL (tabela + seed), `src/hooks/useCashFlowCategories.ts`
+- **Modificar**: `src/components/analysis/data-collection/DynamicField.tsx` (renderização de lista simples), atualizar `data_collection_fields` options no banco
+- **Modificar**: campos do banco via insert tool (atualizar itemSchema)
+
+### Compatibilidade
+
+Os dados existentes dos clientes continuam funcionando porque o valor armazenado em `name` é o próprio texto da categoria. O `SearchableSelect` mostra como selecionado qualquer valor que corresponda a uma opção na lista. Valores que não correspondem aparecem como "Outros" com o texto preservado.
 
