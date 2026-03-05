@@ -64,28 +64,35 @@ export function useRejectUser() {
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      // Delete from user_hierarchy first (foreign key constraint)
-      await supabase
-        .from('user_hierarchy')
-        .delete()
-        .eq('user_id', userId);
+      const nowIso = new Date().toISOString();
 
-      // Delete from user_roles
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+      // Best-effort cleanup of related records
+      await Promise.all([
+        supabase
+          .from('user_hierarchy')
+          .delete()
+          .eq('user_id', userId),
+        supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId),
+      ]);
 
-      // Delete from profiles
-      const { error } = await supabase
+      // Try hard delete first
+      const { error: deleteError } = await supabase
         .from('profiles')
         .delete()
         .eq('user_id', userId);
 
-      if (error) throw error;
+      if (!deleteError) return;
 
-      // Note: The auth.users record will remain but won't have access
-      // A superadmin would need to delete from Supabase dashboard
+      // Fallback to soft reject when delete is blocked (RLS/FK)
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ is_active: false, deactivated_at: nowIso })
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-users'] });
