@@ -1,13 +1,14 @@
 import { Navigate } from 'react-router-dom';
-import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target, Globe, ImageIcon, FileQuestion } from 'lucide-react';
+import { Settings, Users, Kanban, Package, ClipboardList, Sparkles, UsersRound, Heart, Target, Globe, ImageIcon, FileQuestion, Wallet } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { UsersTab, PipelinesTab, AITab, TeamManagementTab, HealthScoreTab, GoalsTab, RemoteConfigTab, DashboardBannerTab } from '@/components/admin/tabs';
 import { PreQualificationTab } from '@/components/admin/tabs/PreQualificationTab';
+import { CashFlowCategoriesTab } from '@/components/admin/tabs/CashFlowCategoriesTab';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification' | 'cash-flow-categories';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
