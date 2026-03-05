@@ -113,6 +113,8 @@ export default function PlanningBudget() {
   const { clientId } = useParams();
   const { data: dataCollection } = useContactDataCollection(clientId);
 
+  const { data: cashFlowCategories } = useCashFlowCategories();
+
   const [activeTab, setActiveTab] = useState<'atual' | 'sugerido'>('atual');
   const [currentBudget, setCurrentBudget] = useState<BudgetCategory[]>(
     DEFAULT_CATEGORIES.map(c => ({ ...c, items: [] }))
