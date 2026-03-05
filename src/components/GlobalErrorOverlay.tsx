@@ -14,6 +14,8 @@ export function GlobalErrorOverlay() {
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
       const message = event.error?.message || event.message || 'Erro desconhecido';
+      // ResizeObserver loop errors are benign browser warnings — ignore them
+      if (message.includes('ResizeObserver')) return;
       setErr({
         message,
         stack: event.error?.stack,
