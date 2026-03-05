@@ -79,6 +79,36 @@ export type Database = {
           },
         ]
       }
+      cash_flow_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          order_position: number
+          type: Database["public"]["Enums"]["cash_flow_category_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order_position?: number
+          type: Database["public"]["Enums"]["cash_flow_category_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_position?: number
+          type?: Database["public"]["Enums"]["cash_flow_category_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_investment_data: {
         Row: {
           contact_id: string
@@ -4131,6 +4161,7 @@ export type Database = {
     }
     Enums: {
       app_role: "planejador" | "lider" | "supervisor" | "gerente" | "superadmin"
+      cash_flow_category_type: "income" | "fixed_expense" | "variable_expense"
       contact_status: "active" | "lost" | "won"
       task_status: "pending" | "completed" | "overdue"
       task_type:
@@ -4290,6 +4321,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["planejador", "lider", "supervisor", "gerente", "superadmin"],
+      cash_flow_category_type: ["income", "fixed_expense", "variable_expense"],
       contact_status: ["active", "lost", "won"],
       task_status: ["pending", "completed", "overdue"],
       task_type: [
