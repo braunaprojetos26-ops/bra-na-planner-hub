@@ -31,7 +31,8 @@ const DEFAULT_CATEGORIES: BudgetCategory[] = [
   { id: 'educacao', name: 'Educação', icon: '📚', items: [] },
   { id: 'lazer', name: 'Lazer', icon: '🎮', items: [] },
   { id: 'pessoal', name: 'Pessoal', icon: '👤', items: [] },
-  { id: 'dividas', name: 'Dívidas', icon: '💳', items: [] },
+  { id: 'cartao', name: 'Fatura de Cartão', icon: '💳', items: [] },
+  { id: 'dividas', name: 'Dívidas', icon: '📋', items: [] },
   { id: 'outros', name: 'Outros', icon: '📦', items: [] },
 ];
 
