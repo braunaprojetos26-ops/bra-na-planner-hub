@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useContactDataCollection, getValueByPath } from '@/hooks/useContactDataCollection';
+import { useCashFlowCategories } from '@/hooks/useCashFlowCategories';
 import { cn } from '@/lib/utils';
 
 interface BudgetItem {
