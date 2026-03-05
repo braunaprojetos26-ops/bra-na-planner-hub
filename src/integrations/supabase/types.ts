@@ -81,6 +81,7 @@ export type Database = {
       }
       cash_flow_categories: {
         Row: {
+          budget_group: string
           created_at: string
           id: string
           is_active: boolean
@@ -90,6 +91,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          budget_group?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -99,6 +101,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          budget_group?: string
           created_at?: string
           id?: string
           is_active?: boolean
