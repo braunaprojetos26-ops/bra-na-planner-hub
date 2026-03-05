@@ -134,6 +134,10 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
         <TabsContent value="pre-qualification">
           <PreQualificationTab />
         </TabsContent>
+
+        <TabsContent value="cash-flow-categories">
+          <CashFlowCategoriesTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
