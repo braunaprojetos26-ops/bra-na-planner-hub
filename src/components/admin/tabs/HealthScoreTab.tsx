@@ -9,7 +9,7 @@ import { Upload, Download, FileSpreadsheet, CheckCircle, XCircle, Loader2, Play,
 import { useNpsImport, useNpsImportHistory } from '@/hooks/useNpsImport';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
+import { readExcelFileRaw, parseExcelDate, writeAndDownloadExcel } from '@/lib/excel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
