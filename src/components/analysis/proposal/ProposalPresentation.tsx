@@ -26,6 +26,8 @@ interface ProposalPresentationProps {
   contact: { full_name: string } | null | undefined;
   diagnostic: { overall_score: number; category_scores: Record<string, unknown> } | null | undefined;
   onBack: () => void;
+  standaloneMode?: boolean;
+  standalonePlannerName?: string;
 }
 
 export function ProposalPresentation({
@@ -33,6 +35,8 @@ export function ProposalPresentation({
   contact,
   diagnostic,
   onBack,
+  standaloneMode = false,
+  standalonePlannerName,
 }: ProposalPresentationProps) {
 const { user, profile } = useAuth();
 
@@ -45,8 +49,8 @@ const { user, profile } = useAuth();
     return `${parts[0]} ${parts[parts.length - 1]}`;
   };
   const { markAsPresented } = useProposalMutations();
-  const { data: feedbacks } = useMyFeedbacks();
-  const { data: cases } = useMyCases();
+  const { data: feedbacks } = standaloneMode ? { data: undefined } : useMyFeedbacks();
+  const { data: cases } = standaloneMode ? { data: undefined } : useMyCases();
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Scroll para o topo quando o componente montar
