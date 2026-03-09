@@ -89,6 +89,7 @@ const App = () => (
                 {/* Public routes */}
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/formulario-analise/:token" element={<PublicPreQualificationForm />} />
+                <Route path="/proposta" element={<StandaloneProposal />} />
                 
                 {/* Protected routes */}
                 <Route path="/" element={<ProtectedPage><Index /></ProtectedPage>} />
