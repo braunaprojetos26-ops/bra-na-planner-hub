@@ -100,13 +100,13 @@ const { user, profile } = useAuth();
             <div className="print:hidden">
               <ProposalCover
                 clientName={contact?.full_name || 'Cliente'}
-                plannerName={formatPlannerName(profile?.full_name)}
+                plannerName={standaloneMode ? (standalonePlannerName || 'Planejador') : formatPlannerName(profile?.full_name)}
               />
             </div>
             {/* Print version - deterministic grid layout */}
             <ProposalCoverPrint
               clientName={contact?.full_name || 'Cliente'}
-              plannerName={formatPlannerName(profile?.full_name)}
+              plannerName={standaloneMode ? (standalonePlannerName || 'Planejador') : formatPlannerName(profile?.full_name)}
             />
           </div>
 
