@@ -9,7 +9,7 @@ import { Upload, Download, FileSpreadsheet, CheckCircle, XCircle, Loader2, Play,
 import { useNpsImport, useNpsImportHistory } from '@/hooks/useNpsImport';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
+import { readExcelFileRaw, parseExcelDate, writeAndDownloadExcel } from '@/lib/excel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -46,10 +46,7 @@ export function HealthScoreTab() {
     setPreviewData([]);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 });
+      const rows = await readExcelFileRaw(file);
 
       const errors: string[] = [];
       const records: Array<{ email: string; npsValue: number; responseDate: string }> = [];
@@ -74,10 +71,9 @@ export function HealthScoreTab() {
         }
 
         let formattedDate: string;
-        if (typeof responseDate === 'number') {
-          // Excel date serial number
-          const date = XLSX.SSF.parse_date_code(responseDate);
-          formattedDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+        const parsedDate = parseExcelDate(responseDate);
+        if (parsedDate) {
+          formattedDate = `${parsedDate.y}-${String(parsedDate.m).padStart(2, '0')}-${String(parsedDate.d).padStart(2, '0')}`;
         } else if (responseDate) {
           formattedDate = String(responseDate);
         } else {
@@ -101,16 +97,16 @@ export function HealthScoreTab() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const downloadTemplate = () => {
-    const template = [
-      ['email_cliente', 'nota_nps', 'data_resposta'],
-      ['cliente@email.com', 9, '2024-01-15'],
-      ['outro@email.com', 7, '2024-01-15'],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'NPS');
-    XLSX.writeFile(wb, 'template_importacao_nps.xlsx');
+  const downloadTemplate = async () => {
+    await writeAndDownloadExcel({
+      sheetName: 'NPS',
+      fileName: 'template_importacao_nps.xlsx',
+      headers: ['email_cliente', 'nota_nps', 'data_resposta'],
+      rows: [
+        { email_cliente: 'cliente@email.com', nota_nps: 9, data_resposta: '2024-01-15' },
+        { email_cliente: 'outro@email.com', nota_nps: 7, data_resposta: '2024-01-15' },
+      ],
+    });
   };
 
   return (

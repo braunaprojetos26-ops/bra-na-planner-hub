@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import { readExcelFile, writeAndDownloadExcel } from '@/lib/excel';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
   Dialog,
@@ -113,10 +113,7 @@ export function ImportOpportunitiesModal({ open, onOpenChange }: ImportOpportuni
       }
 
       // Read file
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+      const jsonData = await readExcelFile(file);
 
       const rows: ParsedOpportunity[] = jsonData.map((row, index) => {
         const rowNumber = index + 2;
@@ -219,7 +216,7 @@ export function ImportOpportunitiesModal({ open, onOpenChange }: ImportOpportuni
     if (file) processFile(file);
   }, [processFile]);
 
-  const downloadTemplate = useCallback(() => {
+  const downloadTemplate = useCallback(async () => {
     const headers = [
       'Telefone do Contato',
       'Funil',
@@ -239,11 +236,13 @@ export function ImportOpportunitiesModal({ open, onOpenChange }: ImportOpportuni
       'Anotações': 'Cliente indicado',
     };
 
-    const ws = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
-    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 18) }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Negociações');
-    XLSX.writeFile(wb, 'modelo-importacao-negociacoes.xlsx');
+    await writeAndDownloadExcel({
+      sheetName: 'Negociações',
+      fileName: 'modelo-importacao-negociacoes.xlsx',
+      headers,
+      rows: [exampleRow],
+      columnWidths: headers.map(h => Math.max(h.length + 2, 18)),
+    });
   }, []);
 
   const handleImport = useCallback(async () => {

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import { readExcelFile, parseExcelDate, writeAndDownloadExcel } from '@/lib/excel';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import {
   Dialog,
@@ -115,15 +115,10 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
   const parseDate = (value: any): string | undefined => {
     if (!value) return undefined;
     
-    // Handle Excel serial dates
-    if (typeof value === 'number') {
-      const date = XLSX.SSF.parse_date_code(value);
-      if (date) {
-        const year = date.y;
-        const month = String(date.m).padStart(2, '0');
-        const day = String(date.d).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      }
+    // Handle Excel serial dates or Date objects
+    const parsed = parseExcelDate(value);
+    if (parsed) {
+      return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
     }
     
     // Handle string dates
@@ -229,26 +224,13 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
   const processFile = useCallback((file: File) => {
     const reader = new FileReader();
     
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-        
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
-        
-        const contacts = jsonData.map((row, index) => parseRow(row, index + 2));
-        
-        setParsedContacts(contacts);
-        setStep('preview');
-      } catch (error) {
-        console.error('Error parsing file:', error);
-      }
-    };
-    
-    reader.readAsArrayBuffer(file);
+    readExcelFile(file).then((jsonData) => {
+      const contacts = jsonData.map((row, index) => parseRow(row, index + 2));
+      setParsedContacts(contacts);
+      setStep('preview');
+    }).catch((error) => {
+      console.error('Error parsing file:', error);
+    });
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -268,7 +250,7 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
     }
   }, [processFile]);
 
-  const downloadTemplate = useCallback(() => {
+  const downloadTemplate = useCallback(async () => {
     const headers = Object.keys(COLUMN_MAPPING);
     const exampleRow = {
       'Nome Completo': 'João da Silva',
@@ -295,15 +277,12 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
       'Anotações': 'Cliente interessado em investimentos',
     };
 
-    const ws = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
-    
-    // Set column widths
-    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 15) }));
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Contatos');
-    
-    XLSX.writeFile(wb, 'modelo-importacao-contatos.xlsx');
+    await writeAndDownloadExcel({
+      sheetName: 'Contatos',
+      fileName: 'modelo-importacao-contatos.xlsx',
+      headers,
+      rows: [exampleRow],
+    });
   }, []);
 
   const handleImport = useCallback(async () => {
