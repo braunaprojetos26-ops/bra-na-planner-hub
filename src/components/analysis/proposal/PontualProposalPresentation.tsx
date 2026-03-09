@@ -83,7 +83,7 @@ const { user, profile } = useAuth();
           <Download className="w-4 h-4 mr-2" />
           Gerar PDF
         </Button>
-        {proposal.status !== 'presented' && (
+        {!standaloneMode && proposal.status !== 'presented' && (
           <Button 
             size="sm" 
             onClick={handleMarkPresented}
