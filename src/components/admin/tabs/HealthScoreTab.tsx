@@ -97,16 +97,16 @@ export function HealthScoreTab() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const downloadTemplate = () => {
-    const template = [
-      ['email_cliente', 'nota_nps', 'data_resposta'],
-      ['cliente@email.com', 9, '2024-01-15'],
-      ['outro@email.com', 7, '2024-01-15'],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'NPS');
-    XLSX.writeFile(wb, 'template_importacao_nps.xlsx');
+  const downloadTemplate = async () => {
+    await writeAndDownloadExcel({
+      sheetName: 'NPS',
+      fileName: 'template_importacao_nps.xlsx',
+      headers: ['email_cliente', 'nota_nps', 'data_resposta'],
+      rows: [
+        { email_cliente: 'cliente@email.com', nota_nps: 9, data_resposta: '2024-01-15' },
+        { email_cliente: 'outro@email.com', nota_nps: 7, data_resposta: '2024-01-15' },
+      ],
+    });
   };
 
   return (

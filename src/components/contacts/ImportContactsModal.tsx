@@ -277,15 +277,12 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
       'Anotações': 'Cliente interessado em investimentos',
     };
 
-    const ws = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
-    
-    // Set column widths
-    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 15) }));
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Contatos');
-    
-    XLSX.writeFile(wb, 'modelo-importacao-contatos.xlsx');
+    await writeAndDownloadExcel({
+      sheetName: 'Contatos',
+      fileName: 'modelo-importacao-contatos.xlsx',
+      headers,
+      rows: [exampleRow],
+    });
   }, []);
 
   const handleImport = useCallback(async () => {

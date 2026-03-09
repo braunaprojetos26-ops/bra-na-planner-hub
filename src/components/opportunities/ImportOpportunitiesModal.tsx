@@ -236,11 +236,13 @@ export function ImportOpportunitiesModal({ open, onOpenChange }: ImportOpportuni
       'Anotações': 'Cliente indicado',
     };
 
-    const ws = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
-    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 18) }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Negociações');
-    XLSX.writeFile(wb, 'modelo-importacao-negociacoes.xlsx');
+    await writeAndDownloadExcel({
+      sheetName: 'Negociações',
+      fileName: 'modelo-importacao-negociacoes.xlsx',
+      headers,
+      rows: [exampleRow],
+      columnWidths: headers.map(h => Math.max(h.length + 2, 18)),
+    });
   }, []);
 
   const handleImport = useCallback(async () => {
