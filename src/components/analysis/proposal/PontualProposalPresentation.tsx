@@ -100,7 +100,7 @@ const { user, profile } = useAuth();
         {/* Cover */}
         <ProposalCover
           clientName={contact?.full_name || 'Cliente'}
-          plannerName={formatPlannerName(profile?.full_name)}
+          plannerName={standaloneMode ? (standalonePlannerName || 'Planejador') : formatPlannerName(profile?.full_name)}
           subtitle="Planejamento Pontual"
         />
 
