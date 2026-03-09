@@ -250,7 +250,7 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
     }
   }, [processFile]);
 
-  const downloadTemplate = useCallback(() => {
+  const downloadTemplate = useCallback(async () => {
     const headers = Object.keys(COLUMN_MAPPING);
     const exampleRow = {
       'Nome Completo': 'João da Silva',

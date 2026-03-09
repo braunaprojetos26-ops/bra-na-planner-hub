@@ -216,7 +216,7 @@ export function ImportOpportunitiesModal({ open, onOpenChange }: ImportOpportuni
     if (file) processFile(file);
   }, [processFile]);
 
-  const downloadTemplate = useCallback(() => {
+  const downloadTemplate = useCallback(async () => {
     const headers = [
       'Telefone do Contato',
       'Funil',
