@@ -46,10 +46,7 @@ export function HealthScoreTab() {
     setPreviewData([]);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 });
+      const rows = await readExcelFileRaw(file);
 
       const errors: string[] = [];
       const records: Array<{ email: string; npsValue: number; responseDate: string }> = [];
@@ -74,10 +71,9 @@ export function HealthScoreTab() {
         }
 
         let formattedDate: string;
-        if (typeof responseDate === 'number') {
-          // Excel date serial number
-          const date = XLSX.SSF.parse_date_code(responseDate);
-          formattedDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+        const parsedDate = parseExcelDate(responseDate);
+        if (parsedDate) {
+          formattedDate = `${parsedDate.y}-${String(parsedDate.m).padStart(2, '0')}-${String(parsedDate.d).padStart(2, '0')}`;
         } else if (responseDate) {
           formattedDate = String(responseDate);
         } else {
