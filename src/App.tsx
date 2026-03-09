@@ -16,6 +16,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PublicPreQualificationForm from "./pages/PublicPreQualificationForm";
+import StandaloneProposal from "./pages/StandaloneProposal";
 import Contacts from "./pages/Contacts";
 import ContactDetail from "./pages/ContactDetail";
 import ContactAnalysis from "./pages/ContactAnalysis";
