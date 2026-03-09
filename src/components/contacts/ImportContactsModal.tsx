@@ -224,26 +224,13 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
   const processFile = useCallback((file: File) => {
     const reader = new FileReader();
     
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-        
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
-        
-        const contacts = jsonData.map((row, index) => parseRow(row, index + 2));
-        
-        setParsedContacts(contacts);
-        setStep('preview');
-      } catch (error) {
-        console.error('Error parsing file:', error);
-      }
-    };
-    
-    reader.readAsArrayBuffer(file);
+    readExcelFile(file).then((jsonData) => {
+      const contacts = jsonData.map((row, index) => parseRow(row, index + 2));
+      setParsedContacts(contacts);
+      setStep('preview');
+    }).catch((error) => {
+      console.error('Error parsing file:', error);
+    });
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
