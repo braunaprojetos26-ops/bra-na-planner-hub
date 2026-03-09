@@ -39,25 +39,7 @@ export function GlobalErrorOverlay() {
   }, []);
 
   if (!err) {
-    return (
-      <div
-        className="print:hidden"
-        style={{
-          position: 'fixed',
-          bottom: 8,
-          right: 8,
-          zIndex: 9999,
-          fontSize: 11,
-          padding: '4px 8px',
-          borderRadius: 999,
-          background: 'rgba(0,0,0,0.6)',
-          color: 'white',
-          pointerEvents: 'none',
-        }}
-      >
-        debug:on
-      </div>
-    );
+    return null;
   }
 
   return (
