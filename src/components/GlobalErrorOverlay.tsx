@@ -41,6 +41,7 @@ export function GlobalErrorOverlay() {
   if (!err) {
     return (
       <div
+        className="print:hidden"
         style={{
           position: 'fixed',
           bottom: 8,
