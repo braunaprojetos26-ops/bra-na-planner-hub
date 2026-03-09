@@ -115,15 +115,10 @@ export function ImportContactsModal({ open, onOpenChange }: ImportContactsModalP
   const parseDate = (value: any): string | undefined => {
     if (!value) return undefined;
     
-    // Handle Excel serial dates
-    if (typeof value === 'number') {
-      const date = XLSX.SSF.parse_date_code(value);
-      if (date) {
-        const year = date.y;
-        const month = String(date.m).padStart(2, '0');
-        const day = String(date.d).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      }
+    // Handle Excel serial dates or Date objects
+    const parsed = parseExcelDate(value);
+    if (parsed) {
+      return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
     }
     
     // Handle string dates
