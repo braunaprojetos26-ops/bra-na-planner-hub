@@ -24,6 +24,8 @@ interface PontualProposalPresentationProps {
   diagnostic: { overall_score: number; category_scores: Record<string, unknown> } | null | undefined;
   selectedTopics: SelectedTopic[];
   onBack: () => void;
+  standaloneMode?: boolean;
+  standalonePlannerName?: string;
 }
 
 export function PontualProposalPresentation({
@@ -32,6 +34,8 @@ export function PontualProposalPresentation({
   diagnostic,
   selectedTopics,
   onBack,
+  standaloneMode = false,
+  standalonePlannerName,
 }: PontualProposalPresentationProps) {
 const { user, profile } = useAuth();
 
@@ -79,7 +83,7 @@ const { user, profile } = useAuth();
           <Download className="w-4 h-4 mr-2" />
           Gerar PDF
         </Button>
-        {proposal.status !== 'presented' && (
+        {!standaloneMode && proposal.status !== 'presented' && (
           <Button 
             size="sm" 
             onClick={handleMarkPresented}
@@ -96,7 +100,7 @@ const { user, profile } = useAuth();
         {/* Cover */}
         <ProposalCover
           clientName={contact?.full_name || 'Cliente'}
-          plannerName={formatPlannerName(profile?.full_name)}
+          plannerName={standaloneMode ? (standalonePlannerName || 'Planejador') : formatPlannerName(profile?.full_name)}
           subtitle="Planejamento Pontual"
         />
 

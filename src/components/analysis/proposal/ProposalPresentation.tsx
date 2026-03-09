@@ -26,6 +26,8 @@ interface ProposalPresentationProps {
   contact: { full_name: string } | null | undefined;
   diagnostic: { overall_score: number; category_scores: Record<string, unknown> } | null | undefined;
   onBack: () => void;
+  standaloneMode?: boolean;
+  standalonePlannerName?: string;
 }
 
 export function ProposalPresentation({
@@ -33,6 +35,8 @@ export function ProposalPresentation({
   contact,
   diagnostic,
   onBack,
+  standaloneMode = false,
+  standalonePlannerName,
 }: ProposalPresentationProps) {
 const { user, profile } = useAuth();
 
@@ -74,7 +78,7 @@ const { user, profile } = useAuth();
           <Download className="w-4 h-4 mr-2" />
           Gerar PDF
         </Button>
-        {proposal.status !== 'presented' && (
+        {!standaloneMode && proposal.status !== 'presented' && (
           <Button 
             size="sm" 
             onClick={handleMarkPresented}
@@ -96,13 +100,13 @@ const { user, profile } = useAuth();
             <div className="print:hidden">
               <ProposalCover
                 clientName={contact?.full_name || 'Cliente'}
-                plannerName={formatPlannerName(profile?.full_name)}
+                plannerName={standaloneMode ? (standalonePlannerName || 'Planejador') : formatPlannerName(profile?.full_name)}
               />
             </div>
             {/* Print version - deterministic grid layout */}
             <ProposalCoverPrint
               clientName={contact?.full_name || 'Cliente'}
-              plannerName={formatPlannerName(profile?.full_name)}
+              plannerName={standaloneMode ? (standalonePlannerName || 'Planejador') : formatPlannerName(profile?.full_name)}
             />
           </div>
 
