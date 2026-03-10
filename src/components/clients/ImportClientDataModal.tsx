@@ -319,10 +319,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       'Valor R$ Produto 5': '',
     };
 
-    const ws = XLSX.utils.json_to_sheet([exampleRow], { header: headers });
-    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 20) }));
-
-    // Create reference sheet with valid options
+    // Create reference sheet data
     const profileEmails = (profiles || []).map(p => p.email).filter(Boolean) as string[];
     const maxRows = Math.max(THEMES_LIST.length, productDisplayNames.length, VALID_TOTAL_MEETINGS.length, profileEmails.length);
     const refData: Record<string, string>[] = [];
@@ -334,13 +331,27 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
         'Planejadores (Email)': profileEmails[i] || '',
       });
     }
-    const wsRef = XLSX.utils.json_to_sheet(refData);
-    wsRef['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 50 }, { wch: 35 }];
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Dados dos Clientes');
-    XLSX.utils.book_append_sheet(wb, wsRef, 'Valores Válidos');
-    XLSX.writeFile(wb, 'modelo-atualizacao-clientes.xlsx');
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    
+    const ws = workbook.addWorksheet('Dados dos Clientes');
+    ws.columns = headers.map(h => ({ header: h, key: h, width: Math.max(h.length + 2, 20) }));
+    ws.addRow(exampleRow);
+
+    const wsRef = workbook.addWorksheet('Valores Válidos');
+    const refHeaders = ['Temas de Reunião Válidos', 'Nº Reuniões Válidos', 'Produtos Válidos', 'Planejadores (Email)'];
+    wsRef.columns = refHeaders.map((h, i) => ({ header: h, key: h, width: [30, 20, 50, 35][i] }));
+    for (const row of refData) { wsRef.addRow(row); }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo-atualizacao-clientes.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   }, []);
 
   const handleImport = useCallback(async () => {
