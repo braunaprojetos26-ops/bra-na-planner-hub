@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import { readExcelFile } from '@/lib/excel';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import {
   Dialog,
