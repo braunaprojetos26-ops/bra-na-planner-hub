@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { TrainingExam, TrainingExamQuestion, TrainingExamAttempt } from '@/types/training';
 
 export function useTrainingExams(moduleIdOrExamId: string | undefined) {
-  const { user } = useAuth();
+  const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isTrainerOrAdmin = profile?.is_trainer === true || role === 'superadmin';
 
   // First try to fetch by module_id, then by exam_id
   const { data: exam, isLoading: isLoadingExam } = useQuery({
