@@ -43,22 +43,39 @@ export function useTrainingExams(moduleIdOrExamId: string | undefined) {
   });
 
   const { data: questions, isLoading: isLoadingQuestions } = useQuery({
-    queryKey: ['training-exam-questions', exam?.id],
+    queryKey: ['training-exam-questions', exam?.id, isTrainerOrAdmin],
     queryFn: async () => {
       if (!exam?.id) return [];
 
-      const { data, error } = await supabase
-        .from('training_exam_questions')
-        .select('*')
-        .eq('exam_id', exam.id)
-        .eq('is_active', true)
-        .order('order_position', { ascending: true });
+      if (isTrainerOrAdmin) {
+        // Trainers/admins can see correct_answer from the real table
+        const { data, error } = await supabase
+          .from('training_exam_questions')
+          .select('*')
+          .eq('exam_id', exam.id)
+          .eq('is_active', true)
+          .order('order_position', { ascending: true });
 
-      if (error) throw error;
-      return data.map(q => ({
-        ...q,
-        options: q.options as { label: string; value: string }[],
-      })) as TrainingExamQuestion[];
+        if (error) throw error;
+        return data.map(q => ({
+          ...q,
+          options: q.options as { label: string; value: string }[],
+        })) as TrainingExamQuestion[];
+      } else {
+        // Students use safe view (no correct_answer)
+        const { data, error } = await supabase
+          .from('training_exam_questions_safe' as any)
+          .select('*')
+          .eq('exam_id', exam.id)
+          .order('order_position', { ascending: true });
+
+        if (error) throw error;
+        return (data as any[]).map(q => ({
+          ...q,
+          correct_answer: '', // Not available to students
+          options: q.options as { label: string; value: string }[],
+        })) as TrainingExamQuestion[];
+      }
     },
     enabled: !!exam?.id,
   });
