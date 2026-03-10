@@ -51,10 +51,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate API key authentication
+    // Validate API key authentication (header or query param)
     const webhookSecret = Deno.env.get('VINDI_WEBHOOK_SECRET');
     if (webhookSecret) {
-      const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key') || '';
+      const url = new URL(req.url);
+      const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key') || url.searchParams.get('api_key') || '';
       if (apiKey !== webhookSecret) {
         console.error('Invalid or missing API key in Vindi webhook request');
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
