@@ -178,13 +178,20 @@ export function calculatePontualPricing(
   // Total value
   const totalValue = meetingValue * totalMeetings;
   
-  // Generate installment table (1x to 6x only for Pontual)
+  // Generate installment table (1x to 6x) with 1% compound interest per month
+  const MONTHLY_RATE = 0.01; // 1% ao mês
   const installmentTable = Array.from({ length: 6 }, (_, i) => {
-    const numInstallments = i + 1;
+    const n = i + 1;
+    if (n === 1) {
+      return { installments: 1, installmentValue: totalValue, total: totalValue };
+    }
+    // PMT = PV * r / (1 - (1+r)^-n)
+    const installmentValue = totalValue * MONTHLY_RATE / (1 - Math.pow(1 + MONTHLY_RATE, -n));
+    const total = installmentValue * n;
     return {
-      installments: numInstallments,
-      installmentValue: totalValue / numInstallments,
-      total: totalValue,
+      installments: n,
+      installmentValue: Math.round(installmentValue * 100) / 100,
+      total: Math.round(total * 100) / 100,
     };
   });
 
