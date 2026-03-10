@@ -4100,7 +4100,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      training_exam_questions_safe: {
+        Row: {
+          exam_id: string | null
+          id: string | null
+          is_active: boolean | null
+          options: Json | null
+          order_position: number | null
+          question_text: string | null
+          question_type: string | null
+        }
+        Insert: {
+          exam_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          options?: Json | null
+          order_position?: number | null
+          question_text?: string | null
+          question_type?: string | null
+        }
+        Update: {
+          exam_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          options?: Json | null
+          order_position?: number | null
+          question_text?: string | null
+          question_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_exam_questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "training_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_project_page: {
@@ -4134,6 +4171,10 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      grade_exam_attempt: {
+        Args: { p_answers: Json; p_attempt_id: string }
+        Returns: Json
       }
       has_role: {
         Args: {
