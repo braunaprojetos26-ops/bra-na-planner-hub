@@ -1,82 +1,78 @@
 
 
-## Plano: Sistema de Dupla Visualização — Central do Planejador + Montagem de Planejamento
+## Plan: Fix 4 Security Findings + 2 Build Errors
 
-### Conceito
+### Analysis
 
-Criar um mecanismo de **troca de visualização** no sistema, permitindo alternar entre:
-1. **Central do Planejador** (CRM atual — tudo que já existe)
-2. **Montagem de Planejamento** (novo módulo de construção de planejamento financeiro)
+All 4 findings are legitimate and need fixing. Additionally, there are 2 TypeScript build errors to resolve.
 
-Cada visualização terá seu próprio sidebar, header contextual e rotas. Ambas compartilham autenticação, dados e infraestrutura.
+---
 
-### Arquitetura
+### 1. goal_milestones — Drop redundant `true` policies
 
-```text
-┌─────────────────────────────────────────────┐
-│  AppViewContext (view: 'crm' | 'planning')  │
-├─────────────┬───────────────────────────────┤
-│  view=crm   │  view=planning                │
-│  AppSidebar │  PlanningSidebar              │
-│  AppHeader  │  PlanningHeader               │
-│  /contacts  │  /planning/:clientId/futuro   │
-│  /pipeline  │  /planning/:clientId/...      │
-│  /clients   │                               │
-│  ...        │                               │
-└─────────────┴───────────────────────────────┘
+The previous migration added scoped policies but **did not drop** the original permissive ones. Both sets coexist, and the `true` policies override the scoped ones.
+
+**Action:** Migration to drop the 3 old policies:
+- `"Authenticated users can view milestones"` (SELECT, `true`)
+- `"Authenticated users can update milestones"` (UPDATE, `true`)
+- `"Authenticated users can delete milestones"` (DELETE, `true`)
+
+The scoped policies (`"Users can read/update/delete milestones for accessible contacts"`) already exist and will take effect.
+
+---
+
+### 2. import_jobs — Restrict UPDATE to job creator
+
+The edge functions (`process-rd-import`, `process-rd-backfill-sources`) use **service role client**, which bypasses RLS entirely. So restricting the policy to `created_by = auth.uid()` is safe.
+
+**Action:** Migration to drop old policy and create new one:
+```sql
+DROP POLICY "Service role can update import jobs" ON public.import_jobs;
+CREATE POLICY "Users can update own import jobs" ON public.import_jobs
+  FOR UPDATE TO authenticated
+  USING (created_by = auth.uid());
 ```
 
-### Implementação
+---
 
-#### 1. Contexto de Visualização (`AppViewContext`)
-- Novo contexto com estado `view: 'crm' | 'planning'` e função `switchView()`
-- Persistido em `localStorage` para manter a escolha entre recarregamentos
-- Envolver `App.tsx` com este provider
+### 3. whatsapp_messages — Restrict INSERT to authenticated users
 
-#### 2. Switcher de Visualização
-- Componente compacto no **header** (ou sidebar header) com ícone/botão que alterna entre as duas visões
-- Visual claro: nome do módulo ativo + ícone de troca
-- Posicionamento: no header, ao lado do SidebarTrigger, ou no topo do sidebar
+The edge function uses service role (bypasses RLS). The current policy allows unauthenticated inserts.
 
-#### 3. Layout de Planejamento (`PlanningLayout`)
-- Novo layout similar ao `AppLayout`, mas usando `PlanningSidebar` em vez de `AppSidebar`
-- Reutiliza `AppHeader` com indicação visual do modo ativo + switcher
+**Action:** Migration to replace the policy:
+```sql
+DROP POLICY "System can insert messages" ON public.whatsapp_messages;
+CREATE POLICY "Authenticated users can insert messages for accessible contacts"
+  ON public.whatsapp_messages FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM contacts c
+    WHERE c.id = whatsapp_messages.contact_id
+    AND (c.owner_id = auth.uid() OR can_access_user(auth.uid(), c.owner_id)
+         OR (c.owner_id IS NULL AND can_view_unassigned_contacts(auth.uid())))
+  ));
+```
 
-#### 4. Sidebar de Planejamento (`PlanningSidebar`)
-- Menu lateral exclusivo com itens como:
-  - **Seleção de Cliente** (dropdown/busca no topo — filtra apenas clientes ativos com contrato de planejamento pago)
-  - **Meu Futuro** (tela já existente, rota `/planning/:clientId/futuro`)
-  - Futuramente: Reserva de Emergência, Aposentadoria, Investimentos, Objetivos, etc.
-- Header do sidebar com logo + "Montagem de Planejamento" + botão de voltar à Central
+---
 
-#### 5. Rotas de Planejamento
-- Prefixo `/planning` para todas as rotas do novo módulo
-- Estrutura: `/planning` (seleção de cliente), `/planning/:clientId/futuro` (Meu Futuro adaptado)
-- Componente wrapper `PlanningPage` similar ao `ProtectedPage` mas usando `PlanningLayout`
+### 4. vindi-webhook — Add API key authentication
 
-#### 6. Seleção de Cliente no Módulo de Planejamento
-- O sidebar terá um seletor de cliente no topo
-- Filtra apenas clientes com `client_plans` ativos e contrato de planejamento com pagamento confirmado
-- Ao selecionar, os dados da coleta (`data_collection`) são carregados como base para o planejamento
-- O clientId fica na URL e disponível via contexto/params
+Same pattern as `whatsapp-webhook`: validate an `X-API-Key` header against a secret `VINDI_WEBHOOK_SECRET`.
 
-#### 7. Migração da tela Meu Futuro
-- A rota `/meu-futuro` será mantida (compatibilidade) mas redirecionará para `/planning`
-- No módulo de planejamento, o componente receberá `clientId` como parâmetro e carregará dados do cliente (idade, patrimônio, sonhos da coleta de dados) como valores iniciais
+**Actions:**
+- Add secret `VINDI_WEBHOOK_SECRET` via the secrets tool
+- Update `supabase/functions/vindi-webhook/index.ts` to validate the API key before processing
 
-### Arquivos a criar
-- `src/contexts/AppViewContext.tsx` — contexto de visualização
-- `src/components/layout/PlanningLayout.tsx` — layout do módulo
-- `src/components/layout/PlanningSidebar.tsx` — sidebar do módulo
-- `src/components/layout/ViewSwitcher.tsx` — componente de troca de visão
+---
 
-### Arquivos a modificar
-- `src/App.tsx` — adicionar provider + rotas `/planning/*`
-- `src/components/layout/AppHeader.tsx` — adicionar ViewSwitcher
-- `src/components/layout/AppLayout.tsx` — adicionar provider
-- `src/pages/MeuFuturo.tsx` — adaptar para receber clientId
+### 5. Build Errors
 
-### Observações
-- Nenhuma mudança de banco de dados é necessária neste momento — os dados de clientes e coleta já existem
-- As próximas telas do módulo de planejamento (reserva de emergência, aposentadoria, etc.) serão adicionadas incrementalmente depois dessa estrutura base estar pronta
+**`ProjectEditor.tsx`** — Replace `NodeJS.Timeout` with `ReturnType<typeof setTimeout>` (browser-compatible type).
+
+**`useProducts.ts`** — Replace `require()` with dynamic `import()` or static import for `@/lib/pbFormulaParser`.
+
+---
+
+### Impact on Business Logic
+
+None. All edge functions use service role clients (bypass RLS). The RLS changes only affect client-side access, which should already be scoped to the user's hierarchy. The Vindi webhook will require configuring an API key in both the backend secrets and the Vindi dashboard.
 
