@@ -243,43 +243,16 @@ export function useTrainingExams(moduleIdOrExamId: string | undefined) {
       attemptId: string; 
       answers: { question_id: string; answer: string }[] 
     }) => {
-      if (!questions || questions.length === 0) throw new Error('No questions');
-
-      // Calculate score
-      let correctCount = 0;
-      for (const answer of answers) {
-        const question = questions.find(q => q.id === answer.question_id);
-        if (question && question.correct_answer === answer.answer) {
-          correctCount++;
-        }
-      }
-
-      const score = (correctCount / questions.length) * 100;
-
-      // Get module's passing score
-      const { data: moduleData, error: moduleError } = await supabase
-        .from('training_modules')
-        .select('passing_score')
-        .eq('id', moduleId)
-        .single();
-
-      if (moduleError) throw moduleError;
-
-      const passed = score >= (moduleData?.passing_score || 70);
-
-      const { error } = await supabase
-        .from('training_exam_attempts')
-        .update({
-          answers,
-          score,
-          passed,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', attemptId);
+      // Use server-side grading function (correct_answer never exposed to client)
+      const { data, error } = await supabase.rpc('grade_exam_attempt', {
+        p_attempt_id: attemptId,
+        p_answers: answers as any,
+      });
 
       if (error) throw error;
-
-      return { score, passed };
+      
+      const result = data as unknown as { score: number; passed: boolean };
+      return { score: result.score, passed: result.passed };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['training-exam-attempts', exam?.id] });
