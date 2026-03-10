@@ -132,10 +132,7 @@ export function ImportClientDataModal({ open, onOpenChange }: ImportClientDataMo
       }
 
       // Read file
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+      const jsonData = await readExcelFile(file);
 
       const rows: ParsedRow[] = jsonData.map((row, index) => {
         const rowNumber = index + 2;
