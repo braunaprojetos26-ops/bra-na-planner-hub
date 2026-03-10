@@ -61,20 +61,24 @@ Deno.serve(async (req) => {
   try {
     // Validate API key authentication (header or query param)
     const webhookSecret = Deno.env.get('VINDI_WEBHOOK_SECRET');
-    if (webhookSecret) {
-      const url = new URL(req.url);
-      const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key') || url.searchParams.get('api_key') || '';
-      if (apiKey !== webhookSecret) {
-        console.error('Invalid or missing API key in Vindi webhook request');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      console.log('API key verified successfully');
-    } else {
-      console.warn('VINDI_WEBHOOK_SECRET not configured - skipping authentication');
+    if (!webhookSecret) {
+      console.error('VINDI_WEBHOOK_SECRET not configured — rejecting request');
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+    
+    const url = new URL(req.url);
+    const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key') || url.searchParams.get('api_key') || '';
+    if (apiKey !== webhookSecret) {
+      console.error('Invalid or missing API key in Vindi webhook request');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    console.log('API key verified successfully');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
