@@ -50,6 +50,14 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Health check for Vindi URL validation (GET request)
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ status: 'ok' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     // Validate API key authentication (header or query param)
     const webhookSecret = Deno.env.get('VINDI_WEBHOOK_SECRET');
