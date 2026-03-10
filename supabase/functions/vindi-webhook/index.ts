@@ -51,6 +51,22 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate API key authentication
+    const webhookSecret = Deno.env.get('VINDI_WEBHOOK_SECRET');
+    if (webhookSecret) {
+      const apiKey = req.headers.get('X-API-Key') || req.headers.get('x-api-key') || '';
+      if (apiKey !== webhookSecret) {
+        console.error('Invalid or missing API key in Vindi webhook request');
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      console.log('API key verified successfully');
+    } else {
+      console.warn('VINDI_WEBHOOK_SECRET not configured - skipping authentication');
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
