@@ -277,21 +277,27 @@ export function useUpdateProduct() {
 }
 
 // Calculate PBs based on product configuration and contract value (legacy support)
-export function calculatePBs(product: Product, contractValue: number): number {
-  // If product has a formula, use it with valor_total as the main variable
+// Uses dynamic import to avoid require() in browser context
+export async function calculatePBsAsync(product: Product, contractValue: number): Promise<number> {
   if (product.pb_formula) {
-    const { calculatePBsWithFormula } = require('@/lib/pbFormulaParser');
+    const { calculatePBsWithFormula } = await import('@/lib/pbFormulaParser');
     return calculatePBsWithFormula(
       product.pb_formula,
       { valor_total: contractValue },
       product.pb_constants || {}
     );
   }
-  
-  // Legacy calculation
+  return calculatePBsSync(product, contractValue);
+}
+
+// Synchronous version for legacy/simple calculations (no formula)
+export function calculatePBs(product: Product, contractValue: number): number {
+  return calculatePBsSync(product, contractValue);
+}
+
+function calculatePBsSync(product: Product, contractValue: number): number {
   if (product.pb_calculation_type === 'fixed') {
     return product.pb_value;
   }
-  // percentage: pb_value is stored as decimal (e.g., 0.1 = 10%)
   return contractValue * product.pb_value;
 }

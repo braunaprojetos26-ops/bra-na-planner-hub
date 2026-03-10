@@ -13,7 +13,7 @@ interface ProjectEditorProps {
 }
 
 export function ProjectEditor({ initialContent, onChange, editable = true }: ProjectEditorProps) {
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { resolvedTheme } = useTheme();
 
   const content = initialContent && initialContent.length > 0 
