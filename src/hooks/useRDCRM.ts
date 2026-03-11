@@ -33,6 +33,11 @@ interface ImportParams {
   owner_user_id?: string;
 }
 
+interface UnifiedImportParams {
+  rd_user_id: string;
+  owner_user_id?: string;
+}
+
 interface CreateSystemUserParams {
   email: string;
   full_name: string;
