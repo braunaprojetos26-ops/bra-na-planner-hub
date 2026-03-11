@@ -10,6 +10,39 @@ import type { SelectedTopic } from '@/lib/pontualTopics';
 import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
 import type { PlannerCase } from '@/hooks/usePlannerCases';
 
+const HARDCODED_CASES: PlannerCase[] = [
+  {
+    id: 'case-1', planner_id: '', title: 'Planejamento Imobiliário', description: 'Valor Final Imóvel',
+    initial_value: 541356.80, final_value: 364645.00, advantage: 176711.80,
+    is_active: true, order_position: 0, created_at: '', updated_at: '',
+  },
+  {
+    id: 'case-2', planner_id: '', title: 'Benefício Fiscal em IR', description: 'Imposto a Pagar',
+    initial_value: 15340.00, final_value: 483.22, advantage: 14856.78,
+    is_active: true, order_position: 1, created_at: '', updated_at: '',
+  },
+  {
+    id: 'case-3', planner_id: '', title: 'Investimentos', description: 'Aumento de Capital',
+    initial_value: 248780.54, final_value: 259595.96, advantage: 10815.42,
+    is_active: true, order_position: 2, created_at: '', updated_at: '',
+  },
+  {
+    id: 'case-4', planner_id: '', title: 'Mentalidade Financeira', description: 'Reserva Acumulada',
+    initial_value: -5116.25, final_value: 18432.23, advantage: 23548.48,
+    is_active: true, order_position: 3, created_at: '', updated_at: '',
+  },
+  {
+    id: 'case-5', planner_id: '', title: 'Aposentadoria', description: 'Troca de Investimento',
+    initial_value: 100722.25, final_value: 458450.00, advantage: 357727.75,
+    is_active: true, order_position: 4, created_at: '', updated_at: '',
+  },
+  {
+    id: 'case-6', planner_id: '', title: 'Milhas', description: 'Aumento de Pontos',
+    initial_value: 36000.00, final_value: 188000.00, advantage: 152000.00,
+    is_active: true, order_position: 5, created_at: '', updated_at: '',
+  },
+];
+
 type Stage = 'select' | 'configure' | 'present';
 
 export default function StandaloneProposal() {
@@ -19,7 +52,7 @@ export default function StandaloneProposal() {
   const [clientName, setClientName] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<SelectedTopic[]>([]);
   const [standaloneFeedbacks, setStandaloneFeedbacks] = useState<PlannerFeedback[]>([]);
-  const [standaloneCases, setStandaloneCases] = useState<PlannerCase[]>([]);
+  const standaloneCases = HARDCODED_CASES;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -93,9 +126,7 @@ export default function StandaloneProposal() {
               <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
               <StandaloneFeedbacksCasesEditor
                 feedbacks={standaloneFeedbacks}
-                cases={standaloneCases}
                 onFeedbacksChange={setStandaloneFeedbacks}
-                onCasesChange={setStandaloneCases}
               />
             </div>
           </div>
