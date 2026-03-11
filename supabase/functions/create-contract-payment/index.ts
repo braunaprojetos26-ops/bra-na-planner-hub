@@ -716,14 +716,8 @@ const handler = async (req: Request): Promise<Response> => {
       // Continue anyway, will save partial result
     }
 
-    // Get user from auth header
-    const authHeader = req.headers.get("Authorization");
-    let userId = null;
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id;
-    }
+    // User already authenticated above
+    const userId = callerUserId;
 
     // Fetch contact to get owner_id
     const { data: contact } = await supabase
