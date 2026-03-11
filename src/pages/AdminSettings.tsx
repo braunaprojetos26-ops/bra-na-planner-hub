@@ -7,8 +7,10 @@ import { PreQualificationTab } from '@/components/admin/tabs/PreQualificationTab
 import { CashFlowCategoriesTab } from '@/components/admin/tabs/CashFlowCategoriesTab';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
+import { PlannerFeedbacksManager } from '@/components/team-management/PlannerFeedbacksManager';
+import { PlannerCasesManager } from '@/components/team-management/PlannerCasesManager';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification' | 'cash-flow-categories';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'analysis' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification' | 'cash-flow-categories';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
