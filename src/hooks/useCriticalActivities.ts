@@ -109,20 +109,43 @@ export function useCriticalActivities() {
           .select('user_id, full_name, position')
           .in('user_id', userIds);
 
+        // Fetch task-level stats per user for this activity
+        const activityTitle = activity.title;
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('id, assigned_to, status')
+          .like('title', `[Atividade Crítica] ${activityTitle} - %`)
+          .in('assigned_to', userIds.length > 0 ? userIds : ['__none__']);
+
+        // Build per-user task stats
+        const userTaskStats: Record<string, { total: number; completed: number }> = {};
+        for (const t of tasks || []) {
+          if (!t.assigned_to) continue;
+          if (!userTaskStats[t.assigned_to]) {
+            userTaskStats[t.assigned_to] = { total: 0, completed: 0 };
+          }
+          userTaskStats[t.assigned_to].total++;
+          if (t.status === 'completed') {
+            userTaskStats[t.assigned_to].completed++;
+          }
+        }
+
         const enrichedAssignments = (assignments || []).map(a => ({
           ...a,
           user_profile: profiles?.find(p => p.user_id === a.user_id) || undefined,
+          task_stats: userTaskStats[a.user_id] || { total: 0, completed: 0 },
         }));
 
-        const total = enrichedAssignments.length;
-        const completed = enrichedAssignments.filter(a => a.status === 'completed').length;
+        // Use task-level totals for overall stats
+        const totalTasks = (tasks || []).length;
+        const completedTasks = (tasks || []).filter(t => t.status === 'completed').length;
 
         return {
           activity,
           assignments: enrichedAssignments,
-          total_assigned: total,
-          total_completed: completed,
-          completion_percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+          total_assigned: totalTasks,
+          total_completed: completedTasks,
+          completion_percentage: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
         };
       },
       enabled: !!activityId && isAdmin,
