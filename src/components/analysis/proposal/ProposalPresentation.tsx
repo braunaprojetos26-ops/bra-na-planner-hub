@@ -30,6 +30,8 @@ interface ProposalPresentationProps {
   onBack: () => void;
   standaloneMode?: boolean;
   standalonePlannerName?: string;
+  standaloneFeedbacks?: PlannerFeedback[];
+  standaloneCases?: PlannerCase[];
 }
 
 export function ProposalPresentation({
@@ -39,6 +41,8 @@ export function ProposalPresentation({
   onBack,
   standaloneMode = false,
   standalonePlannerName,
+  standaloneFeedbacks,
+  standaloneCases,
 }: ProposalPresentationProps) {
 const { user, profile } = useAuth();
 
