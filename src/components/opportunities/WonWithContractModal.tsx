@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { PartyPopper, Plus, Trash2, Calculator, Package, Users } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
