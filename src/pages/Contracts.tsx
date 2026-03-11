@@ -429,7 +429,44 @@ export default function Contracts() {
   const [customDateStart, setCustomDateStart] = useState<Date | undefined>();
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>();
   const [isExporting, setIsExporting] = useState(false);
-  
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
+
+  const handleSyncContract = async (contractId: string) => {
+    setSyncingIds(prev => new Set(prev).add(contractId));
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-external-contracts', {
+        body: { contract_ids: [contractId], mode: 'all' },
+      });
+      if (error) throw error;
+      
+      const result = data?.results?.[0];
+      const parts: string[] = [];
+      if (result?.clicksign === 'linked') parts.push(`ClickSign: ${result.clicksign_status}`);
+      if (result?.vindi === 'linked' || result?.vindi === 'bill_found') parts.push('Vindi: vinculado');
+      if (result?.clicksign === 'not_found') parts.push('ClickSign: não encontrado');
+      if (result?.vindi === 'not_found') parts.push('Vindi: não encontrado');
+      
+      toast({
+        title: 'Sincronização concluída',
+        description: parts.join(' | ') || 'Nenhuma integração encontrada',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    } catch (err) {
+      toast({
+        title: 'Erro na sincronização',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingIds(prev => {
+        const next = new Set(prev);
+        next.delete(contractId);
+        return next;
+      });
+    }
+  };
+
   // Build filters for the query
   const dateRange = getDateRangeFromPeriod(selectedPeriod, customDateStart, customDateEnd);
   
