@@ -7,8 +7,10 @@ import { PreQualificationTab } from '@/components/admin/tabs/PreQualificationTab
 import { CashFlowCategoriesTab } from '@/components/admin/tabs/CashFlowCategoriesTab';
 import AdminProducts from './AdminProducts';
 import AdminDataCollectionBuilder from './AdminDataCollectionBuilder';
+import { PlannerFeedbacksManager } from '@/components/team-management/PlannerFeedbacksManager';
+import { PlannerCasesManager } from '@/components/team-management/PlannerCasesManager';
 
-type SettingsTab = 'users' | 'pipelines' | 'products' | 'data-collection' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification' | 'cash-flow-categories';
+type SettingsTab = 'users' | 'pipelines' | 'products' | 'analysis' | 'ai' | 'team-management' | 'health-score' | 'goals' | 'remote-config' | 'dashboard-banner' | 'pre-qualification' | 'cash-flow-categories';
 
 interface AdminSettingsProps {
   defaultTab?: SettingsTab;
@@ -50,9 +52,9 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
               <Package className="h-4 w-4 hidden sm:inline" />
               Produtos
             </TabsTrigger>
-            <TabsTrigger value="data-collection" className="gap-2">
+            <TabsTrigger value="analysis" className="gap-2">
               <ClipboardList className="h-4 w-4 hidden sm:inline" />
-              Coleta de Dados
+              Análise
             </TabsTrigger>
             <TabsTrigger value="team-management" className="gap-2">
               <UsersRound className="h-4 w-4 hidden sm:inline" />
@@ -103,7 +105,11 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
           <AdminProductsContent />
         </TabsContent>
 
-        <TabsContent value="data-collection" className="space-y-0">
+        <TabsContent value="analysis" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <PlannerFeedbacksManager />
+            <PlannerCasesManager />
+          </div>
           <AdminDataCollectionContent />
         </TabsContent>
 
