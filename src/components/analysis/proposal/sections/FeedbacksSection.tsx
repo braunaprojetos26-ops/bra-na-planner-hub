@@ -1,4 +1,6 @@
-import { Quote } from 'lucide-react';
+import { useState } from 'react';
+import { Quote, X } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
 
 interface FeedbacksSectionProps {
@@ -21,6 +23,8 @@ function isDirectMedia(url: string): boolean {
 }
 
 export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   if (!feedbacks || feedbacks.length === 0) return null;
 
   return (
@@ -41,6 +45,7 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
         {feedbacks.slice(0, 6).map((feedback) => {
           const youtubeEmbed = feedback.media_url ? getYouTubeEmbedUrl(feedback.media_url) : null;
           const isDirect = feedback.media_url ? isDirectMedia(feedback.media_url) : false;
+          const isImage = feedback.media_type === 'image' || (isDirect && feedback.media_type !== 'video');
 
           return (
             <div
@@ -72,11 +77,16 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
                       />
                     </div>
                   ) : (
-                    <img
-                      src={feedback.media_url}
-                      alt={`Feedback de ${feedback.client_name}`}
-                      className="w-full h-auto object-contain max-h-[400px]"
-                    />
+                    <button
+                      onClick={() => setSelectedImage(feedback.media_url!)}
+                      className="w-full cursor-zoom-in"
+                    >
+                      <img
+                        src={feedback.media_url}
+                        alt={`Feedback de ${feedback.client_name}`}
+                        className="w-full h-auto object-contain max-h-[400px]"
+                      />
+                    </button>
                   )}
                 </div>
               )}
@@ -102,6 +112,25 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
           );
         })}
       </div>
+
+      {/* Lightbox Dialog */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-0 bg-black/95">
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="Feedback ampliado"
+              className="w-full h-full object-contain max-h-[90vh]"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
