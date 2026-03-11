@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw, Megaphone } from 'lucide-react';
+import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw, Megaphone, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRDCRM, type RDCRMUser } from '@/hooks/useRDCRM';
 import { useToast } from '@/hooks/use-toast';
 import { RDCRMImportDialog } from './RDCRMImportDialog';
+import { RDProductMappingsEditor } from './RDProductMappingsEditor';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
