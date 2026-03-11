@@ -392,6 +392,17 @@ export function WonWithContractModal({
         });
       }
 
+      // Trigger async sync with ClickSign/Vindi for newly created contracts
+      const newContractIds = createdContractsList.map(c => c.id);
+      if (newContractIds.length > 0) {
+        supabase.functions.invoke('sync-external-contracts', {
+          body: { contract_ids: newContractIds, mode: 'all' },
+        }).then(({ data, error }) => {
+          if (error) console.error('Sync error:', error);
+          else console.log('Contract sync completed:', data);
+        });
+      }
+
       // Check if any contract is a planning product
       const planningContracts = createdContractsList.filter(c => c.is_planning);
       
