@@ -85,7 +85,7 @@ export function ClientCard({ client }: ClientCardProps) {
             <Badge variant={status.variant}>{status.label}</Badge>
             {overdueMeetings > 0 && (
               <Badge variant="destructive">
-                {overdueMeetings} reunião{overdueMeetings > 1 ? 'ões' : ''} atrasada{overdueMeetings > 1 ? 's' : ''}
+                {overdueMeetings} {overdueMeetings > 1 ? 'reuniões atrasadas' : 'reunião atrasada'}
               </Badge>
             )}
             {/* Overdue payments badge */}

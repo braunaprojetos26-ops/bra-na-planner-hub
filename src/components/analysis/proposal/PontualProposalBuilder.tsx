@@ -381,7 +381,7 @@ export function PontualProposalBuilder({ contactId, opportunityId, onBack }: Pon
                                     value={String(n)} 
                                     disabled={disabled}
                                   >
-                                    {n} reunião{n > 1 ? 'ões' : ''}
+                                    {n} {n > 1 ? 'reuniões' : 'reunião'}
                                   </SelectItem>
                                 );
                               })}
@@ -420,7 +420,7 @@ export function PontualProposalBuilder({ contactId, opportunityId, onBack }: Pon
                 return (
                   <div key={selected.topic} className="flex items-center justify-between py-2 border-b last:border-0">
                     <span className="font-medium">{selected.topic}</span>
-                    <Badge variant="secondary">{selected.meetings} reunião{selected.meetings > 1 ? 'ões' : ''}</Badge>
+                    <Badge variant="secondary">{selected.meetings} {selected.meetings > 1 ? 'reuniões' : 'reunião'}</Badge>
                   </div>
                 );
               })}

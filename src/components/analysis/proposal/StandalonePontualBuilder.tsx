@@ -244,7 +244,7 @@ export function StandalonePontualBuilder({ onPresent, onBack }: StandalonePontua
                                   .reduce((sum, t) => sum + t.meetings, 0);
                                 return (
                                   <SelectItem key={n} value={String(n)} disabled={n > (3 - otherMeetings)}>
-                                    {n} reunião{n > 1 ? 'ões' : ''}
+                                    {n} {n > 1 ? 'reuniões' : 'reunião'}
                                   </SelectItem>
                                 );
                               })}
@@ -279,7 +279,7 @@ export function StandalonePontualBuilder({ onPresent, onBack }: StandalonePontua
               {selectedTopics.map((selected) => (
                 <div key={selected.topic} className="flex items-center justify-between py-2 border-b last:border-0">
                   <span className="font-medium">{selected.topic}</span>
-                  <Badge variant="secondary">{selected.meetings} reunião{selected.meetings > 1 ? 'ões' : ''}</Badge>
+                  <Badge variant="secondary">{selected.meetings} {selected.meetings > 1 ? 'reuniões' : 'reunião'}</Badge>
                 </div>
               ))}
             </div>
