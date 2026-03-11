@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/proposalPricing';
 import { PONTUAL_TOPICS, type SelectedTopic } from '@/lib/pontualTopics';
 import type { Proposal } from '@/hooks/useProposals';
+import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
+import type { PlannerCase } from '@/hooks/usePlannerCases';
 
 // Section components
 import { ProposalCover } from './sections/ProposalCover';
