@@ -54,8 +54,11 @@ const { user, profile } = useAuth();
     return `${parts[0]} ${parts[parts.length - 1]}`;
   };
   const { markAsPresented } = useProposalMutations();
-  const { data: feedbacks } = useMyFeedbacks();
-  const { data: cases } = useMyCases();
+  const { data: authFeedbacks } = useMyFeedbacks();
+  const { data: authCases } = useMyCases();
+  
+  const feedbacks = standaloneMode ? standaloneFeedbacks : authFeedbacks;
+  const cases = standaloneMode ? standaloneCases : authCases;
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleMarkPresented = () => {
