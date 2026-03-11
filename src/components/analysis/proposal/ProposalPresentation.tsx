@@ -132,16 +132,15 @@ const { user, profile } = useAuth();
             <TopicsSection />
           </div>
 
-          {/* Page 4 - Cases & Feedbacks (Optional) */}
-          {((standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) || 
-            (standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0))) && (
-            <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-              {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
-                <CasesSection cases={cases!} />
-              )}
-              {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
-                <FeedbacksSection feedbacks={feedbacks!} />
-              )}
+          {/* Page 4+ - Cases & Feedbacks (Optional, auto-paginating) */}
+          {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
+            <div className="print-page print-social-proof max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none">
+              <CasesSection cases={cases!} />
+            </div>
+          )}
+          {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+            <div className="print-page print-social-proof max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none">
+              <FeedbacksSection feedbacks={feedbacks!} />
             </div>
           )}
 
@@ -265,24 +264,45 @@ const { user, profile } = useAuth();
             overflow: hidden !important;
           }
           
+          /* Social proof pages - auto-paginating, no fixed height */
+          .print-social-proof {
+            width: 210mm !important;
+            padding: 8mm 12mm !important;
+            background: white !important;
+            color: #1a1a1a !important;
+            font-size: 9pt !important;
+            overflow: visible !important;
+            max-height: none !important;
+          }
+          
           /* Typography scaling */
-          .print-content-page h2 {
+          .print-content-page h2,
+          .print-social-proof h2 {
             font-size: 12pt !important;
             margin-bottom: 4pt !important;
           }
           
-          .print-content-page h3 {
+          .print-content-page h3,
+          .print-social-proof h3 {
             font-size: 10pt !important;
           }
           
-          .print-content-page p {
+          .print-content-page p,
+          .print-social-proof p {
             font-size: 8pt !important;
             line-height: 1.3 !important;
           }
           
           /* Reduce spacing */
-          .print-content-page > * {
+          .print-content-page > *,
+          .print-social-proof > * {
             margin-bottom: 6pt !important;
+          }
+          
+          /* Prevent individual cards from breaking across pages */
+          .print-social-proof .rounded-xl {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           
           /* Prevent section breaks */
