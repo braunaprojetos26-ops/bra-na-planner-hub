@@ -76,15 +76,13 @@ export function RDCRMConnectionCard() {
     setJobStatus(null);
 
     try {
-      let ownerUserId: string | undefined;
-
-      if (createUser) {
-        const result = await createSystemUser({
-          email: selectedUser.email,
-          full_name: selectedUser.name,
-        });
-        ownerUserId = result.user_id;
-      }
+      // Always resolve owner - createSystemUser finds existing or creates new
+      const result = await createSystemUser({
+        email: selectedUser.email,
+        full_name: selectedUser.name,
+        skip_creation: !createUser,
+      });
+      const ownerUserId = result.user_id || undefined;
 
       const jobId = await startUnifiedImport({
         rd_user_id: rdUserId,

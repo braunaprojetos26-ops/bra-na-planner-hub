@@ -41,10 +41,11 @@ interface UnifiedImportParams {
 interface CreateSystemUserParams {
   email: string;
   full_name: string;
+  skip_creation?: boolean;
 }
 
 interface CreateSystemUserResult {
-  user_id: string;
+  user_id: string | null;
   already_existed: boolean;
 }
 
