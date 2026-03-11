@@ -146,6 +146,43 @@ export function RDCRMConnectionCard() {
     }
   };
 
+  const handleStartProductsBackfill = async () => {
+    try {
+      const userId = backfillRdUserId && backfillRdUserId !== 'all' ? backfillRdUserId : undefined;
+      const jobId = await startBackfillProducts(userId);
+      setProductsJobId(jobId);
+      setProductsStatus('pending');
+      toast({ title: 'Importação de produtos iniciada', description: 'Buscando negociações ganhas no RD CRM...' });
+
+      productsPollRef.current = setInterval(async () => {
+        try {
+          const status = await pollJobStatus(jobId);
+          setProductsStatus(status.status);
+          setProductsProgress({
+            created: status.contacts_imported || 0,
+            skipped: status.contacts_skipped || 0,
+            errors: status.contacts_errors || 0,
+            total: status.deals_found || 0,
+          });
+
+          if (status.status === 'done' || status.status === 'error') {
+            if (productsPollRef.current) clearInterval(productsPollRef.current);
+            productsPollRef.current = null;
+            if (status.status === 'done') {
+              toast({ title: 'Produtos importados!', description: `${status.contacts_imported} contratos criados.` });
+            } else {
+              toast({ title: 'Erro na importação', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
+            }
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }, 3000);
+    } catch {
+      // error handled by mutation
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
