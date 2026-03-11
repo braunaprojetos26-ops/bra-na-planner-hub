@@ -26,6 +26,11 @@ export function StandaloneFeedbacksCasesEditor({
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [fbClientName, setFbClientName] = useState('');
   const [fbText, setFbText] = useState('');
+  const [fbMediaType, setFbMediaType] = useState<'image' | 'video' | ''>('');
+  const [fbMediaUrl, setFbMediaUrl] = useState('');
+  const [fbMediaSource, setFbMediaSource] = useState<'upload' | 'url'>('upload');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Case form
   const [showCaseForm, setShowCaseForm] = useState(false);
@@ -35,15 +40,51 @@ export function StandaloneFeedbacksCasesEditor({
   const [caseFinalValue, setCaseFinalValue] = useState('');
   const [caseAdvantage, setCaseAdvantage] = useState('');
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) {
+      toast.error('Apenas imagens e vídeos são permitidos');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo deve ter no máximo 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFbMediaType(isImage ? 'image' : 'video');
+        setFbMediaUrl(reader.result as string);
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        toast.error('Erro ao ler arquivo');
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('Erro ao processar arquivo');
+      setIsUploading(false);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const addFeedback = () => {
-    if (!fbClientName.trim() || !fbText.trim()) return;
+    if (!fbClientName.trim()) return;
+    if (!fbText.trim() && !fbMediaUrl) return;
     const newFeedback: PlannerFeedback = {
       id: crypto.randomUUID(),
       planner_id: '',
       client_name: fbClientName.trim(),
-      feedback_text: fbText.trim(),
-      media_type: null,
-      media_url: null,
+      feedback_text: fbText.trim() || null,
+      media_type: fbMediaType || null,
+      media_url: fbMediaUrl || null,
       is_active: true,
       order_position: feedbacks.length,
       created_at: new Date().toISOString(),
@@ -52,6 +93,9 @@ export function StandaloneFeedbacksCasesEditor({
     onFeedbacksChange([...feedbacks, newFeedback]);
     setFbClientName('');
     setFbText('');
+    setFbMediaType('');
+    setFbMediaUrl('');
+    setFbMediaSource('upload');
     setShowFeedbackForm(false);
   };
 
