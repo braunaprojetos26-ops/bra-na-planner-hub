@@ -58,6 +58,7 @@ export function RDCRMConnectionCard() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (campaignPollRef.current) clearInterval(campaignPollRef.current);
+      if (productsPollRef.current) clearInterval(productsPollRef.current);
     };
   }, []);
 
