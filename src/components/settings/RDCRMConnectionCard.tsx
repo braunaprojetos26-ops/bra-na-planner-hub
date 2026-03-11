@@ -281,6 +281,39 @@ export function RDCRMConnectionCard() {
                     </div>
                   </div>
                 )}
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleStartCampaignBackfill}
+                  disabled={isStartingBackfillCampaigns || (campaignStatus !== null && campaignStatus !== 'done' && campaignStatus !== 'error')}
+                >
+                  {isStartingBackfillCampaigns || (campaignStatus && campaignStatus !== 'done' && campaignStatus !== 'error') ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Atualizando campanhas...
+                    </>
+                  ) : (
+                    <>
+                      <Megaphone className="mr-2 h-4 w-4" />
+                      Atualizar Campanhas dos Contatos
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Busca a campanha de cada negociação no RD CRM e atualiza nos contatos locais.
+                </p>
+                {campaignProgress && campaignStatus && campaignStatus !== 'pending' && (
+                  <div className="space-y-2">
+                    <Progress value={campaignProgress.total > 0 ? ((campaignProgress.updated + campaignProgress.skipped + campaignProgress.errors) / campaignProgress.total) * 100 : 0} />
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      <span>{campaignProgress.updated} atualizados</span>
+                      <span>{campaignProgress.skipped} ignorados</span>
+                      {campaignProgress.errors > 0 && <span className="text-destructive">{campaignProgress.errors} erros</span>}
+                      <span className="ml-auto">{campaignProgress.total} negociações</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
