@@ -46,12 +46,44 @@ export function RDCRMConnectionCard() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [createUser, setCreateUser] = useState(true);
 
-  // Import state
+  // Import state - persist active job to survive re-renders/token refreshes
   const [jobStatus, setJobStatus] = useState<ImportJobStatus | null>(null);
   const [importStep, setImportStep] = useState<'idle' | 'importing' | 'done'>('idle');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const startPolling = (jobId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    sessionStorage.setItem('rd_import_active_job', jobId);
+    setImportStep('importing');
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const status = await pollJobStatus(jobId);
+        setJobStatus(status);
+
+        if (status.status === 'done' || status.status === 'error') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          sessionStorage.removeItem('rd_import_active_job');
+          setImportStep('done');
+          if (status.status === 'done') {
+            toast({ title: 'Importação concluída!' });
+          } else {
+            toast({ title: 'Erro na importação', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
+          }
+        }
+      } catch {
+        // ignore poll errors
+      }
+    }, 3000);
+  };
+
+  // Resume polling on mount if there's an active job
   useEffect(() => {
+    const activeJobId = sessionStorage.getItem('rd_import_active_job');
+    if (activeJobId && importStep === 'idle') {
+      startPolling(activeJobId);
+    }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
