@@ -52,9 +52,9 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
               <Package className="h-4 w-4 hidden sm:inline" />
               Produtos
             </TabsTrigger>
-            <TabsTrigger value="data-collection" className="gap-2">
+            <TabsTrigger value="analysis" className="gap-2">
               <ClipboardList className="h-4 w-4 hidden sm:inline" />
-              Coleta de Dados
+              Análise
             </TabsTrigger>
             <TabsTrigger value="team-management" className="gap-2">
               <UsersRound className="h-4 w-4 hidden sm:inline" />
