@@ -132,18 +132,7 @@ const { user, profile } = useAuth();
             <TopicsSection />
           </div>
 
-          {/* Page 4 - Resumo + Investimento */}
-          <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-            <SummarySection meetings={proposal.meetings} />
-            <PricingSection
-              finalValue={proposal.final_value}
-              installments={proposal.installments}
-              installmentValue={proposal.installment_value}
-              discountApplied={proposal.discount_applied}
-            />
-          </div>
-
-          {/* Page 5 - Cases & Feedbacks (Optional) */}
+          {/* Page 4 - Cases & Feedbacks (Optional) */}
           {((standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) || 
             (standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0))) && (
             <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
@@ -155,6 +144,17 @@ const { user, profile } = useAuth();
               )}
             </div>
           )}
+
+          {/* Page 5 - Resumo + Investimento */}
+          <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
+            <SummarySection meetings={proposal.meetings} />
+            <PricingSection
+              finalValue={proposal.final_value}
+              installments={proposal.installments}
+              installmentValue={proposal.installment_value}
+              discountApplied={proposal.discount_applied}
+            />
+          </div>
         </div>
 
         {/* Footer - Screen only (outside proposal-pages to not affect print pagination) */}
