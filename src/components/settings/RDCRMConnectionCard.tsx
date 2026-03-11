@@ -48,6 +48,12 @@ export function RDCRMConnectionCard() {
   const [campaignProgress, setCampaignProgress] = useState<{ updated: number; skipped: number; errors: number; total: number } | null>(null);
   const campaignPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Products backfill state
+  const [productsJobId, setProductsJobId] = useState<string | null>(null);
+  const [productsStatus, setProductsStatus] = useState<string | null>(null);
+  const [productsProgress, setProductsProgress] = useState<{ created: number; skipped: number; errors: number; total: number } | null>(null);
+  const productsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
