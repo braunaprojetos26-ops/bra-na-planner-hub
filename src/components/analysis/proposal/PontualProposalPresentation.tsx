@@ -150,7 +150,7 @@ const { user, profile } = useAuth();
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {topic.meetings} reunião{topic.meetings > 1 ? 'ões' : ''} dedicada{topic.meetings > 1 ? 's' : ''}
+                      {topic.meetings} {topic.meetings > 1 ? 'reuniões dedicadas' : 'reunião dedicada'}
                     </p>
                     <div className="space-y-1.5 pt-1">
                       {topic.subtopics.map((subtopic, i) => (
