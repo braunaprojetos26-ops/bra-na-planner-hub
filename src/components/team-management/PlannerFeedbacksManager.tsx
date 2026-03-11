@@ -34,9 +34,55 @@ export function PlannerFeedbacksManager() {
       feedback_text: '',
       media_type: '',
       media_url: '',
+      media_source: 'upload',
     });
     setIsAdding(false);
     setEditingId(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) {
+      toast.error('Apenas imagens e vídeos são permitidos');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo deve ter no máximo 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('planner-feedback-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('planner-feedback-media')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({
+        ...prev,
+        media_type: isImage ? 'image' : 'video',
+        media_url: publicUrl,
+      }));
+      toast.success('Arquivo enviado!');
+    } catch (error) {
+      toast.error('Erro ao enviar arquivo');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSave = async () => {
