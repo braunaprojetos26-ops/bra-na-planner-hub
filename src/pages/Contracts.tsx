@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
+import { FileText, TrendingUp, DollarSign, Hash, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -224,7 +225,9 @@ interface ContractsTableProps {
     reported_at: string;
     status: string;
     clicksign_status?: string | null;
+    clicksign_document_key?: string | null;
     vindi_status?: string | null;
+    vindi_customer_id?: string | null;
     vindi_subscription_id?: string | null;
     vindi_bill_id?: string | null;
     first_payment_at?: string | null;
@@ -243,9 +246,11 @@ interface ContractsTableProps {
   }>;
   isLoading: boolean;
   vindiStatuses?: Record<string, { status: string; details?: string }>;
+  onSyncContract?: (contractId: string) => void;
+  syncingIds?: Set<string>;
 }
 
-function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableProps) {
+function ContractsTable({ contracts, isLoading, vindiStatuses, onSyncContract, syncingIds }: ContractsTableProps) {
   if (isLoading) {
     return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   }
@@ -274,10 +279,14 @@ function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableP
           <TableHead>Início</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Pagamento</TableHead>
+          <TableHead className="w-10"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {contracts.map((contract) => (
+        {contracts.map((contract) => {
+          const needsSync = !contract.clicksign_document_key || !contract.vindi_customer_id;
+          const isSyncing = syncingIds?.has(contract.id);
+          return (
           <TableRow key={contract.id}>
             <TableCell className="font-medium">
               {contract.contact?.full_name || '-'}
@@ -314,8 +323,23 @@ function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableP
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
             <TableCell>{getPaymentStatusBadge(contract, vindiStatuses)}</TableCell>
+            <TableCell>
+              {needsSync && onSyncContract && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onSyncContract(contract.id)}
+                  disabled={isSyncing}
+                  title="Sincronizar com ClickSign e Vindi"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+            </TableCell>
           </TableRow>
-        ))}
+          );
+        })}
       </TableBody>
     </Table>
   );
@@ -405,7 +429,44 @@ export default function Contracts() {
   const [customDateStart, setCustomDateStart] = useState<Date | undefined>();
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>();
   const [isExporting, setIsExporting] = useState(false);
-  
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
+
+  const handleSyncContract = async (contractId: string) => {
+    setSyncingIds(prev => new Set(prev).add(contractId));
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-external-contracts', {
+        body: { contract_ids: [contractId], mode: 'all' },
+      });
+      if (error) throw error;
+      
+      const result = data?.results?.[0];
+      const parts: string[] = [];
+      if (result?.clicksign === 'linked') parts.push(`ClickSign: ${result.clicksign_status}`);
+      if (result?.vindi === 'linked' || result?.vindi === 'bill_found') parts.push('Vindi: vinculado');
+      if (result?.clicksign === 'not_found') parts.push('ClickSign: não encontrado');
+      if (result?.vindi === 'not_found') parts.push('Vindi: não encontrado');
+      
+      toast({
+        title: 'Sincronização concluída',
+        description: parts.join(' | ') || 'Nenhuma integração encontrada',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    } catch (err) {
+      toast({
+        title: 'Erro na sincronização',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingIds(prev => {
+        const next = new Set(prev);
+        next.delete(contractId);
+        return next;
+      });
+    }
+  };
+
   // Build filters for the query
   const dateRange = getDateRangeFromPeriod(selectedPeriod, customDateStart, customDateEnd);
   
@@ -629,6 +690,8 @@ export default function Contracts() {
             contracts={filteredContracts} 
             isLoading={isLoading}
             vindiStatuses={vindiStatuses}
+            onSyncContract={handleSyncContract}
+            syncingIds={syncingIds}
           />
         </CardContent>
       </Card>
