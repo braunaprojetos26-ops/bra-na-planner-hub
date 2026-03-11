@@ -579,13 +579,65 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const clicksignApiKey = Deno.env.get("CLICKSIGN_API_KEY")!;
     const clicksignTemplateKey = Deno.env.get("CLICKSIGN_TEMPLATE_KEY")!;
     const vindiApiKey = Deno.env.get("VINDI_API_KEY")!;
 
+    // Authenticate the caller FIRST - before any operations
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const callerUserId = claimsData.claims.sub;
+
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
+
     const contractRequest: ContractRequest = await req.json();
+
+    // Verify the caller has access to this contact
+    const { data: contactAccess } = await supabase
+      .from("contacts")
+      .select("owner_id")
+      .eq("id", contractRequest.contactId)
+      .single();
+
+    if (!contactAccess) {
+      return new Response(
+        JSON.stringify({ error: "Contato não encontrado" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Check if caller can access this contact's owner
+    const { data: canAccess } = await supabase.rpc("can_access_user", {
+      _accessor_id: callerUserId,
+      _target_id: contactAccess.owner_id || callerUserId,
+    });
+
+    if (!canAccess) {
+      return new Response(
+        JSON.stringify({ error: "Sem permissão para criar contrato para este contato" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     console.log("Received contract request:", JSON.stringify(contractRequest, null, 2));
 
     // Validate required fields
@@ -664,14 +716,8 @@ const handler = async (req: Request): Promise<Response> => {
       // Continue anyway, will save partial result
     }
 
-    // Get user from auth header
-    const authHeader = req.headers.get("Authorization");
-    let userId = null;
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id;
-    }
+    // User already authenticated above
+    const userId = callerUserId;
 
     // Fetch contact to get owner_id
     const { data: contact } = await supabase
