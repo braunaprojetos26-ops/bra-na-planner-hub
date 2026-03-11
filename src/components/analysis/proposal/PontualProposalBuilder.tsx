@@ -381,7 +381,7 @@ export function PontualProposalBuilder({ contactId, opportunityId, onBack }: Pon
                                     value={String(n)} 
                                     disabled={disabled}
                                   >
-                                    {n} reunião{n > 1 ? 'ões' : ''}
+                                    {n} {n > 1 ? 'reuniões' : 'reunião'}
                                   </SelectItem>
                                 );
                               })}
