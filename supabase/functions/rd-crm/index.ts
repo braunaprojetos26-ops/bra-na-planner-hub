@@ -395,6 +395,44 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "start_unified_import": {
+        const rdUserIdUnified = payload.rd_user_id;
+        const ownerUserIdUnified = payload.owner_user_id || null;
+
+        if (!rdUserIdUnified) throw new Error("rd_user_id é obrigatório");
+
+        const { data: jobUnified, error: jobUnifiedError } = await supabase
+          .from("import_jobs")
+          .insert({
+            created_by: userId,
+            rd_user_id: rdUserIdUnified,
+            import_type: "unified",
+            owner_user_id: ownerUserIdUnified,
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (jobUnifiedError) throw new Error(`Erro ao criar job: ${jobUnifiedError.message}`);
+
+        const supabaseUrlUnified = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKeyUnified = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+        fetch(`${supabaseUrlUnified}/functions/v1/process-rd-unified-import`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceRoleKeyUnified}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jobId: jobUnified.id }),
+        }).catch((err) => {
+          console.error("Failed to trigger process-rd-unified-import:", err);
+        });
+
+        result = { job_id: jobUnified.id };
+        break;
+      }
+
       default:
         throw new Error(`Ação desconhecida: ${action}`);
     }

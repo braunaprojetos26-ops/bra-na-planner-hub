@@ -1,73 +1,82 @@
 
 
-## Plano: Unificar Importação do RD CRM
+## Plano: Sistema de Dupla Visualização — Central do Planejador + Montagem de Planejamento
 
-### Situacao Atual
-Hoje existem 5 operacoes separadas na tela de configuracoes:
-1. **Importar Contatos** (dialog, cria contatos a partir dos deals do usuario RD)
-2. **Importar Negociacoes** (dialog, cria opportunities vinculadas a contatos existentes)
-3. **Atualizar Fontes** (backfill source nos contatos ja importados)
-4. **Atualizar Campanhas** (backfill campaign nos contatos ja importados)
-5. **Importar Produtos** (cria contracts a partir de deals ganhos)
+### Conceito
 
-Cada uma roda em edge functions separadas com checkpoint/resume.
+Criar um mecanismo de **troca de visualização** no sistema, permitindo alternar entre:
+1. **Central do Planejador** (CRM atual — tudo que já existe)
+2. **Montagem de Planejamento** (novo módulo de construção de planejamento financeiro)
 
-### Nova Dinamica
-Selecionar usuario RD > Clicar **"Importar Contatos e Negociacoes"** > Um unico fluxo que:
-1. Busca todos os deals do usuario
-2. Para cada deal: extrai contato, fonte (deal_source), campanha (campaign)
-3. Cria/atualiza o contato local com source e campaign ja preenchidos
-4. Cria a opportunity (negociacao) vinculada ao contato
-5. Para deals ganhos com produtos: cria contracts usando o mapeamento de produtos
+Cada visualização terá seu próprio sidebar, header contextual e rotas. Ambas compartilham autenticação, dados e infraestrutura.
 
-O mapeamento de produtos (RDProductMappingsEditor) continua editavel na tela.
+### Arquitetura
 
-### Mudancas Necessarias
+```text
+┌─────────────────────────────────────────────┐
+│  AppViewContext (view: 'crm' | 'planning')  │
+├─────────────┬───────────────────────────────┤
+│  view=crm   │  view=planning                │
+│  AppSidebar │  PlanningSidebar              │
+│  AppHeader  │  PlanningHeader               │
+│  /contacts  │  /planning/:clientId/futuro   │
+│  /pipeline  │  /planning/:clientId/...      │
+│  /clients   │                               │
+│  ...        │                               │
+└─────────────┴───────────────────────────────┘
+```
 
-#### 1. Nova Edge Function: `process-rd-unified-import`
-Substitui `process-rd-import`, `process-rd-backfill-sources`, `process-rd-backfill-campaigns` e `process-rd-backfill-products` em um unico worker com as seguintes fases:
+### Implementação
 
-- **Phase 1 - fetching_deals**: Busca todos os deal IDs do usuario RD (paginado)
-- **Phase 2 - processing_deals**: Para cada deal:
-  - Busca detalhes do deal (nome, valor, pipeline, stage, deal_source, campaign, win status)
-  - Busca contatos vinculados ao deal
-  - Busca full contact details (custom fields: CPF, RG, etc.)
-  - **Cria contato** se nao existe (por phone/email), ou pula se ja existe. Ja preenche `source` e `campaign` no insert
-  - Se contato ja existia, atualiza `source` e `campaign` se estavam vazios
-  - **Cria opportunity** vinculada ao contato (mapeia pipeline/stage como ja faz hoje)
-  - Se deal ganho (`win === "won"`): busca produtos do deal e cria contracts usando o mapeamento
-  - Checkpoint/resume a cada ~120s (mesma arquitetura de hoje)
+#### 1. Contexto de Visualização (`AppViewContext`)
+- Novo contexto com estado `view: 'crm' | 'planning'` e função `switchView()`
+- Persistido em `localStorage` para manter a escolha entre recarregamentos
+- Envolver `App.tsx` com este provider
 
-Reutiliza toda a logica existente de:
-- Custom field extraction (CF_IDS do process-rd-import)
-- Pipeline/stage matching (findBestMatch do process-rd-import)
-- Product mapping (do process-rd-backfill-products)
-- Phone normalization e dedup
+#### 2. Switcher de Visualização
+- Componente compacto no **header** (ou sidebar header) com ícone/botão que alterna entre as duas visões
+- Visual claro: nome do módulo ativo + ícone de troca
+- Posicionamento: no header, ao lado do SidebarTrigger, ou no topo do sidebar
 
-#### 2. Acao `start_unified_import` no `rd-crm/index.ts`
-Nova action que cria o job com `import_type: "unified"` e dispara o novo worker.
+#### 3. Layout de Planejamento (`PlanningLayout`)
+- Novo layout similar ao `AppLayout`, mas usando `PlanningSidebar` em vez de `AppSidebar`
+- Reutiliza `AppHeader` com indicação visual do modo ativo + switcher
 
-#### 3. UI: `RDCRMConnectionCard.tsx`
-- Remove os botoes separados: "Importar Contatos", "Importar Negociacoes", "Atualizar Fontes", "Atualizar Campanhas", "Importar Produtos"
-- Substitui por fluxo simplificado:
-  - Dropdown de usuario RD (ja existe)
-  - Checkbox "Criar usuario no sistema" (ja existe no dialog)
-  - Botao unico: **"Importar Contatos e Negociacoes"**
-  - Progress bar com status unificado
-  - Resultados: contatos criados, negociacoes criadas, contratos criados, erros
-- Mantem o `RDProductMappingsEditor` editavel
+#### 4. Sidebar de Planejamento (`PlanningSidebar`)
+- Menu lateral exclusivo com itens como:
+  - **Seleção de Cliente** (dropdown/busca no topo — filtra apenas clientes ativos com contrato de planejamento pago)
+  - **Meu Futuro** (tela já existente, rota `/planning/:clientId/futuro`)
+  - Futuramente: Reserva de Emergência, Aposentadoria, Investimentos, Objetivos, etc.
+- Header do sidebar com logo + "Montagem de Planejamento" + botão de voltar à Central
 
-#### 4. UI: `RDCRMImportDialog.tsx`
-- Adapta para o fluxo unificado (remove a distincao contacts/deals)
-- Mostra progresso e resultados combinados
+#### 5. Rotas de Planejamento
+- Prefixo `/planning` para todas as rotas do novo módulo
+- Estrutura: `/planning` (seleção de cliente), `/planning/:clientId/futuro` (Meu Futuro adaptado)
+- Componente wrapper `PlanningPage` similar ao `ProtectedPage` mas usando `PlanningLayout`
 
-#### 5. Hook: `useRDCRM.ts`
-- Adiciona `startUnifiedImport` mutation
-- Remove mutations de backfill individuais (sources, campaigns, products) se desejado, ou apenas esconde da UI
+#### 6. Seleção de Cliente no Módulo de Planejamento
+- O sidebar terá um seletor de cliente no topo
+- Filtra apenas clientes com `client_plans` ativos e contrato de planejamento com pagamento confirmado
+- Ao selecionar, os dados da coleta (`data_collection`) são carregados como base para o planejamento
+- O clientId fica na URL e disponível via contexto/params
 
-### O Que NAO Muda
-- Tabela `import_jobs` (mesma estrutura, novo `import_type`)
-- `RDProductMappingsEditor` (continua editavel e funcional)
-- Checkpoint/resume architecture
-- Rate limiting (600ms entre requests)
+#### 7. Migração da tela Meu Futuro
+- A rota `/meu-futuro` será mantida (compatibilidade) mas redirecionará para `/planning`
+- No módulo de planejamento, o componente receberá `clientId` como parâmetro e carregará dados do cliente (idade, patrimônio, sonhos da coleta de dados) como valores iniciais
+
+### Arquivos a criar
+- `src/contexts/AppViewContext.tsx` — contexto de visualização
+- `src/components/layout/PlanningLayout.tsx` — layout do módulo
+- `src/components/layout/PlanningSidebar.tsx` — sidebar do módulo
+- `src/components/layout/ViewSwitcher.tsx` — componente de troca de visão
+
+### Arquivos a modificar
+- `src/App.tsx` — adicionar provider + rotas `/planning/*`
+- `src/components/layout/AppHeader.tsx` — adicionar ViewSwitcher
+- `src/components/layout/AppLayout.tsx` — adicionar provider
+- `src/pages/MeuFuturo.tsx` — adaptar para receber clientId
+
+### Observações
+- Nenhuma mudança de banco de dados é necessária neste momento — os dados de clientes e coleta já existem
+- As próximas telas do módulo de planejamento (reserva de emergência, aposentadoria, etc.) serão adicionadas incrementalmente depois dessa estrutura base estar pronta
 
