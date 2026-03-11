@@ -70,10 +70,17 @@ export function calculateProposalPricing(
   // 5. Apply discount if selected (10%)
   const finalValue = discountApplied ? baseValue * 0.9 : baseValue;
 
-  // 6. Calculate installment table (simple division, no interest)
+  // 6. Calculate installment table with compound interest (0.5% per month)
+  const MONTHLY_RATE = 0.005;
   const installmentTable: InstallmentRow[] = [];
+  let accumulatedTotal = finalValue; // 1x = no interest
+
   for (let n = 1; n <= 12; n++) {
-    let installmentValue = finalValue / n;
+    if (n > 1) {
+      accumulatedTotal = accumulatedTotal * (1 + MONTHLY_RATE);
+    }
+
+    let installmentValue = accumulatedTotal / n;
 
     // Ensure minimum installment value of R$250
     if (installmentValue < MIN_MONTHLY) {
@@ -83,7 +90,7 @@ export function calculateProposalPricing(
     installmentTable.push({
       installments: n,
       installmentValue: Math.round(installmentValue * 100) / 100,
-      total: Math.round(finalValue * 100) / 100,
+      total: Math.round(accumulatedTotal * 100) / 100,
     });
   }
 
