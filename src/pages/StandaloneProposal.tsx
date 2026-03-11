@@ -126,9 +126,7 @@ export default function StandaloneProposal() {
               <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
               <StandaloneFeedbacksCasesEditor
                 feedbacks={standaloneFeedbacks}
-                cases={standaloneCases}
                 onFeedbacksChange={setStandaloneFeedbacks}
-                onCasesChange={setStandaloneCases}
               />
             </div>
           </div>
