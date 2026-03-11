@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, TrendingUp, DollarSign, Hash } from 'lucide-react';
+import { FileText, TrendingUp, DollarSign, Hash, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
