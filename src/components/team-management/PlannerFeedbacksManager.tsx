@@ -14,14 +14,18 @@ import { toast } from 'sonner';
 export function PlannerFeedbacksManager() {
   const { data: feedbacks, isLoading } = useMyFeedbacks();
   const { createFeedback, updateFeedback, deleteFeedback } = useFeedbackMutations();
+  const { user } = useAuth();
   
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     client_name: '',
     feedback_text: '',
     media_type: '' as '' | 'image' | 'video',
     media_url: '',
+    media_source: 'upload' as 'upload' | 'url',
   });
 
   const resetForm = () => {
