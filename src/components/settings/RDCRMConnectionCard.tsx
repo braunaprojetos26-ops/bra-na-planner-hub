@@ -305,7 +305,7 @@ export function RDCRMConnectionCard() {
 
               {/* Results */}
               {importStep === 'done' && jobStatus && (
-                <RDCRMImportResults jobStatus={jobStatus} onReset={() => { setImportStep('idle'); setJobStatus(null); }} />
+                <RDCRMImportResults jobStatus={jobStatus} onReset={() => { setImportStep('idle'); setJobStatus(null); sessionStorage.removeItem('rd_import_active_job'); }} />
               )}
             </div>
           </>
