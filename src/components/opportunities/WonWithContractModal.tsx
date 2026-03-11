@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { PartyPopper, Plus, Trash2, Calculator, Package, Users } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -305,6 +306,17 @@ export function WonWithContractModal({
         nextStageId: nextStage?.id,
       });
 
+      // Trigger async sync with ClickSign/Vindi for existing contracts
+      const existingContractIds = pendingContracts.map(c => c.id);
+      if (existingContractIds.length > 0) {
+        supabase.functions.invoke('sync-external-contracts', {
+          body: { contract_ids: existingContractIds, mode: 'all' },
+        }).then(({ data, error }) => {
+          if (error) console.error('Sync error:', error);
+          else console.log('Contract sync completed:', data);
+        });
+      }
+
       // Check if any contract is a planning product for client plan step
       const planningContracts = pendingContracts.filter(c => 
         c.product?.name?.toLowerCase().includes('planejamento')
@@ -388,6 +400,17 @@ export function WonWithContractModal({
           is_planning: isPlanningProduct,
           contact_id: opportunity.contact_id,
           contract_value: contractValue,
+        });
+      }
+
+      // Trigger async sync with ClickSign/Vindi for newly created contracts
+      const newContractIds = createdContractsList.map(c => c.id);
+      if (newContractIds.length > 0) {
+        supabase.functions.invoke('sync-external-contracts', {
+          body: { contract_ids: newContractIds, mode: 'all' },
+        }).then(({ data, error }) => {
+          if (error) console.error('Sync error:', error);
+          else console.log('Contract sync completed:', data);
         });
       }
 

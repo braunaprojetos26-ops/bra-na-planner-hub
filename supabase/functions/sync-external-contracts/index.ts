@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
     const mode = body.mode || "all"; // "vindi" | "clicksign" | "all"
     const batchSize = body.batch_size || 10;
     const offset = body.offset || 0;
+    const contractIds: string[] = body.contract_ids || []; // Sync specific contracts
 
     // Pre-load all ClickSign envelopes via v3 API
     let allClicksignEnvelopes: any[] = [];
@@ -37,22 +38,28 @@ Deno.serve(async (req) => {
     // Build query based on mode
     let query = supabase
       .from("contracts")
-      .select("id, contact_id, contract_value, contacts!inner(full_name, email, cpf, phone)")
-      .eq("product_id", "4b900185-852d-4f25-8ecc-8d21d7d826d5")
-      .eq("status", "active");
+      .select("id, contact_id, contract_value, contacts!inner(full_name, email, cpf, phone)");
 
-    if (mode === "vindi") {
-      query = query.is("vindi_customer_id", null);
-    } else if (mode === "clicksign") {
-      query = query.is("clicksign_document_key", null);
+    if (contractIds.length > 0) {
+      // When specific IDs provided, skip status/product filters
+      query = query.in("id", contractIds);
     } else {
-      // "all" - get contracts missing either
-      query = query.or("vindi_customer_id.is.null,clicksign_document_key.is.null");
+      query = query
+        .eq("product_id", "4b900185-852d-4f25-8ecc-8d21d7d826d5")
+        .eq("status", "active");
+
+      if (mode === "vindi") {
+        query = query.is("vindi_customer_id", null);
+      } else if (mode === "clicksign") {
+        query = query.is("clicksign_document_key", null);
+      } else {
+        query = query.or("vindi_customer_id.is.null,clicksign_document_key.is.null");
+      }
     }
 
-    const { data: contracts, error: fetchErr } = await query
-      .range(offset, offset + batchSize - 1)
-      .order("id");
+    const { data: contracts, error: fetchErr } = contractIds.length > 0
+      ? await query.order("id")
+      : await query.range(offset, offset + batchSize - 1).order("id");
 
     if (fetchErr) throw fetchErr;
     if (!contracts?.length) {
