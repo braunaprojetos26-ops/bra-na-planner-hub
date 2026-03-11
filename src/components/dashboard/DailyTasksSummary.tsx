@@ -200,7 +200,7 @@ export function DailyTasksSummary() {
                     const tag = getTaskTag(task);
 
                     return (
-                      <div className="flex items-center gap-2 p-2 rounded-md border text-sm transition-colors hover:bg-muted/50"
+                      <div
                         key={task.id}
                         className={cn(
                           'flex items-center gap-2 p-2 rounded-md border text-sm transition-colors hover:bg-muted/50',
