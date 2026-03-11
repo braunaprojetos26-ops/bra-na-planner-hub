@@ -165,13 +165,16 @@ Deno.serve(async (req) => {
       if (result.vindi_customer_id) updates.vindi_customer_id = result.vindi_customer_id;
       if (result.vindi_subscription_id) {
         updates.vindi_subscription_id = result.vindi_subscription_id;
-        updates.vindi_status = "active";
       }
       if (result.first_payment_at) {
         updates.first_payment_at = result.first_payment_at;
       }
       if (result.vindi_bill_id) {
         updates.vindi_bill_id = result.vindi_bill_id;
+      }
+      if (result.vindi_payment_status) {
+        updates.vindi_status = result.vindi_payment_status;
+      } else if (result.vindi_subscription_id || result.vindi_bill_id) {
         updates.vindi_status = "active";
       }
       if (result.clicksign_document_key) {
