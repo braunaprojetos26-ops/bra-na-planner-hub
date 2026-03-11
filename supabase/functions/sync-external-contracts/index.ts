@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     // Build query based on mode
     let query = supabase
       .from("contracts")
-      .select("id, contact_id, contract_value, contacts!inner(full_name, email, cpf, phone)");
+      .select("id, contact_id, contract_value, owner_id, product_id, installments, installment_value, contracts_product_id_fkey:products!contracts_product_id_fkey(name), contacts!inner(full_name, email, cpf, phone)");
 
     if (contractIds.length > 0) {
       // When specific IDs provided, skip status/product filters
