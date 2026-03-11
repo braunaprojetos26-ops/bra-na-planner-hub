@@ -84,28 +84,15 @@ Deno.serve(async (req) => {
         let vindiCustomerId = "";
         let vindiSubscriptionId = "";
 
-        // Strategy 1: search by email
-        if (email) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `email:${email}`);
-          if (found) vindiCustomerId = found;
-        }
+        const matchedCustomerId = await vindiFindBestCustomer(vindiUrl, vindiAuth, {
+          email,
+          cpf,
+          name,
+          phone,
+        });
 
-        // Strategy 2: search by CPF (registry_code)
-        if (!vindiCustomerId && cpf && cpf.length >= 11) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `registry_code:${cpf}`);
-          if (found) vindiCustomerId = found;
-        }
-
-        // Strategy 3: search by name
-        if (!vindiCustomerId && name) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `name:${name}`);
-          if (found) vindiCustomerId = found;
-        }
-
-        // Strategy 4: search by phone
-        if (!vindiCustomerId && phone && phone.length >= 10) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `phone_number:${phone}`);
-          if (found) vindiCustomerId = found;
+        if (matchedCustomerId) {
+          vindiCustomerId = matchedCustomerId;
         }
 
         if (vindiCustomerId) {
@@ -116,10 +103,17 @@ Deno.serve(async (req) => {
           if (vindiSubscriptionId) {
             result.vindi_subscription_id = vindiSubscriptionId;
             result.vindi = "linked";
+
             // Fetch first payment date from bills
             const firstPaymentDate = await vindiFindFirstPayment(vindiUrl, vindiAuth, vindiSubscriptionId);
             if (firstPaymentDate) {
               result.first_payment_at = firstPaymentDate;
+            }
+
+            // Resolve real payment status immediately
+            const liveStatus = await vindiResolveDbStatus(vindiUrl, vindiAuth, vindiSubscriptionId, null);
+            if (liveStatus) {
+              result.vindi_payment_status = liveStatus;
             }
           } else {
             // Check for bills
@@ -127,6 +121,11 @@ Deno.serve(async (req) => {
             if (billId) {
               result.vindi_bill_id = billId;
               result.vindi = "bill_found";
+
+              const liveStatus = await vindiResolveDbStatus(vindiUrl, vindiAuth, null, billId);
+              if (liveStatus) {
+                result.vindi_payment_status = liveStatus;
+              }
             } else {
               result.vindi = "customer_only";
             }
@@ -166,13 +165,16 @@ Deno.serve(async (req) => {
       if (result.vindi_customer_id) updates.vindi_customer_id = result.vindi_customer_id;
       if (result.vindi_subscription_id) {
         updates.vindi_subscription_id = result.vindi_subscription_id;
-        updates.vindi_status = "active";
       }
       if (result.first_payment_at) {
         updates.first_payment_at = result.first_payment_at;
       }
       if (result.vindi_bill_id) {
         updates.vindi_bill_id = result.vindi_bill_id;
+      }
+      if (result.vindi_payment_status) {
+        updates.vindi_status = result.vindi_payment_status;
+      } else if (result.vindi_subscription_id || result.vindi_bill_id) {
         updates.vindi_status = "active";
       }
       if (result.clicksign_document_key) {
@@ -218,24 +220,142 @@ Deno.serve(async (req) => {
 
 // ============ HELPER FUNCTIONS ============
 
-async function vindiSearchCustomer(
-  vindiUrl: string, auth: string, query: string
-): Promise<string | null> {
+type VindiCustomerLookupInput = {
+  email?: string | null;
+  cpf?: string | null;
+  name?: string | null;
+  phone?: string | null;
+};
+
+type VindiCustomer = {
+  id: string | number;
+  name?: string;
+  email?: string;
+  registry_code?: string;
+  phone?: string;
+  phone_number?: string;
+  phones?: Array<{ number?: string; phone_number?: string }>;
+};
+
+function normalizeDigits(value?: string | null): string {
+  return (value || "").replace(/\D/g, "");
+}
+
+function normalizeEmail(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function getCustomerPhone(customer: VindiCustomer): string {
+  return normalizeDigits(
+    customer.phone ||
+      customer.phone_number ||
+      customer.phones?.[0]?.number ||
+      customer.phones?.[0]?.phone_number ||
+      ""
+  );
+}
+
+function isExactCustomerMatch(customer: VindiCustomer, input: Required<VindiCustomerLookupInput>): boolean {
+  const customerEmail = normalizeEmail(customer.email);
+  const customerCpf = normalizeDigits(customer.registry_code);
+  const customerName = normalizeStr(customer.name || "");
+  const customerPhone = getCustomerPhone(customer);
+
+  if (input.email && customerEmail === input.email) return true;
+  if (input.cpf && customerCpf === input.cpf) return true;
+  if (input.name && customerName === normalizeStr(input.name)) return true;
+  if (input.phone && customerPhone) {
+    const a = customerPhone.slice(-10);
+    const b = input.phone.slice(-10);
+    if (a && b && (a === b || customerPhone.endsWith(input.phone) || input.phone.endsWith(customerPhone))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function vindiSearchCustomers(
+  vindiUrl: string,
+  auth: string,
+  query: string
+): Promise<VindiCustomer[]> {
   try {
     const res = await fetch(
-      `${vindiUrl}/customers?query=${encodeURIComponent(query)}`,
+      `${vindiUrl}/customers?query=${encodeURIComponent(query)}&sort_by=created_at&sort_order=desc&per_page=50`,
       { headers: { Authorization: auth, "Content-Type": "application/json" } }
     );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.customers?.length > 0) {
-        return String(data.customers[0].id);
-      }
+
+    if (!res.ok) {
+      return [];
     }
+
+    const data = await res.json();
+    return (data.customers || []) as VindiCustomer[];
   } catch (e) {
     console.error("Vindi search error:", e);
+    return [];
   }
-  return null;
+}
+
+async function vindiFindBestCustomer(
+  vindiUrl: string,
+  auth: string,
+  input: VindiCustomerLookupInput
+): Promise<string | null> {
+  const cleanEmail = normalizeEmail(input.email);
+  const cleanCpf = normalizeDigits(input.cpf);
+  const cleanName = (input.name || "").trim();
+  const cleanPhone = normalizeDigits(input.phone);
+
+  const queries: string[] = [];
+
+  if (cleanEmail) {
+    queries.push(`email:${cleanEmail}`, `email:"${cleanEmail}"`, cleanEmail);
+  }
+
+  if (cleanCpf.length >= 11) {
+    queries.push(`registry_code:${cleanCpf}`, `registry_code:"${cleanCpf}"`, cleanCpf);
+  }
+
+  if (cleanName) {
+    queries.push(`name:${cleanName}`, `name:"${cleanName}"`, cleanName);
+  }
+
+  if (cleanPhone.length >= 10) {
+    queries.push(`phone_number:${cleanPhone}`, cleanPhone);
+  }
+
+  const uniqueQueries = Array.from(new Set(queries));
+  const seenCustomers = new Set<string>();
+  let fallbackCustomerId: string | null = null;
+
+  for (const query of uniqueQueries) {
+    const customers = await vindiSearchCustomers(vindiUrl, auth, query);
+
+    for (const customer of customers) {
+      const customerId = String(customer.id || "");
+      if (!customerId || seenCustomers.has(customerId)) continue;
+      seenCustomers.add(customerId);
+
+      if (!fallbackCustomerId) {
+        fallbackCustomerId = customerId;
+      }
+
+      if (
+        isExactCustomerMatch(customer, {
+          email: cleanEmail,
+          cpf: cleanCpf,
+          name: cleanName,
+          phone: cleanPhone,
+        })
+      ) {
+        return customerId;
+      }
+    }
+  }
+
+  return fallbackCustomerId;
 }
 
 async function vindiFindSubscription(
@@ -309,6 +429,77 @@ async function vindiFindFirstPayment(
   } catch (e) {
     console.error("Vindi first payment search error:", e);
   }
+  return null;
+}
+
+async function vindiResolveDbStatus(
+  vindiUrl: string,
+  auth: string,
+  subscriptionId: string | null,
+  billId: string | null
+): Promise<"paid" | "pending" | "overdue" | "cancelled" | null> {
+  try {
+    if (subscriptionId) {
+      const subRes = await fetch(`${vindiUrl}/subscriptions/${subscriptionId}`, {
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+      });
+
+      if (subRes.ok) {
+        const subData = await subRes.json();
+        if (subData?.subscription?.status === "canceled") {
+          return "cancelled";
+        }
+      }
+
+      const billsRes = await fetch(
+        `${vindiUrl}/bills?query=subscription_id:${subscriptionId}&sort_by=created_at&sort_order=desc&per_page=50`,
+        { headers: { Authorization: auth, "Content-Type": "application/json" } }
+      );
+
+      if (billsRes.ok) {
+        const billsData = await billsRes.json();
+        const bills = billsData?.bills || [];
+
+        if (bills.length === 0) return "pending";
+
+        const now = new Date();
+        const hasOverdue = bills.some((b: any) => {
+          if (b.status !== "pending") return false;
+          const due = new Date(b.due_at || b.billing_at || b.created_at);
+          return due < now;
+        });
+
+        if (hasOverdue) return "overdue";
+
+        const hasPending = bills.some((b: any) => b.status === "pending");
+        if (hasPending) return "pending";
+
+        return "paid";
+      }
+    }
+
+    if (billId) {
+      const billRes = await fetch(`${vindiUrl}/bills/${billId}`, {
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+      });
+
+      if (billRes.ok) {
+        const billData = await billRes.json();
+        const bill = billData?.bill;
+        if (!bill) return null;
+
+        if (bill.status === "paid") return "paid";
+        if (bill.status === "canceled") return "cancelled";
+        if (bill.status === "pending") {
+          const due = new Date(bill.due_at || bill.billing_at || bill.created_at);
+          return due < new Date() ? "overdue" : "pending";
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Vindi status resolve error:", e);
+  }
+
   return null;
 }
 
