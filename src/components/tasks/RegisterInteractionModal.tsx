@@ -148,7 +148,21 @@ export function RegisterInteractionModal({
 
       if (historyError) throw historyError;
 
+      // Complete the associated task (critical activity or otherwise)
+      if (taskId) {
+        await supabase
+          .from('tasks')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('id', taskId);
+      }
+
       // Invalidate relevant caches
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['all-user-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['user-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['critical-activities'] });
+      queryClient.invalidateQueries({ queryKey: ['critical-activity-detail'] });
       if (planMeetingId) {
         queryClient.invalidateQueries({ queryKey: ['plan-meetings'] });
         queryClient.invalidateQueries({ queryKey: ['client-plan'] });
