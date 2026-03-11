@@ -173,11 +173,85 @@ export function StandaloneFeedbacksCasesEditor({
                   rows={2}
                 />
               </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Mídia (opcional)</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-1" />
+                    )}
+                    {isUploading ? 'Enviando...' : 'Enviar arquivo'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={fbMediaSource === 'url' && fbMediaType === 'video' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (fbMediaSource === 'url' && fbMediaType === 'video') {
+                        setFbMediaSource('upload');
+                        setFbMediaType('');
+                        setFbMediaUrl('');
+                      } else {
+                        setFbMediaSource('url');
+                        setFbMediaType('video');
+                      }
+                    }}
+                  >
+                    <Video className="w-4 h-4 mr-1" />
+                    URL de vídeo
+                  </Button>
+                </div>
+
+                {/* Preview uploaded media */}
+                {fbMediaUrl && fbMediaSource === 'upload' && (
+                  <div className="relative mt-2">
+                    {fbMediaType === 'image' ? (
+                      <img src={fbMediaUrl} alt="Preview" className="w-full max-h-24 object-cover rounded-lg border" />
+                    ) : (
+                      <video src={fbMediaUrl} className="w-full max-h-24 object-cover rounded-lg border" />
+                    )}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-5 w-5"
+                      onClick={() => { setFbMediaType(''); setFbMediaUrl(''); }}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* URL input */}
+                {fbMediaSource === 'url' && fbMediaType === 'video' && (
+                  <Input
+                    placeholder="URL do vídeo (YouTube, Vimeo)"
+                    value={fbMediaUrl}
+                    onChange={(e) => setFbMediaUrl(e.target.value)}
+                    className="h-9"
+                  />
+                )}
+              </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={addFeedback} disabled={!fbClientName.trim() || !fbText.trim()}>
+                <Button size="sm" onClick={addFeedback} disabled={!fbClientName.trim() || (!fbText.trim() && !fbMediaUrl)}>
                   Adicionar
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowFeedbackForm(false)}>
+                <Button size="sm" variant="ghost" onClick={() => { setShowFeedbackForm(false); setFbMediaType(''); setFbMediaUrl(''); setFbMediaSource('upload'); }}>
                   Cancelar
                 </Button>
               </div>

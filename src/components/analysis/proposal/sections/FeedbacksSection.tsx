@@ -1,8 +1,23 @@
-import { Quote, Play } from 'lucide-react';
+import { Quote } from 'lucide-react';
 import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
 
 interface FeedbacksSectionProps {
   feedbacks: PlannerFeedback[];
+}
+
+function getYouTubeEmbedUrl(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return `https://www.youtube.com/embed/${match[1]}`;
+  }
+  return null;
+}
+
+function isDirectMedia(url: string): boolean {
+  return /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)(\?.*)?$/i.test(url);
 }
 
 export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
@@ -23,54 +38,69 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
 
       {/* Feedbacks Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {feedbacks.slice(0, 6).map((feedback) => (
-          <div
-            key={feedback.id}
-            className="bg-card border rounded-xl p-6 space-y-4 relative"
-          >
-            {/* Quote Icon */}
-            <Quote className="w-8 h-8 text-gold/20 absolute top-4 right-4" />
+        {feedbacks.slice(0, 6).map((feedback) => {
+          const youtubeEmbed = feedback.media_url ? getYouTubeEmbedUrl(feedback.media_url) : null;
+          const isDirect = feedback.media_url ? isDirectMedia(feedback.media_url) : false;
 
-            {/* Media */}
-            {feedback.media_url && (
-              <div className="rounded-lg overflow-hidden">
-                {feedback.media_type === 'video' ? (
-                  <div className="relative aspect-video bg-muted flex items-center justify-center">
-                    <video 
-                      src={feedback.media_url} 
-                      className="w-full h-full object-cover"
-                      controls
+          return (
+            <div
+              key={feedback.id}
+              className="bg-card border rounded-xl p-6 space-y-4 relative"
+            >
+              {/* Quote Icon */}
+              <Quote className="w-8 h-8 text-gold/20 absolute top-4 right-4" />
+
+              {/* Media */}
+              {feedback.media_url && (
+                <div className="rounded-lg overflow-hidden">
+                  {youtubeEmbed ? (
+                    <div className="relative aspect-video">
+                      <iframe
+                        src={youtubeEmbed}
+                        title={`Feedback de ${feedback.client_name}`}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : feedback.media_type === 'video' || (!isDirect && feedback.media_type !== 'image') ? (
+                    <div className="relative aspect-video bg-muted">
+                      <video
+                        src={feedback.media_url}
+                        className="w-full h-full object-cover"
+                        controls
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={feedback.media_url}
+                      alt={`Feedback de ${feedback.client_name}`}
+                      className="w-full h-48 object-cover"
                     />
-                  </div>
-                ) : (
-                  <img
-                    src={feedback.media_url}
-                    alt={`Feedback de ${feedback.client_name}`}
-                    className="w-full h-48 object-cover"
-                  />
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
 
-            {/* Text */}
-            {feedback.feedback_text && (
-              <p className="text-muted-foreground italic">
-                "{feedback.feedback_text}"
-              </p>
-            )}
+              {/* Text */}
+              {feedback.feedback_text && (
+                <p className="text-muted-foreground italic">
+                  "{feedback.feedback_text}"
+                </p>
+              )}
 
-            {/* Client Name */}
-            <div className="flex items-center gap-3 pt-2 border-t">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-500 flex items-center justify-center text-white font-bold">
-                {feedback.client_name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{feedback.client_name}</p>
-                <p className="text-xs text-muted-foreground">Cliente Braúna</p>
+              {/* Client Name */}
+              <div className="flex items-center gap-3 pt-2 border-t">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-500 flex items-center justify-center text-white font-bold">
+                  {feedback.client_name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{feedback.client_name}</p>
+                  <p className="text-xs text-muted-foreground">Cliente Braúna</p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
