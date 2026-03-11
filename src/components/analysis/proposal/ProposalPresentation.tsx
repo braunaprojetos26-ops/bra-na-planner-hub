@@ -264,24 +264,45 @@ const { user, profile } = useAuth();
             overflow: hidden !important;
           }
           
+          /* Social proof pages - auto-paginating, no fixed height */
+          .print-social-proof {
+            width: 210mm !important;
+            padding: 8mm 12mm !important;
+            background: white !important;
+            color: #1a1a1a !important;
+            font-size: 9pt !important;
+            overflow: visible !important;
+            max-height: none !important;
+          }
+          
           /* Typography scaling */
-          .print-content-page h2 {
+          .print-content-page h2,
+          .print-social-proof h2 {
             font-size: 12pt !important;
             margin-bottom: 4pt !important;
           }
           
-          .print-content-page h3 {
+          .print-content-page h3,
+          .print-social-proof h3 {
             font-size: 10pt !important;
           }
           
-          .print-content-page p {
+          .print-content-page p,
+          .print-social-proof p {
             font-size: 8pt !important;
             line-height: 1.3 !important;
           }
           
           /* Reduce spacing */
-          .print-content-page > * {
+          .print-content-page > *,
+          .print-social-proof > * {
             margin-bottom: 6pt !important;
+          }
+          
+          /* Prevent individual cards from breaking across pages */
+          .print-social-proof .rounded-xl {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           
           /* Prevent section breaks */
