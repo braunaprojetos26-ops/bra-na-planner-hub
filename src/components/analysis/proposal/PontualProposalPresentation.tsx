@@ -250,43 +250,13 @@ const { user, profile } = useAuth();
             <FeedbacksSection feedbacks={feedbacks!} />
           )}
 
-          {/* Pricing - Adapted for Pontual */}
-          <section className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold">Investimento</h2>
-            </div>
-
-            <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
-              <CardContent className="p-8 text-center space-y-6">
-                <div>
-                  <p className="text-muted-foreground mb-2">Valor Total</p>
-                  <p className="text-4xl font-bold text-primary">
-                    {formatCurrency(proposal.final_value)}
-                  </p>
-                </div>
-
-                {proposal.installments > 1 && (
-                  <div className="pt-4 border-t">
-                    <p className="text-lg">
-                      ou <span className="font-bold">{proposal.installments}x</span> de{' '}
-                      <span className="font-bold text-primary">
-                        {formatCurrency(proposal.installment_value)}
-                      </span>
-                    </p>
-                  </div>
-                )}
-
-                <div className="pt-4 border-t">
-                  <p className="text-sm font-medium mb-3">Formas de Pagamento</p>
-                  <div className="flex justify-center gap-6 text-sm text-muted-foreground">
-                    <span>PIX (à vista)</span>
-                    <span>•</span>
-                    <span>Cartão de Crédito (1 a 6x)</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          {/* Pricing - Same design as Completo */}
+          <PricingSection
+            finalValue={proposal.final_value}
+            installments={proposal.installments}
+            installmentValue={proposal.installment_value}
+            discountApplied={proposal.discount_applied}
+          />
         </div>
 
         {/* Footer */}
