@@ -189,35 +189,71 @@ export function PlannerFeedbacksManager() {
 
             <div className="space-y-1.5">
               <Label className="text-xs">Mídia (opcional)</Label>
-              <div className="flex gap-2">
+              
+              {/* Upload file */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   type="button"
-                  variant={formData.media_type === 'image' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setFormData(prev => ({ 
-                    ...prev, 
-                    media_type: prev.media_type === 'image' ? '' : 'image' 
-                  }))}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
                 >
-                  <Image className="w-4 h-4 mr-1" />
-                  Imagem
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-1" />
+                  )}
+                  {isUploading ? 'Enviando...' : 'Enviar arquivo'}
                 </Button>
                 <Button
                   type="button"
-                  variant={formData.media_type === 'video' ? 'default' : 'outline'}
+                  variant={formData.media_source === 'url' && formData.media_type ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFormData(prev => ({ 
                     ...prev, 
-                    media_type: prev.media_type === 'video' ? '' : 'video' 
+                    media_source: 'url',
+                    media_type: prev.media_source === 'url' && prev.media_type ? '' : 'video',
+                    media_url: prev.media_source === 'url' ? '' : prev.media_url,
                   }))}
                 >
                   <Video className="w-4 h-4 mr-1" />
-                  Vídeo
+                  URL de vídeo
                 </Button>
               </div>
-              {formData.media_type && (
+
+              {/* Preview uploaded media */}
+              {formData.media_url && formData.media_source === 'upload' && (
+                <div className="relative mt-2">
+                  {formData.media_type === 'image' ? (
+                    <img src={formData.media_url} alt="Preview" className="w-full max-h-32 object-cover rounded-lg border" />
+                  ) : (
+                    <video src={formData.media_url} className="w-full max-h-32 object-cover rounded-lg border" />
+                  )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => setFormData(prev => ({ ...prev, media_type: '', media_url: '' }))}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+
+              {/* URL input for video */}
+              {formData.media_source === 'url' && formData.media_type === 'video' && (
                 <Input
-                  placeholder={formData.media_type === 'image' ? 'URL da imagem' : 'URL do vídeo (YouTube, Vimeo)'}
+                  placeholder="URL do vídeo (YouTube, Vimeo)"
                   value={formData.media_url}
                   onChange={(e) => setFormData(prev => ({ ...prev, media_url: e.target.value }))}
                 />
