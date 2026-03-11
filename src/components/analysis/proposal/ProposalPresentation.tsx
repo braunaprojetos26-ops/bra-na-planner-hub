@@ -144,14 +144,14 @@ const { user, profile } = useAuth();
           </div>
 
           {/* Page 5 - Cases & Feedbacks (Optional) */}
-          {((proposal.show_cases && cases && cases.length > 0) || 
-            (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+          {((standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) || 
+            (standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0))) && (
             <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-              {proposal.show_cases && cases && cases.length > 0 && (
-                <CasesSection cases={cases} />
+              {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
+                <CasesSection cases={cases!} />
               )}
-              {proposal.show_feedbacks && feedbacks && feedbacks.length > 0 && (
-                <FeedbacksSection feedbacks={feedbacks} />
+              {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+                <FeedbacksSection feedbacks={feedbacks!} />
               )}
             </div>
           )}
