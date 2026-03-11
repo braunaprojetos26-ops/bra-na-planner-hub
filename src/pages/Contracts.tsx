@@ -279,9 +279,13 @@ function ContractsTable({ contracts, isLoading, vindiStatuses, onSyncContract, s
           <TableHead>Status</TableHead>
           <TableHead>Pagamento</TableHead>
           <TableHead className="w-10"></TableHead>
+        </TableRow>
       </TableHeader>
       <TableBody>
-        {contracts.map((contract) => (
+        {contracts.map((contract) => {
+          const needsSync = !contract.clicksign_document_key || !contract.vindi_customer_id;
+          const isSyncing = syncingIds?.has(contract.id);
+          return (
           <TableRow key={contract.id}>
             <TableCell className="font-medium">
               {contract.contact?.full_name || '-'}
@@ -318,8 +322,23 @@ function ContractsTable({ contracts, isLoading, vindiStatuses, onSyncContract, s
             </TableCell>
             <TableCell>{getStatusBadge(contract.status, contract.clicksign_status)}</TableCell>
             <TableCell>{getPaymentStatusBadge(contract, vindiStatuses)}</TableCell>
+            <TableCell>
+              {needsSync && onSyncContract && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onSyncContract(contract.id)}
+                  disabled={isSyncing}
+                  title="Sincronizar com ClickSign e Vindi"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+            </TableCell>
           </TableRow>
-        ))}
+          );
+        })}
       </TableBody>
     </Table>
   );
