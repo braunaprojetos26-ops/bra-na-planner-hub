@@ -55,8 +55,12 @@ const { user, profile } = useAuth();
     return `${parts[0]} ${parts[parts.length - 1]}`;
   };
   const { markAsPresented } = useProposalMutations();
-  const { data: feedbacks } = useMyFeedbacks();
-  const { data: cases } = useMyCases();
+  const { data: authFeedbacks } = useMyFeedbacks();
+  const { data: authCases } = useMyCases();
+  
+  // In standalone mode, use passed-in data; otherwise use auth-fetched data
+  const feedbacks = standaloneMode ? standaloneFeedbacks : authFeedbacks;
+  const cases = standaloneMode ? standaloneCases : authCases;
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Scroll para o topo quando o componente montar
