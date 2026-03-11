@@ -67,7 +67,12 @@ export function ActivityDetailModal({ activityId, open, onOpenChange }: Activity
             <div>
               <h4 className="font-medium mb-3">Usuários ({data.assignments.length})</h4>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {data.assignments.map(assignment => (
+                {data.assignments.map(assignment => {
+                  const stats = (assignment as any).task_stats as { total: number; completed: number } | undefined;
+                  const hasStats = stats && stats.total > 0;
+                  const allDone = hasStats && stats.completed === stats.total;
+                  
+                  return (
                   <div key={assignment.id} className="flex items-center justify-between p-2 rounded-md border">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -76,7 +81,12 @@ export function ActivityDetailModal({ activityId, open, onOpenChange }: Activity
                         <p className="text-xs text-muted-foreground">{getPositionLabel(assignment.user_profile?.position || null)}</p>
                       </div>
                     </div>
-                    {assignment.status === 'completed' ? (
+                    {hasStats ? (
+                      <Badge variant="outline" className={allDone ? 'text-green-600 border-green-600' : 'text-orange-600 border-orange-600'}>
+                        {allDone ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
+                        {stats.completed}/{stats.total} tarefas
+                      </Badge>
+                    ) : assignment.status === 'completed' ? (
                       <Badge variant="outline" className="text-green-600 border-green-600">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         {assignment.completed_at && format(new Date(assignment.completed_at), 'dd/MM', { locale: ptBR })}
@@ -88,7 +98,8 @@ export function ActivityDetailModal({ activityId, open, onOpenChange }: Activity
                       </Badge>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
