@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, CheckCircle } from 'lucide-react';
+import { SummarySection } from './sections/SummarySection';
 import { useProposalMutations } from '@/hooks/useProposals';
 import { useMyFeedbacks } from '@/hooks/usePlannerFeedbacks';
 import { useMyCases } from '@/hooks/usePlannerCases';
@@ -231,7 +232,10 @@ const { user, profile } = useAuth();
             <FeedbacksSection feedbacks={feedbacks!} />
           )}
 
-          {/* Pricing - Same design as Completo */}
+          {/* Resumo */}
+          <SummarySection meetings={totalMeetings} />
+
+          {/* Pricing */}
           <PricingSection
             finalValue={proposal.final_value}
             installments={proposal.installments}
