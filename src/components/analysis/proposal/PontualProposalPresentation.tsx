@@ -232,7 +232,10 @@ const { user, profile } = useAuth();
             <FeedbacksSection feedbacks={feedbacks!} />
           )}
 
-          {/* Pricing - Same design as Completo */}
+          {/* Resumo */}
+          <SummarySection meetings={totalMeetings} />
+
+          {/* Pricing */}
           <PricingSection
             finalValue={proposal.final_value}
             installments={proposal.installments}
