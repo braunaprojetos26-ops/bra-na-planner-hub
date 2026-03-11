@@ -75,7 +75,7 @@ export function FeedbacksSection({ feedbacks }: FeedbacksSectionProps) {
                     <img
                       src={feedback.media_url}
                       alt={`Feedback de ${feedback.client_name}`}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-auto object-contain max-h-[400px]"
                     />
                   )}
                 </div>
