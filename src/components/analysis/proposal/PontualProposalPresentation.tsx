@@ -1,8 +1,6 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, CheckCircle } from 'lucide-react';
 import { useProposalMutations } from '@/hooks/useProposals';
 import { useMyFeedbacks } from '@/hooks/usePlannerFeedbacks';
 import { useMyCases } from '@/hooks/usePlannerCases';
