@@ -45,7 +45,7 @@ interface CreateSystemUserParams {
 }
 
 interface CreateSystemUserResult {
-  user_id: string;
+  user_id: string | null;
   already_existed: boolean;
 }
 

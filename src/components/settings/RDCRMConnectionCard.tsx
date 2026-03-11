@@ -82,7 +82,7 @@ export function RDCRMConnectionCard() {
         full_name: selectedUser.name,
         skip_creation: !createUser,
       });
-      const ownerUserId = result.user_id;
+      const ownerUserId = result.user_id || undefined;
 
       const jobId = await startUnifiedImport({
         rd_user_id: rdUserId,
