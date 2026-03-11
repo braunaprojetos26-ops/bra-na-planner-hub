@@ -79,14 +79,26 @@ export function RegisterInteractionModal({
   }, [isMeetingChannel]);
 
   // Fix Radix UI bug: body keeps pointer-events:none after Dialog closes
-  const handleOpenChange = (open: boolean) => {
-    onOpenChange(open);
-    if (!open) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = '';
-      }, 100);
+  const handleOpenChange = (nextOpen: boolean) => {
+    onOpenChange(nextOpen);
+    if (!nextOpen) {
+      // Use multiple attempts to ensure pointer-events is cleared,
+      // even if React re-renders or other dialogs interfere
+      const clearPointerEvents = () => {
+        document.body.style.removeProperty('pointer-events');
+      };
+      setTimeout(clearPointerEvents, 0);
+      setTimeout(clearPointerEvents, 100);
+      setTimeout(clearPointerEvents, 300);
     }
   };
+
+  // Cleanup on unmount — ensures pointer-events is always restored
+  useEffect(() => {
+    return () => {
+      document.body.style.removeProperty('pointer-events');
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (!channel) {
