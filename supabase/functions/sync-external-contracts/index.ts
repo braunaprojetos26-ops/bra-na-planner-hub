@@ -84,28 +84,15 @@ Deno.serve(async (req) => {
         let vindiCustomerId = "";
         let vindiSubscriptionId = "";
 
-        // Strategy 1: search by email
-        if (email) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `email:${email}`);
-          if (found) vindiCustomerId = found;
-        }
+        const matchedCustomerId = await vindiFindBestCustomer(vindiUrl, vindiAuth, {
+          email,
+          cpf,
+          name,
+          phone,
+        });
 
-        // Strategy 2: search by CPF (registry_code)
-        if (!vindiCustomerId && cpf && cpf.length >= 11) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `registry_code:${cpf}`);
-          if (found) vindiCustomerId = found;
-        }
-
-        // Strategy 3: search by name
-        if (!vindiCustomerId && name) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `name:${name}`);
-          if (found) vindiCustomerId = found;
-        }
-
-        // Strategy 4: search by phone
-        if (!vindiCustomerId && phone && phone.length >= 10) {
-          const found = await vindiSearchCustomer(vindiUrl, vindiAuth, `phone_number:${phone}`);
-          if (found) vindiCustomerId = found;
+        if (matchedCustomerId) {
+          vindiCustomerId = matchedCustomerId;
         }
 
         if (vindiCustomerId) {
