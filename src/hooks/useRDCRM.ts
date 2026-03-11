@@ -223,6 +223,25 @@ export function useRDCRM() {
     },
   });
 
+  // Start unified import
+  const startUnifiedImportMutation = useMutation({
+    mutationFn: async (params: UnifiedImportParams): Promise<string> => {
+      const { data, error } = await supabase.functions.invoke('rd-crm', {
+        body: { action: 'start_unified_import', ...params },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao iniciar importação unificada');
+      return data.data.job_id as string;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao iniciar importação',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Poll job status
   const pollJobStatus = async (jobId: string): Promise<ImportJobStatus> => {
     const { data, error } = await supabase.functions.invoke('rd-crm', {
@@ -248,9 +267,12 @@ export function useRDCRM() {
     // Create system user
     createSystemUser: createSystemUserMutation.mutateAsync,
     isCreatingUser: createSystemUserMutation.isPending,
-    // Async import
+    // Async import (legacy)
     startImport: startImportMutation.mutateAsync,
     isStartingImport: startImportMutation.isPending,
+    // Unified import
+    startUnifiedImport: startUnifiedImportMutation.mutateAsync,
+    isStartingUnifiedImport: startUnifiedImportMutation.isPending,
     pollJobStatus,
     // Backfill sources
     startBackfillSources: startBackfillSourcesMutation.mutateAsync,
