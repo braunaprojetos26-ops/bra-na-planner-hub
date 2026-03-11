@@ -690,6 +690,8 @@ export default function Contracts() {
             contracts={filteredContracts} 
             isLoading={isLoading}
             vindiStatuses={vindiStatuses}
+            onSyncContract={handleSyncContract}
+            syncingIds={syncingIds}
           />
         </CardContent>
       </Card>
