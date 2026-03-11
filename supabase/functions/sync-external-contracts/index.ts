@@ -103,10 +103,17 @@ Deno.serve(async (req) => {
           if (vindiSubscriptionId) {
             result.vindi_subscription_id = vindiSubscriptionId;
             result.vindi = "linked";
+
             // Fetch first payment date from bills
             const firstPaymentDate = await vindiFindFirstPayment(vindiUrl, vindiAuth, vindiSubscriptionId);
             if (firstPaymentDate) {
               result.first_payment_at = firstPaymentDate;
+            }
+
+            // Resolve real payment status immediately
+            const liveStatus = await vindiResolveDbStatus(vindiUrl, vindiAuth, vindiSubscriptionId, null);
+            if (liveStatus) {
+              result.vindi_payment_status = liveStatus;
             }
           } else {
             // Check for bills
@@ -114,6 +121,11 @@ Deno.serve(async (req) => {
             if (billId) {
               result.vindi_bill_id = billId;
               result.vindi = "bill_found";
+
+              const liveStatus = await vindiResolveDbStatus(vindiUrl, vindiAuth, null, billId);
+              if (liveStatus) {
+                result.vindi_payment_status = liveStatus;
+              }
             } else {
               result.vindi = "customer_only";
             }
