@@ -327,6 +327,40 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "start_backfill_products": {
+        const rdUserIdProducts = payload.rd_user_id || null;
+        
+        const { data: jobProducts, error: jobProductsError } = await supabase
+          .from("import_jobs")
+          .insert({
+            created_by: userId,
+            rd_user_id: rdUserIdProducts || "backfill",
+            import_type: "backfill_products",
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (jobProductsError) throw new Error(`Erro ao criar job: ${jobProductsError.message}`);
+
+        const supabaseUrlProducts = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKeyProducts = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+        fetch(`${supabaseUrlProducts}/functions/v1/process-rd-backfill-products`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceRoleKeyProducts}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jobId: jobProducts.id, rdUserId: rdUserIdProducts }),
+        }).catch((err) => {
+          console.error("Failed to trigger process-rd-backfill-products:", err);
+        });
+
+        result = { job_id: jobProducts.id };
+        break;
+      }
+
       case "start_backfill_campaigns": {
         const rdUserIdFilter = payload.rd_user_id || null;
         

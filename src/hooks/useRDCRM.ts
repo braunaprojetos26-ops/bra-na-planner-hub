@@ -253,5 +253,8 @@ export function useRDCRM() {
     // Backfill campaigns
     startBackfillCampaigns: startBackfillCampaignsMutation.mutateAsync,
     isStartingBackfillCampaigns: startBackfillCampaignsMutation.isPending,
+    // Backfill products
+    startBackfillProducts: startBackfillProductsMutation.mutateAsync,
+    isStartingBackfillProducts: startBackfillProductsMutation.isPending,
   };
 }
