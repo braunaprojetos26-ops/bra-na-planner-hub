@@ -244,7 +244,7 @@ export function StandalonePontualBuilder({ onPresent, onBack }: StandalonePontua
                                   .reduce((sum, t) => sum + t.meetings, 0);
                                 return (
                                   <SelectItem key={n} value={String(n)} disabled={n > (3 - otherMeetings)}>
-                                    {n} reunião{n > 1 ? 'ões' : ''}
+                                    {n} {n > 1 ? 'reuniões' : 'reunião'}
                                   </SelectItem>
                                 );
                               })}
