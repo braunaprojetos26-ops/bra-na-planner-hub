@@ -205,24 +205,142 @@ Deno.serve(async (req) => {
 
 // ============ HELPER FUNCTIONS ============
 
-async function vindiSearchCustomer(
-  vindiUrl: string, auth: string, query: string
-): Promise<string | null> {
+type VindiCustomerLookupInput = {
+  email?: string | null;
+  cpf?: string | null;
+  name?: string | null;
+  phone?: string | null;
+};
+
+type VindiCustomer = {
+  id: string | number;
+  name?: string;
+  email?: string;
+  registry_code?: string;
+  phone?: string;
+  phone_number?: string;
+  phones?: Array<{ number?: string; phone_number?: string }>;
+};
+
+function normalizeDigits(value?: string | null): string {
+  return (value || "").replace(/\D/g, "");
+}
+
+function normalizeEmail(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function getCustomerPhone(customer: VindiCustomer): string {
+  return normalizeDigits(
+    customer.phone ||
+      customer.phone_number ||
+      customer.phones?.[0]?.number ||
+      customer.phones?.[0]?.phone_number ||
+      ""
+  );
+}
+
+function isExactCustomerMatch(customer: VindiCustomer, input: Required<VindiCustomerLookupInput>): boolean {
+  const customerEmail = normalizeEmail(customer.email);
+  const customerCpf = normalizeDigits(customer.registry_code);
+  const customerName = normalizeStr(customer.name || "");
+  const customerPhone = getCustomerPhone(customer);
+
+  if (input.email && customerEmail === input.email) return true;
+  if (input.cpf && customerCpf === input.cpf) return true;
+  if (input.name && customerName === normalizeStr(input.name)) return true;
+  if (input.phone && customerPhone) {
+    const a = customerPhone.slice(-10);
+    const b = input.phone.slice(-10);
+    if (a && b && (a === b || customerPhone.endsWith(input.phone) || input.phone.endsWith(customerPhone))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function vindiSearchCustomers(
+  vindiUrl: string,
+  auth: string,
+  query: string
+): Promise<VindiCustomer[]> {
   try {
     const res = await fetch(
-      `${vindiUrl}/customers?query=${encodeURIComponent(query)}`,
+      `${vindiUrl}/customers?query=${encodeURIComponent(query)}&sort_by=created_at&sort_order=desc&per_page=50`,
       { headers: { Authorization: auth, "Content-Type": "application/json" } }
     );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.customers?.length > 0) {
-        return String(data.customers[0].id);
-      }
+
+    if (!res.ok) {
+      return [];
     }
+
+    const data = await res.json();
+    return (data.customers || []) as VindiCustomer[];
   } catch (e) {
     console.error("Vindi search error:", e);
+    return [];
   }
-  return null;
+}
+
+async function vindiFindBestCustomer(
+  vindiUrl: string,
+  auth: string,
+  input: VindiCustomerLookupInput
+): Promise<string | null> {
+  const cleanEmail = normalizeEmail(input.email);
+  const cleanCpf = normalizeDigits(input.cpf);
+  const cleanName = (input.name || "").trim();
+  const cleanPhone = normalizeDigits(input.phone);
+
+  const queries: string[] = [];
+
+  if (cleanEmail) {
+    queries.push(`email:${cleanEmail}`, `email:"${cleanEmail}"`, cleanEmail);
+  }
+
+  if (cleanCpf.length >= 11) {
+    queries.push(`registry_code:${cleanCpf}`, `registry_code:"${cleanCpf}"`, cleanCpf);
+  }
+
+  if (cleanName) {
+    queries.push(`name:${cleanName}`, `name:"${cleanName}"`, cleanName);
+  }
+
+  if (cleanPhone.length >= 10) {
+    queries.push(`phone_number:${cleanPhone}`, cleanPhone);
+  }
+
+  const uniqueQueries = Array.from(new Set(queries));
+  const seenCustomers = new Set<string>();
+  let fallbackCustomerId: string | null = null;
+
+  for (const query of uniqueQueries) {
+    const customers = await vindiSearchCustomers(vindiUrl, auth, query);
+
+    for (const customer of customers) {
+      const customerId = String(customer.id || "");
+      if (!customerId || seenCustomers.has(customerId)) continue;
+      seenCustomers.add(customerId);
+
+      if (!fallbackCustomerId) {
+        fallbackCustomerId = customerId;
+      }
+
+      if (
+        isExactCustomerMatch(customer, {
+          email: cleanEmail,
+          cpf: cleanCpf,
+          name: cleanName,
+          phone: cleanPhone,
+        })
+      ) {
+        return customerId;
+      }
+    }
+  }
+
+  return fallbackCustomerId;
 }
 
 async function vindiFindSubscription(
