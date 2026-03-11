@@ -644,3 +644,99 @@ function findClicksignMatch(
   
   return { key: matchingEnvelopes[0].id, status: matchingEnvelopes[0].status, hasDistrato: false, created: matchingEnvelopes[0].created };
 }
+
+// ============ AUTO-CREATE CLIENT PLAN ============
+const DEFAULT_MEETING_THEMES = [
+  'Gestão de Riscos',
+  'Planejamento Macro',
+  'Acompanhamento',
+  'Independência Financeira',
+  'Investimentos',
+  'Renovação',
+  'Fechamento',
+  'Aquisição de Bens',
+  'Milhas e Cartão de Crédito',
+  'Separação PF e PJ',
+  'Prunus',
+  'Acompanhamento',
+];
+
+async function autoCreateClientPlan(
+  supabase: any,
+  contractId: string,
+  contactId: string,
+  ownerId: string,
+  contractValue: number,
+  firstPaymentDate: string
+): Promise<boolean> {
+  try {
+    const totalMeetings = 12;
+    const startDate = new Date(firstPaymentDate);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 12);
+
+    const formatDate = (d: Date) => d.toISOString().split("T")[0];
+
+    // Create the plan
+    const { data: plan, error: planError } = await supabase
+      .from("client_plans")
+      .insert({
+        contact_id: contactId,
+        owner_id: ownerId,
+        contract_value: contractValue,
+        total_meetings: totalMeetings,
+        start_date: formatDate(startDate),
+        end_date: formatDate(endDate),
+        status: "active",
+        created_by: ownerId,
+        contract_id: contractId,
+      })
+      .select("id")
+      .single();
+
+    if (planError) {
+      console.error("Error creating client plan:", planError.message);
+      return false;
+    }
+
+    // Create meetings - one per month
+    const meetings = [];
+    for (let i = 0; i < totalMeetings; i++) {
+      const meetingDate = new Date(startDate);
+      meetingDate.setMonth(meetingDate.getMonth() + i);
+      meetings.push({
+        plan_id: plan.id,
+        meeting_number: i + 1,
+        theme: DEFAULT_MEETING_THEMES[i] || "Acompanhamento",
+        scheduled_date: formatDate(meetingDate),
+      });
+    }
+
+    const { error: meetingsError } = await supabase
+      .from("client_plan_meetings")
+      .insert(meetings);
+
+    if (meetingsError) {
+      console.error("Error creating plan meetings:", meetingsError.message);
+    }
+
+    // Ensure contact has client_code
+    const { data: contact } = await supabase
+      .from("contacts")
+      .select("client_code")
+      .eq("id", contactId)
+      .single();
+
+    if (!contact?.client_code) {
+      await supabase
+        .from("contacts")
+        .update({ client_code: `C${Date.now().toString().slice(-6)}` })
+        .eq("id", contactId);
+    }
+
+    return true;
+  } catch (e) {
+    console.error("Auto-create client plan error:", e);
+    return false;
+  }
+}
