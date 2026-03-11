@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/proposalPricing';
 import { PONTUAL_TOPICS, type SelectedTopic } from '@/lib/pontualTopics';
 import type { Proposal } from '@/hooks/useProposals';
+import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
+import type { PlannerCase } from '@/hooks/usePlannerCases';
 
 // Section components
 import { ProposalCover } from './sections/ProposalCover';
@@ -26,6 +28,8 @@ interface PontualProposalPresentationProps {
   onBack: () => void;
   standaloneMode?: boolean;
   standalonePlannerName?: string;
+  standaloneFeedbacks?: PlannerFeedback[];
+  standaloneCases?: PlannerCase[];
 }
 
 export function PontualProposalPresentation({
@@ -36,6 +40,8 @@ export function PontualProposalPresentation({
   onBack,
   standaloneMode = false,
   standalonePlannerName,
+  standaloneFeedbacks,
+  standaloneCases,
 }: PontualProposalPresentationProps) {
 const { user, profile } = useAuth();
 
@@ -48,8 +54,11 @@ const { user, profile } = useAuth();
     return `${parts[0]} ${parts[parts.length - 1]}`;
   };
   const { markAsPresented } = useProposalMutations();
-  const { data: feedbacks } = useMyFeedbacks();
-  const { data: cases } = useMyCases();
+  const { data: authFeedbacks } = useMyFeedbacks();
+  const { data: authCases } = useMyCases();
+  
+  const feedbacks = standaloneMode ? standaloneFeedbacks : authFeedbacks;
+  const cases = standaloneMode ? standaloneCases : authCases;
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleMarkPresented = () => {
@@ -232,13 +241,13 @@ const { user, profile } = useAuth();
           </section>
 
           {/* Cases - Optional */}
-          {proposal.show_cases && cases && cases.length > 0 && (
-            <CasesSection cases={cases} />
+          {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
+            <CasesSection cases={cases!} />
           )}
 
           {/* Feedbacks - Optional */}
-          {proposal.show_feedbacks && feedbacks && feedbacks.length > 0 && (
-            <FeedbacksSection feedbacks={feedbacks} />
+          {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+            <FeedbacksSection feedbacks={feedbacks!} />
           )}
 
           {/* Pricing - Adapted for Pontual */}

@@ -4,8 +4,11 @@ import { StandaloneCompletoBuilder } from '@/components/analysis/proposal/Standa
 import { StandalonePontualBuilder } from '@/components/analysis/proposal/StandalonePontualBuilder';
 import { ProposalPresentation } from '@/components/analysis/proposal/ProposalPresentation';
 import { PontualProposalPresentation } from '@/components/analysis/proposal/PontualProposalPresentation';
+import { StandaloneFeedbacksCasesEditor } from '@/components/analysis/proposal/StandaloneFeedbacksCasesEditor';
 import type { Proposal } from '@/hooks/useProposals';
 import type { SelectedTopic } from '@/lib/pontualTopics';
+import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
+import type { PlannerCase } from '@/hooks/usePlannerCases';
 
 type Stage = 'select' | 'configure' | 'present';
 
@@ -15,6 +18,8 @@ export default function StandaloneProposal() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [clientName, setClientName] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<SelectedTopic[]>([]);
+  const [standaloneFeedbacks, setStandaloneFeedbacks] = useState<PlannerFeedback[]>([]);
+  const [standaloneCases, setStandaloneCases] = useState<PlannerCase[]>([]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -49,6 +54,8 @@ export default function StandaloneProposal() {
           clientName={clientName}
           plannerName={plannerName}
           selectedTopics={selectedTopics}
+          feedbacks={standaloneFeedbacks}
+          cases={standaloneCases}
           onBack={() => setStage('configure')}
         />
       );
@@ -59,6 +66,8 @@ export default function StandaloneProposal() {
         proposal={proposal}
         clientName={clientName}
         plannerName={plannerName}
+        feedbacks={standaloneFeedbacks}
+        cases={standaloneCases}
         onBack={() => setStage('configure')}
       />
     );
@@ -76,7 +85,20 @@ export default function StandaloneProposal() {
         </div>
 
         {stage === 'select' && (
-          <ProposalTypeSelector onSelect={handleTypeSelect} />
+          <div className="space-y-8">
+            <ProposalTypeSelector onSelect={handleTypeSelect} />
+
+            {/* Feedbacks & Cases Editor */}
+            <div>
+              <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
+              <StandaloneFeedbacksCasesEditor
+                feedbacks={standaloneFeedbacks}
+                cases={standaloneCases}
+                onFeedbacksChange={setStandaloneFeedbacks}
+                onCasesChange={setStandaloneCases}
+              />
+            </div>
+          </div>
         )}
 
         {stage === 'configure' && proposalType === 'completo' && (
@@ -107,11 +129,15 @@ function StandaloneCompletoPresentation({
   proposal,
   clientName,
   plannerName,
+  feedbacks,
+  cases,
   onBack,
 }: {
   proposal: Proposal;
   clientName: string;
   plannerName?: string;
+  feedbacks: PlannerFeedback[];
+  cases: PlannerCase[];
   onBack: () => void;
 }) {
   return (
@@ -122,6 +148,8 @@ function StandaloneCompletoPresentation({
       onBack={onBack}
       standaloneMode
       standalonePlannerName={plannerName}
+      standaloneFeedbacks={feedbacks}
+      standaloneCases={cases}
     />
   );
 }
@@ -131,12 +159,16 @@ function StandalonePontualPresentation({
   clientName,
   plannerName,
   selectedTopics,
+  feedbacks,
+  cases,
   onBack,
 }: {
   proposal: Proposal;
   clientName: string;
   plannerName?: string;
   selectedTopics: SelectedTopic[];
+  feedbacks: PlannerFeedback[];
+  cases: PlannerCase[];
   onBack: () => void;
 }) {
   return (
@@ -148,6 +180,8 @@ function StandalonePontualPresentation({
       onBack={onBack}
       standaloneMode
       standalonePlannerName={plannerName}
+      standaloneFeedbacks={feedbacks}
+      standaloneCases={cases}
     />
   );
 }
