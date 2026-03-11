@@ -104,7 +104,6 @@ export function RDCRMConnectionCard() {
   const handleStartImport = async () => {
     if (!rdUserId || !selectedUser) return;
 
-    setImportStep('importing');
     setJobStatus(null);
 
     try {
@@ -122,26 +121,7 @@ export function RDCRMConnectionCard() {
       });
 
       toast({ title: 'Importação iniciada', description: 'Buscando negociações do RD CRM...' });
-
-      pollRef.current = setInterval(async () => {
-        try {
-          const status = await pollJobStatus(jobId);
-          setJobStatus(status);
-
-          if (status.status === 'done' || status.status === 'error') {
-            if (pollRef.current) clearInterval(pollRef.current);
-            pollRef.current = null;
-            setImportStep('done');
-            if (status.status === 'done') {
-              toast({ title: 'Importação concluída!' });
-            } else {
-              toast({ title: 'Erro na importação', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
-            }
-          }
-        } catch {
-          // ignore poll errors
-        }
-      }, 3000);
+      startPolling(jobId);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       setJobStatus({
