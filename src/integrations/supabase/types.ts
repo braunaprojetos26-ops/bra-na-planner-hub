@@ -3120,6 +3120,35 @@ export type Database = {
           },
         ]
       }
+      rd_product_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          local_product_id: string
+          rd_product_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          local_product_id: string
+          rd_product_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          local_product_id?: string
+          rd_product_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rd_product_mappings_local_product_id_fkey"
+            columns: ["local_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       renewal_opportunities_created: {
         Row: {
           client_plan_id: string

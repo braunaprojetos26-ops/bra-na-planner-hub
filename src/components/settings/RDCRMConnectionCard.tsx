@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw, Megaphone } from 'lucide-react';
+import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw, Megaphone, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRDCRM, type RDCRMUser } from '@/hooks/useRDCRM';
 import { useToast } from '@/hooks/use-toast';
 import { RDCRMImportDialog } from './RDCRMImportDialog';
+import { RDProductMappingsEditor } from './RDProductMappingsEditor';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,6 +26,8 @@ export function RDCRMConnectionCard() {
     isStartingBackfill,
     startBackfillCampaigns,
     isStartingBackfillCampaigns,
+    startBackfillProducts,
+    isStartingBackfillProducts,
     pollJobStatus,
     listUsers,
   } = useRDCRM();
@@ -45,10 +48,17 @@ export function RDCRMConnectionCard() {
   const [campaignProgress, setCampaignProgress] = useState<{ updated: number; skipped: number; errors: number; total: number } | null>(null);
   const campaignPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Products backfill state
+  const [productsJobId, setProductsJobId] = useState<string | null>(null);
+  const [productsStatus, setProductsStatus] = useState<string | null>(null);
+  const [productsProgress, setProductsProgress] = useState<{ created: number; skipped: number; errors: number; total: number } | null>(null);
+  const productsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (campaignPollRef.current) clearInterval(campaignPollRef.current);
+      if (productsPollRef.current) clearInterval(productsPollRef.current);
     };
   }, []);
 
@@ -125,6 +135,43 @@ export function RDCRMConnectionCard() {
               toast({ title: 'Campanhas atualizadas!', description: `${status.contacts_imported} contatos atualizados.` });
             } else {
               toast({ title: 'Erro na atualização', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
+            }
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }, 3000);
+    } catch {
+      // error handled by mutation
+    }
+  };
+
+  const handleStartProductsBackfill = async () => {
+    try {
+      const userId = backfillRdUserId && backfillRdUserId !== 'all' ? backfillRdUserId : undefined;
+      const jobId = await startBackfillProducts(userId);
+      setProductsJobId(jobId);
+      setProductsStatus('pending');
+      toast({ title: 'Importação de produtos iniciada', description: 'Buscando negociações ganhas no RD CRM...' });
+
+      productsPollRef.current = setInterval(async () => {
+        try {
+          const status = await pollJobStatus(jobId);
+          setProductsStatus(status.status);
+          setProductsProgress({
+            created: status.contacts_imported || 0,
+            skipped: status.contacts_skipped || 0,
+            errors: status.contacts_errors || 0,
+            total: status.deals_found || 0,
+          });
+
+          if (status.status === 'done' || status.status === 'error') {
+            if (productsPollRef.current) clearInterval(productsPollRef.current);
+            productsPollRef.current = null;
+            if (status.status === 'done') {
+              toast({ title: 'Produtos importados!', description: `${status.contacts_imported} contratos criados.` });
+            } else {
+              toast({ title: 'Erro na importação', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
             }
           }
         } catch {
@@ -311,6 +358,43 @@ export function RDCRMConnectionCard() {
                       <span>{campaignProgress.skipped} ignorados</span>
                       {campaignProgress.errors > 0 && <span className="text-destructive">{campaignProgress.errors} erros</span>}
                       <span className="ml-auto">{campaignProgress.total} negociações</span>
+                    </div>
+                  </div>
+                )}
+
+                <Separator />
+
+                <RDProductMappingsEditor />
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleStartProductsBackfill}
+                  disabled={isStartingBackfillProducts || (productsStatus !== null && productsStatus !== 'done' && productsStatus !== 'error')}
+                >
+                  {isStartingBackfillProducts || (productsStatus && productsStatus !== 'done' && productsStatus !== 'error') ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importando produtos...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="mr-2 h-4 w-4" />
+                      Importar Produtos dos Clientes
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Busca produtos das negociações ganhas no RD CRM e cria contratos locais vinculados aos contatos.
+                </p>
+                {productsProgress && productsStatus && productsStatus !== 'pending' && (
+                  <div className="space-y-2">
+                    <Progress value={productsProgress.total > 0 ? ((productsProgress.created + productsProgress.skipped + productsProgress.errors) / productsProgress.total) * 100 : 0} />
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      <span>{productsProgress.created} criados</span>
+                      <span>{productsProgress.skipped} ignorados</span>
+                      {productsProgress.errors > 0 && <span className="text-destructive">{productsProgress.errors} erros</span>}
+                      <span className="ml-auto">{productsProgress.total} negociações</span>
                     </div>
                   </div>
                 )}

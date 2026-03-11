@@ -161,6 +161,25 @@ export function useRDCRM() {
     },
   });
 
+  // Start backfill products job
+  const startBackfillProductsMutation = useMutation({
+    mutationFn: async (rdUserId?: string): Promise<string> => {
+      const { data, error } = await supabase.functions.invoke('rd-crm', {
+        body: { action: 'start_backfill_products', rd_user_id: rdUserId || null },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao iniciar backfill de produtos');
+      return data.data.job_id as string;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao iniciar importação de produtos',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Start backfill campaigns job
   const startBackfillCampaignsMutation = useMutation({
     mutationFn: async (rdUserId?: string): Promise<string> => {
@@ -234,5 +253,8 @@ export function useRDCRM() {
     // Backfill campaigns
     startBackfillCampaigns: startBackfillCampaignsMutation.mutateAsync,
     isStartingBackfillCampaigns: startBackfillCampaignsMutation.isPending,
+    // Backfill products
+    startBackfillProducts: startBackfillProductsMutation.mutateAsync,
+    isStartingBackfillProducts: startBackfillProductsMutation.isPending,
   };
 }
