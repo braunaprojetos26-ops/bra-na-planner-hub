@@ -220,14 +220,15 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
             {days.map((day, idx) => {
               const key = format(day, 'yyyy-MM-dd');
               const dayTasks = tasksByDay.get(key) || [];
+              const maxVisible = 5;
               return (
                 <div
                   key={idx}
-                  className="min-h-[200px] border-r p-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                  className="min-h-[200px] max-h-[280px] border-r p-2 cursor-pointer hover:bg-muted/30 transition-colors"
                   onClick={() => handleDayClick(day)}
                 >
-                  <div className="space-y-1">
-                    {dayTasks.map(task => (
+                  <div className="space-y-1 overflow-hidden">
+                    {dayTasks.slice(0, maxVisible).map(task => (
                       <div
                         key={task.id}
                         className={cn(
@@ -241,6 +242,11 @@ export function TasksCalendarView({ tasks, isLoading }: TasksCalendarViewProps) 
                         {cleanTitle(task.title)}
                       </div>
                     ))}
+                    {dayTasks.length > maxVisible && (
+                      <span className="text-xs text-muted-foreground pl-1 font-medium">
+                        +{dayTasks.length - maxVisible} mais
+                      </span>
+                    )}
                     {dayTasks.length === 0 && (
                       <div className="flex items-center justify-center h-full min-h-[60px] opacity-0 hover:opacity-100 transition-opacity">
                         <Plus className="h-4 w-4 text-muted-foreground" />
