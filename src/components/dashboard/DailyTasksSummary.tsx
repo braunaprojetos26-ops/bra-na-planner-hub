@@ -200,7 +200,7 @@ export function DailyTasksSummary() {
                     const tag = getTaskTag(task);
 
                     return (
-                      <div
+                      <div className="flex items-center gap-2 p-2 rounded-md border text-sm transition-colors hover:bg-muted/50"
                         key={task.id}
                         className={cn(
                           'flex items-center gap-2 p-2 rounded-md border text-sm transition-colors hover:bg-muted/50',
@@ -219,6 +219,14 @@ export function DailyTasksSummary() {
                                 {tag.label}
                               </Badge>
                             )}
+                            {isOverdue && (() => {
+                              const daysLate = differenceInCalendarDays(new Date(), new Date(task.scheduled_at));
+                              return daysLate > 0 ? (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 shrink-0 font-bold">
+                                  {daysLate}d
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                             <span>{format(new Date(task.scheduled_at), 'HH:mm')}</span>
