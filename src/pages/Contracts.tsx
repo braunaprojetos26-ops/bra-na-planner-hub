@@ -278,7 +278,7 @@ function ContractsTable({ contracts, isLoading, vindiStatuses, onSyncContract, s
           <TableHead>Início</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Pagamento</TableHead>
-        </TableRow>
+          <TableHead className="w-10"></TableHead>
       </TableHeader>
       <TableBody>
         {contracts.map((contract) => (
