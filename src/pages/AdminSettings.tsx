@@ -105,7 +105,11 @@ export default function AdminSettings({ defaultTab = 'users' }: AdminSettingsPro
           <AdminProductsContent />
         </TabsContent>
 
-        <TabsContent value="data-collection" className="space-y-0">
+        <TabsContent value="analysis" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <PlannerFeedbacksManager />
+            <PlannerCasesManager />
+          </div>
           <AdminDataCollectionContent />
         </TabsContent>
 
