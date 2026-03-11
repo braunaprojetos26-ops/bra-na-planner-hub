@@ -128,6 +128,7 @@ export function PlannerFeedbacksManager() {
       feedback_text: feedback.feedback_text || '',
       media_type: (feedback.media_type as '' | 'image' | 'video') || '',
       media_url: feedback.media_url || '',
+      media_source: feedback.media_url?.includes('planner-feedback-media') ? 'upload' : 'url',
     });
     setEditingId(feedback.id);
     setIsAdding(true);
