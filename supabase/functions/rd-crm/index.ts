@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       }
 
       case "create_system_user": {
-        const { email, full_name } = payload;
+        const { email, full_name, skip_creation } = payload;
         if (!email) throw new Error("email é obrigatório");
 
         const adminClient = getServiceRoleClient();
@@ -190,6 +190,9 @@ Deno.serve(async (req) => {
 
         if (existingUser) {
           result = { user_id: existingUser.id, already_existed: true };
+        } else if (skip_creation) {
+          // User not found and skip_creation=true: return null
+          result = { user_id: null, already_existed: false };
         } else {
           const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
             email: email,

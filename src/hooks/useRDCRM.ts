@@ -41,6 +41,7 @@ interface UnifiedImportParams {
 interface CreateSystemUserParams {
   email: string;
   full_name: string;
+  skip_creation?: boolean;
 }
 
 interface CreateSystemUserResult {
