@@ -194,6 +194,36 @@ Deno.serve(async (req) => {
         if (updateErr) result.update_error = updateErr.message;
       }
 
+      // ============ AUTO-CREATE CLIENT PLAN ON FIRST PAYMENT ============
+      const isPaid = result.vindi_payment_status === "paid" || result.first_payment_at;
+      const productName = ((contract as any).contracts_product_id_fkey?.name || "").toLowerCase();
+      const isPlanejamento = productName.includes("planejamento");
+
+      if (isPaid && isPlanejamento) {
+        // Check if client_plan already exists for this contract or contact
+        const { data: existingPlan } = await supabase
+          .from("client_plans")
+          .select("id")
+          .or(`contract_id.eq.${contract.id},contact_id.eq.${contract.contact_id}`)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (!existingPlan) {
+          const planCreated = await autoCreateClientPlan(
+            supabase,
+            contract.id,
+            contract.contact_id,
+            (contract as any).owner_id,
+            Number(contract.contract_value),
+            result.first_payment_at || new Date().toISOString()
+          );
+          result.client_plan_created = planCreated;
+          console.log(`Auto-created client plan for contract ${contract.id}: ${planCreated}`);
+        } else {
+          result.client_plan_exists = existingPlan.id;
+        }
+      }
+
       results.push(result);
       await new Promise((r) => setTimeout(r, 300));
     }
