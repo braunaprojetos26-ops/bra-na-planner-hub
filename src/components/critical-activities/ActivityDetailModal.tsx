@@ -43,11 +43,11 @@ export function ActivityDetailModal({ activityId, open, onOpenChange }: Activity
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-muted rounded-lg">
                 <p className="text-2xl font-bold text-foreground">{data.total_assigned}</p>
-                <p className="text-xs text-muted-foreground">Receberam</p>
+                <p className="text-xs text-muted-foreground">Tarefas</p>
               </div>
               <div className="text-center p-3 bg-muted rounded-lg">
                 <p className="text-2xl font-bold text-green-600">{data.total_completed}</p>
-                <p className="text-xs text-muted-foreground">Concluíram</p>
+                <p className="text-xs text-muted-foreground">Concluídas</p>
               </div>
               <div className="text-center p-3 bg-muted rounded-lg">
                 <p className="text-2xl font-bold text-orange-600">{data.total_assigned - data.total_completed}</p>
