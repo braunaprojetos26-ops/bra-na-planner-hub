@@ -26,6 +26,29 @@ export interface PlannerCaseInsert {
   order_position?: number;
 }
 
+const DEFAULT_CASES: Omit<PlannerCaseInsert, 'order_position'>[] = [
+  { title: 'Planejamento Imobiliário', description: 'Valor Final Imóvel', initial_value: 541356.80, final_value: 364645.00, advantage: 176711.80 },
+  { title: 'Benefício Fiscal em IR', description: 'Imposto a Pagar', initial_value: 15340.00, final_value: 483.22, advantage: 14856.78 },
+  { title: 'Investimentos', description: 'Aumento de Capital', initial_value: 248780.54, final_value: 259595.96, advantage: 10815.42 },
+  { title: 'Mentalidade Financeira', description: 'Reserva Acumulada', initial_value: -5116.25, final_value: 18432.23, advantage: 23548.48 },
+  { title: 'Aposentadoria', description: 'Troca de Investimento', initial_value: 100722.25, final_value: 458450.00, advantage: 357727.75 },
+  { title: 'Milhas', description: 'Aumento de Pontos', initial_value: 36000.00, final_value: 188000.00, advantage: 152000.00 },
+];
+
+async function seedDefaultCases(userId: string) {
+  const inserts = DEFAULT_CASES.map((c, i) => ({
+    ...c,
+    planner_id: userId,
+    order_position: i,
+  }));
+
+  const { error } = await supabase
+    .from('planner_cases')
+    .insert(inserts);
+
+  if (error) console.error('Error seeding default cases:', error);
+}
+
 export function useMyCases() {
   const { user } = useAuth();
 
@@ -42,6 +65,22 @@ export function useMyCases() {
         .order('order_position', { ascending: true });
 
       if (error) throw error;
+
+      // Seed default cases if user has none
+      if (!data || data.length === 0) {
+        await seedDefaultCases(user.id);
+
+        const { data: seeded, error: seedError } = await supabase
+          .from('planner_cases')
+          .select('*')
+          .eq('planner_id', user.id)
+          .eq('is_active', true)
+          .order('order_position', { ascending: true });
+
+        if (seedError) throw seedError;
+        return seeded as PlannerCase[];
+      }
+
       return data as PlannerCase[];
     },
     enabled: !!user,
