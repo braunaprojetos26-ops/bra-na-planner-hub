@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
+import { format, formatDistanceToNow, isPast, isToday, isTomorrow, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { 
@@ -148,11 +148,12 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
             const isOverdue = task.status === 'overdue';
             const isCompleted = task.status === 'completed';
             const tag = getTaskTag(task);
+            const daysOverdue = isOverdue ? differenceInCalendarDays(new Date(), new Date(task.scheduled_at)) : 0;
             
             return (
               <TableRow 
                 key={task.id} 
-                className={isCompleted ? 'opacity-60' : ''}
+                className={isCompleted ? 'opacity-60' : isOverdue ? 'bg-destructive/5' : ''}
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -175,6 +176,11 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium whitespace-nowrap shrink-0 ${tag.className}`}>
                           {tag.label}
                         </Badge>
+                        {isOverdue && daysOverdue > 0 && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 font-bold shrink-0 animate-pulse">
+                            {daysOverdue}d atraso
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {TASK_TYPE_LABELS[task.task_type]}
@@ -194,7 +200,7 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                   {task.opportunity?.current_funnel?.name || '-'}
                 </TableCell>
                 <TableCell>
-                  <span className={isOverdue ? 'text-destructive' : ''}>
+                  <span className={isOverdue ? 'text-destructive font-medium' : ''}>
                     {formatScheduledDate(task.scheduled_at)}
                   </span>
                   {isCompleted && task.completed_at && (
@@ -210,8 +216,9 @@ export function TasksListPage({ tasks, isLoading }: TasksListPageProps) {
                       isCompleted ? 'secondary' : 
                       'outline'
                     }
+                    className={isOverdue ? 'animate-pulse' : ''}
                   >
-                    {isOverdue ? 'Atrasada' : isCompleted ? 'Concluída' : 'Pendente'}
+                    {isOverdue ? `⚠ Atrasada` : isCompleted ? 'Concluída' : 'Pendente'}
                   </Badge>
                 </TableCell>
                 <TableCell>

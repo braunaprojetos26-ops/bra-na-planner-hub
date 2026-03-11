@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, Clock, AlertTriangle, ChevronDown, ChevronUp, ListChecks, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, ChevronDown, ChevronUp, ListChecks, ExternalLink, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -138,6 +138,22 @@ export function DailyTasksSummary() {
               </div>
             ) : (
               <>
+                {/* Overdue alert banner */}
+                {stats.overdue > 0 && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/30 animate-pulse">
+                    <Flame className="h-5 w-5 text-destructive shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-destructive">
+                        {stats.overdue} {stats.overdue === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}!
+                      </p>
+                      <p className="text-[10px] text-destructive/80">Resolva as pendências para manter seus clientes bem atendidos.</p>
+                    </div>
+                    <Button variant="destructive" size="sm" className="h-7 text-xs shrink-0" asChild>
+                      <Link to="/tasks?status=overdue">Resolver</Link>
+                    </Button>
+                  </div>
+                )}
+
                 {/* Status counters */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
@@ -149,7 +165,7 @@ export function DailyTasksSummary() {
                   </div>
                   <div className={cn(
                     'flex items-center gap-2 p-2 rounded-lg',
-                    stats.overdue > 0 ? 'bg-destructive/10' : 'bg-muted/50'
+                    stats.overdue > 0 ? 'bg-destructive/10 border border-destructive/20' : 'bg-muted/50'
                   )}>
                     <AlertTriangle className={cn('h-4 w-4', stats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground')} />
                     <div>
@@ -203,6 +219,14 @@ export function DailyTasksSummary() {
                                 {tag.label}
                               </Badge>
                             )}
+                            {isOverdue && (() => {
+                              const daysLate = differenceInCalendarDays(new Date(), new Date(task.scheduled_at));
+                              return daysLate > 0 ? (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 shrink-0 font-bold">
+                                  {daysLate}d
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                             <span>{format(new Date(task.scheduled_at), 'HH:mm')}</span>

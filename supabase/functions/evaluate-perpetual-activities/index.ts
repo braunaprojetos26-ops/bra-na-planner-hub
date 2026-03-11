@@ -63,6 +63,18 @@ Deno.serve(async (req) => {
   }
 });
 
+// Helper: reschedule an existing task to today (so it appears in calendar/list daily)
+async function rescheduleTaskToToday(supabase: any, taskId: string) {
+  await supabase
+    .from("tasks")
+    .update({
+      scheduled_at: new Date().toISOString(),
+      status: "pending",
+      completed_at: null,
+    })
+    .eq("id", taskId);
+}
+
 async function handleInadimplente(supabase: any, activity: any) {
   let tasksCreated = 0;
 
@@ -86,8 +98,10 @@ async function handleInadimplente(supabase: any, activity: any) {
     (contacts_info || []).map((c: any) => [c.id, c])
   );
 
+  // Track which contact_ids still have active delinquency
+  const activeDelinquentContacts = new Set<string>();
+
   for (const contract of contracts) {
-    // Check vindi_status for overdue indicators
     const status = (contract.vindi_status || "").toLowerCase();
     if (!status.includes("overdue") && !status.includes("canceled") && status !== "past_due") {
       continue;
@@ -99,18 +113,83 @@ async function handleInadimplente(supabase: any, activity: any) {
     const userId = contact.owner_id || contract.owner_id;
     if (!userId) continue;
 
-    // Check if trigger already exists and is not resolved
+    activeDelinquentContacts.add(contract.contact_id);
+
+    // Check if trigger already exists
     const { data: existing } = await supabase
       .from("perpetual_activity_triggers")
-      .select("id, resolved_at")
+      .select("id, resolved_at, task_id")
       .eq("activity_id", activity.id)
       .eq("user_id", userId)
       .eq("contact_id", contract.contact_id)
       .maybeSingle();
 
-    if (existing && !existing.resolved_at) continue;
+    if (existing && !existing.resolved_at) {
+      // Trigger exists and is active - check what happened to the task
+      if (existing.task_id) {
+        const { data: taskData } = await supabase
+          .from("tasks")
+          .select("id, status")
+          .eq("id", existing.task_id)
+          .maybeSingle();
 
-    // Create task
+        if (taskData?.status === "completed") {
+          // Task was completed (interaction registered) but delinquency persists
+          // Create a NEW task for today so it reappears
+          const { data: newTask } = await supabase
+            .from("tasks")
+            .insert({
+              created_by: activity.created_by,
+              assigned_to: userId,
+              contact_id: contract.contact_id,
+              title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
+              description: activity.description || `Cliente ${contact.full_name} está inadimplente.`,
+              task_type: "other",
+              scheduled_at: new Date().toISOString(),
+              status: "pending",
+            })
+            .select("id")
+            .single();
+
+          // Update trigger with new task
+          await supabase
+            .from("perpetual_activity_triggers")
+            .update({ task_id: newTask?.id || null, triggered_at: new Date().toISOString() })
+            .eq("id", existing.id);
+
+          tasksCreated++;
+        } else if (taskData && taskData.status !== "completed") {
+          // Task still pending/overdue - reschedule to today so it appears in today's view
+          await rescheduleTaskToToday(supabase, taskData.id);
+        } else {
+          // Task was deleted - recreate
+          const { data: newTask } = await supabase
+            .from("tasks")
+            .insert({
+              created_by: activity.created_by,
+              assigned_to: userId,
+              contact_id: contract.contact_id,
+              title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
+              description: activity.description || `Cliente ${contact.full_name} está inadimplente.`,
+              task_type: "other",
+              scheduled_at: new Date().toISOString(),
+              status: "pending",
+            })
+            .select("id")
+            .single();
+
+          await supabase
+            .from("perpetual_activity_triggers")
+            .update({ task_id: newTask?.id || null, triggered_at: new Date().toISOString() })
+            .eq("id", existing.id);
+
+          tasksCreated++;
+        }
+      }
+      continue;
+    }
+
+    // No trigger or resolved trigger - create fresh task and trigger
     const { data: task } = await supabase
       .from("tasks")
       .insert({
@@ -126,14 +205,12 @@ async function handleInadimplente(supabase: any, activity: any) {
       .select("id")
       .single();
 
-    // Create assignment for tracking on the Critical Activities screen
     await supabase.from("critical_activity_assignments").upsert({
       activity_id: activity.id,
       user_id: userId,
       status: "pending",
     }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
 
-    // Create/update trigger record
     if (existing) {
       await supabase
         .from("perpetual_activity_triggers")
@@ -155,6 +232,31 @@ async function handleInadimplente(supabase: any, activity: any) {
     tasksCreated++;
   }
 
+  // Resolve triggers for contacts that are no longer delinquent
+  const { data: unresolvedTriggers } = await supabase
+    .from("perpetual_activity_triggers")
+    .select("id, contact_id, task_id")
+    .eq("activity_id", activity.id)
+    .is("resolved_at", null);
+
+  for (const trigger of unresolvedTriggers || []) {
+    if (!activeDelinquentContacts.has(trigger.contact_id)) {
+      // Delinquency resolved - mark trigger as resolved and complete task
+      await supabase
+        .from("perpetual_activity_triggers")
+        .update({ resolved_at: new Date().toISOString() })
+        .eq("id", trigger.id);
+
+      if (trigger.task_id) {
+        await supabase
+          .from("tasks")
+          .update({ status: "completed", completed_at: new Date().toISOString() })
+          .eq("id", trigger.task_id)
+          .in("status", ["pending", "overdue"]);
+      }
+    }
+  }
+
   return tasksCreated;
 }
 
@@ -162,7 +264,6 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
   let tasksCreated = 0;
   const threshold = activity.rule_config?.threshold || 40;
 
-  // Get latest health scores below threshold
   const { data: scores } = await supabase
     .from("health_score_snapshots")
     .select("contact_id, owner_id, total_score, snapshot_date")
@@ -171,7 +272,6 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
 
   if (!scores?.length) return 0;
 
-  // Deduplicate by contact (keep latest)
   const seenContacts = new Set<string>();
   const uniqueScores = [];
   for (const s of scores) {
@@ -181,7 +281,6 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
     }
   }
 
-  // Get contact names
   const contactIds = uniqueScores.map((s) => s.contact_id);
   const { data: contacts_info } = await supabase
     .from("contacts")
@@ -201,13 +300,45 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
 
     const { data: existing } = await supabase
       .from("perpetual_activity_triggers")
-      .select("id, resolved_at")
+      .select("id, resolved_at, task_id")
       .eq("activity_id", activity.id)
       .eq("user_id", userId)
       .eq("contact_id", score.contact_id)
       .maybeSingle();
 
-    if (existing && !existing.resolved_at) continue;
+    if (existing && !existing.resolved_at) {
+      // Reschedule existing task to today if still pending
+      if (existing.task_id) {
+        const { data: taskData } = await supabase
+          .from("tasks")
+          .select("id, status")
+          .eq("id", existing.task_id)
+          .maybeSingle();
+
+        if (taskData?.status === "completed") {
+          const { data: newTask } = await supabase.from("tasks").insert({
+            created_by: activity.created_by,
+            assigned_to: userId,
+            contact_id: score.contact_id,
+            title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
+            description: activity.description || `Health Score de ${contact.full_name} está em ${score.total_score} (abaixo de ${threshold}).`,
+            task_type: "other",
+            scheduled_at: new Date().toISOString(),
+            status: "pending",
+          }).select("id").single();
+
+          await supabase.from("perpetual_activity_triggers").update({
+            task_id: newTask?.id || null,
+            triggered_at: new Date().toISOString(),
+          }).eq("id", existing.id);
+
+          tasksCreated++;
+        } else if (taskData) {
+          await rescheduleTaskToToday(supabase, taskData.id);
+        }
+      }
+      continue;
+    }
 
     const { data: task } = await supabase
       .from("tasks")
@@ -216,9 +347,7 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
         assigned_to: userId,
         contact_id: score.contact_id,
         title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
-        description:
-          activity.description ||
-          `Health Score de ${contact.full_name} está em ${score.total_score} (abaixo de ${threshold}).`,
+        description: activity.description || `Health Score de ${contact.full_name} está em ${score.total_score} (abaixo de ${threshold}).`,
         task_type: "other",
         scheduled_at: new Date().toISOString(),
         status: "pending",
@@ -226,7 +355,6 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
       .select("id")
       .single();
 
-    // Create assignment for tracking on the Critical Activities screen
     await supabase.from("critical_activity_assignments").upsert({
       activity_id: activity.id,
       user_id: userId,
@@ -234,14 +362,11 @@ async function handleHealthScoreCritico(supabase: any, activity: any) {
     }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
 
     if (existing) {
-      await supabase
-        .from("perpetual_activity_triggers")
-        .update({
-          resolved_at: null,
-          triggered_at: new Date().toISOString(),
-          task_id: task?.id || null,
-        })
-        .eq("id", existing.id);
+      await supabase.from("perpetual_activity_triggers").update({
+        resolved_at: null,
+        triggered_at: new Date().toISOString(),
+        task_id: task?.id || null,
+      }).eq("id", existing.id);
     } else {
       await supabase.from("perpetual_activity_triggers").insert({
         activity_id: activity.id,
@@ -265,7 +390,6 @@ async function handleContratoVencendo(supabase: any, activity: any) {
   const futureDate = new Date();
   futureDate.setDate(futureDate.getDate() + daysBeforeExpiry);
 
-  // Find active contracts expiring within the window
   const { data: contracts } = await supabase
     .from("contracts")
     .select("id, contact_id, owner_id, end_date, product_id, products:product_id(category_id)")
@@ -276,7 +400,6 @@ async function handleContratoVencendo(supabase: any, activity: any) {
 
   if (!contracts?.length) return 0;
 
-  // Filter by category
   const filtered = contracts.filter(
     (c: any) => c.products?.category_id === categoryId
   );
@@ -300,13 +423,39 @@ async function handleContratoVencendo(supabase: any, activity: any) {
 
     const { data: existing } = await supabase
       .from("perpetual_activity_triggers")
-      .select("id, resolved_at")
+      .select("id, resolved_at, task_id")
       .eq("activity_id", activity.id)
       .eq("user_id", userId)
       .eq("contact_id", contract.contact_id)
       .maybeSingle();
 
-    if (existing && !existing.resolved_at) continue;
+    if (existing && !existing.resolved_at) {
+      // Reschedule existing pending task to today
+      if (existing.task_id) {
+        const { data: taskData } = await supabase
+          .from("tasks").select("id, status").eq("id", existing.task_id).maybeSingle();
+        if (taskData?.status === "completed") {
+          const endDate = new Date(contract.end_date).toLocaleDateString("pt-BR");
+          const { data: newTask } = await supabase.from("tasks").insert({
+            created_by: activity.created_by,
+            assigned_to: userId,
+            contact_id: contract.contact_id,
+            title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
+            description: activity.description || `Contrato de ${contact.full_name} vence em ${endDate}. Iniciar processo de renovação.`,
+            task_type: "other",
+            scheduled_at: new Date().toISOString(),
+            status: "pending",
+          }).select("id").single();
+          await supabase.from("perpetual_activity_triggers").update({
+            task_id: newTask?.id || null, triggered_at: new Date().toISOString(),
+          }).eq("id", existing.id);
+          tasksCreated++;
+        } else if (taskData) {
+          await rescheduleTaskToToday(supabase, taskData.id);
+        }
+      }
+      continue;
+    }
 
     const endDate = new Date(contract.end_date).toLocaleDateString("pt-BR");
     const { data: task } = await supabase
@@ -316,9 +465,7 @@ async function handleContratoVencendo(supabase: any, activity: any) {
         assigned_to: userId,
         contact_id: contract.contact_id,
         title: `[Atividade Crítica] ${activity.title} - ${contact.full_name}`,
-        description:
-          activity.description ||
-          `Contrato de ${contact.full_name} vence em ${endDate}. Iniciar processo de renovação.`,
+        description: activity.description || `Contrato de ${contact.full_name} vence em ${endDate}. Iniciar processo de renovação.`,
         task_type: "other",
         scheduled_at: new Date().toISOString(),
         status: "pending",
@@ -326,7 +473,6 @@ async function handleContratoVencendo(supabase: any, activity: any) {
       .select("id")
       .single();
 
-    // Create assignment for tracking on the Critical Activities screen
     await supabase.from("critical_activity_assignments").upsert({
       activity_id: activity.id,
       user_id: userId,
@@ -334,14 +480,11 @@ async function handleContratoVencendo(supabase: any, activity: any) {
     }, { onConflict: "activity_id,user_id", ignoreDuplicates: true });
 
     if (existing) {
-      await supabase
-        .from("perpetual_activity_triggers")
-        .update({
-          resolved_at: null,
-          triggered_at: new Date().toISOString(),
-          task_id: task?.id || null,
-        })
-        .eq("id", existing.id);
+      await supabase.from("perpetual_activity_triggers").update({
+        resolved_at: null,
+        triggered_at: new Date().toISOString(),
+        task_id: task?.id || null,
+      }).eq("id", existing.id);
     } else {
       await supabase.from("perpetual_activity_triggers").insert({
         activity_id: activity.id,
@@ -358,12 +501,8 @@ async function handleContratoVencendo(supabase: any, activity: any) {
 }
 
 async function handleManualRecurrence(supabase: any, activity: any) {
-  // For manual recurrence, distribute to all target users (like original)
-  // but only if enough time has passed since last run
   const interval = activity.recurrence_interval;
-  const lastRun = activity.last_run_at
-    ? new Date(activity.last_run_at)
-    : null;
+  const lastRun = activity.last_run_at ? new Date(activity.last_run_at) : null;
 
   if (lastRun) {
     const now = new Date();
@@ -375,7 +514,6 @@ async function handleManualRecurrence(supabase: any, activity: any) {
     if (interval === "monthly" && diffDays < 28) return 0;
   }
 
-  // Use the existing distribute function
   const { data: count, error } = await supabase.rpc(
     "distribute_critical_activity",
     { p_activity_id: activity.id }
@@ -407,9 +545,9 @@ async function handleClientCharacteristic(supabase: any, activity: any) {
     if (operator === "has") {
       if (productIds.length === 0) return 0;
       const { data: contracts } = await supabase.from("contracts").select("contact_id, owner_id").eq("status", "active").in("product_id", productIds);
-      const contactIds = [...new Set((contracts || []).map((c: any) => c.contact_id))];
-      if (contactIds.length === 0) return 0;
-      const { data: contacts } = await supabase.from("contacts").select("id, full_name, owner_id").in("id", contactIds).not("owner_id", "is", null);
+      const cIds = [...new Set((contracts || []).map((c: any) => c.contact_id))];
+      if (cIds.length === 0) return 0;
+      const { data: contacts } = await supabase.from("contacts").select("id, full_name, owner_id").in("id", cIds).not("owner_id", "is", null);
       ownerContactPairs = (contacts || []).map((c: any) => ({ owner_id: c.owner_id, contact_id: c.id, contact_name: c.full_name }));
     } else if (operator === "not_has") {
       const { data: allContacts } = await supabase.from("contacts").select("id, full_name, owner_id").not("owner_id", "is", null);
@@ -444,9 +582,7 @@ async function handleClientCharacteristic(supabase: any, activity: any) {
     ownerContactPairs = (contacts || []).map((c: any) => ({ owner_id: c.owner_id, contact_id: c.id, contact_name: c.full_name }));
   }
 
-  // Create one task per contact (instead of grouping by owner)
   for (const pair of ownerContactPairs) {
-    // Check for existing pending trigger for this specific contact
     const { data: existing } = await supabase
       .from("perpetual_activity_triggers")
       .select("id, resolved_at")
