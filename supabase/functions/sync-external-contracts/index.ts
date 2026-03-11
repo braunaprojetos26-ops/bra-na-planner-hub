@@ -432,6 +432,77 @@ async function vindiFindFirstPayment(
   return null;
 }
 
+async function vindiResolveDbStatus(
+  vindiUrl: string,
+  auth: string,
+  subscriptionId: string | null,
+  billId: string | null
+): Promise<"paid" | "pending" | "overdue" | "cancelled" | null> {
+  try {
+    if (subscriptionId) {
+      const subRes = await fetch(`${vindiUrl}/subscriptions/${subscriptionId}`, {
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+      });
+
+      if (subRes.ok) {
+        const subData = await subRes.json();
+        if (subData?.subscription?.status === "canceled") {
+          return "cancelled";
+        }
+      }
+
+      const billsRes = await fetch(
+        `${vindiUrl}/bills?query=subscription_id:${subscriptionId}&sort_by=created_at&sort_order=desc&per_page=50`,
+        { headers: { Authorization: auth, "Content-Type": "application/json" } }
+      );
+
+      if (billsRes.ok) {
+        const billsData = await billsRes.json();
+        const bills = billsData?.bills || [];
+
+        if (bills.length === 0) return "pending";
+
+        const now = new Date();
+        const hasOverdue = bills.some((b: any) => {
+          if (b.status !== "pending") return false;
+          const due = new Date(b.due_at || b.billing_at || b.created_at);
+          return due < now;
+        });
+
+        if (hasOverdue) return "overdue";
+
+        const hasPending = bills.some((b: any) => b.status === "pending");
+        if (hasPending) return "pending";
+
+        return "paid";
+      }
+    }
+
+    if (billId) {
+      const billRes = await fetch(`${vindiUrl}/bills/${billId}`, {
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+      });
+
+      if (billRes.ok) {
+        const billData = await billRes.json();
+        const bill = billData?.bill;
+        if (!bill) return null;
+
+        if (bill.status === "paid") return "paid";
+        if (bill.status === "canceled") return "cancelled";
+        if (bill.status === "pending") {
+          const due = new Date(bill.due_at || bill.billing_at || bill.created_at);
+          return due < new Date() ? "overdue" : "pending";
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Vindi status resolve error:", e);
+  }
+
+  return null;
+}
+
 function normalizeStr(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
