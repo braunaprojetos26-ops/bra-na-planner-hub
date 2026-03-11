@@ -107,11 +107,61 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
+    // Authenticate the caller
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const callerUserId = claimsData.claims.sub;
+
+    // Use service role for data queries (needs cross-table access)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { contactIds, ownerId, ownerIds } = await req.json();
+
+    // Scope check: verify the caller can access the requested data
+    // If specific ownerIds or ownerId requested, caller must be able to access those users
+    const requestedOwnerIds = ownerIds || (ownerId ? [ownerId] : null);
+    if (requestedOwnerIds && requestedOwnerIds.length > 0) {
+      const { data: accessibleIds } = await supabase.rpc('get_accessible_user_ids', { _accessor_id: callerUserId });
+      const accessibleSet = new Set((accessibleIds || []).map((id: string) => id));
+      const unauthorized = requestedOwnerIds.filter((id: string) => !accessibleSet.has(id));
+      if (unauthorized.length > 0) {
+        return new Response(JSON.stringify({ error: 'Access denied to requested owner data' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else if (!contactIds || contactIds.length === 0) {
+      // No specific filter = requesting all data, must be at least lider
+      const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', callerUserId).single();
+      if (!roleData || roleData.role === 'planejador') {
+        return new Response(JSON.stringify({ error: 'Insufficient permissions for unscoped query' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     console.log('Calculating health score for:', { contactIds, ownerId, ownerIds });
 
