@@ -1,8 +1,6 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, CheckCircle } from 'lucide-react';
 import { useProposalMutations } from '@/hooks/useProposals';
 import { useMyFeedbacks } from '@/hooks/usePlannerFeedbacks';
 import { useMyCases } from '@/hooks/usePlannerCases';
@@ -124,120 +122,103 @@ const { user, profile } = useAuth();
           )}
 
           {/* Selected Topics Section */}
-          <section className="space-y-6">
+          <section className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold">Tópicos Selecionados</h2>
-              <p className="text-muted-foreground">
-                Foco especializado nos temas mais relevantes para você
+              <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
+                Foco personalizado
               </p>
+              <h2 className="text-3xl font-light text-foreground">
+                Tópicos Selecionados
+              </h2>
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
             </div>
 
-            <div className="grid gap-6">
+            <div className="grid gap-4">
               {topicDetails.map((topic, index) => (
-                <Card key={topic.topic} className="border-primary/20">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-semibold">{topic.topic}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {topic.meetings} reunião{topic.meetings > 1 ? 'ões' : ''} dedicada{topic.meetings > 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-primary border-primary">
+                <div
+                  key={topic.topic}
+                  className="group flex items-start gap-4 p-5 bg-card border rounded-xl hover:border-gold/50 hover:shadow-lg transition-all"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-gold font-bold shrink-0">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-foreground">{topic.topic}</h3>
+                      <span className="text-sm font-bold text-gold">
                         {topic.meetings}x
-                      </Badge>
+                      </span>
                     </div>
-
-                    <div className="pl-[52px] space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground mb-2">
-                        O que vamos abordar:
-                      </p>
+                    <p className="text-xs text-muted-foreground">
+                      {topic.meetings} reunião{topic.meetings > 1 ? 'ões' : ''} dedicada{topic.meetings > 1 ? 's' : ''}
+                    </p>
+                    <div className="space-y-1.5 pt-1">
                       {topic.subtopics.map((subtopic, i) => (
-                        <div key={i} className="flex items-center gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                        <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
                           <span>{subtopic}</span>
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           </section>
 
-          {/* What's Included - Adapted for Pontual */}
-          <section className="space-y-6">
+          {/* What's Included - Matching Completo table style */}
+          <section className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold">O que está Incluso</h2>
+              <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
+                Tudo incluído
+              </p>
+              <h2 className="text-3xl font-light text-foreground">
+                O que está Incluso
+              </h2>
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
             </div>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-primary">Entregas Garantidas</h4>
-                    {topicDetails.map(topic => (
-                      <div key={topic.topic} className="space-y-1">
-                        <p className="text-sm font-medium">{topic.topic}:</p>
-                        {topic.subtopics.map((sub, i) => (
-                          <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground pl-3">
-                            <CheckCircle className="w-3 h-3 text-success shrink-0" />
-                            <span>{sub}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-semibold text-primary mb-3">Formato</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-success" />
-                          <span>{totalMeetings} reunião{totalMeetings > 1 ? 'ões' : ''} de 1 hora</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-success" />
-                          <span>Material de apoio</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-success" />
-                          <span>Gravação das reuniões</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Important Notice - No Continuous Support */}
-          <section>
-            <Card className="border-warning/50 bg-warning/5">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-6 h-6 text-warning" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">Importante</h3>
-                    <p className="text-muted-foreground">
-                      Este é um planejamento pontual focado em temas específicos. Não inclui acompanhamento contínuo ou suporte após as {totalMeetings} reuniões contratadas.
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Para um acompanhamento completo com suporte contínuo, considere nosso Planejamento Completo.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-card border rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="text-left p-4 font-medium text-foreground">Benefício</th>
+                    <th className="text-center p-4 font-medium text-foreground w-24">Incluso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topicDetails.map(topic =>
+                    topic.subtopics.map((sub, i) => (
+                      <tr key={`${topic.topic}-${i}`} className="border-t">
+                        <td className="p-4 text-muted-foreground">
+                          {i === 0 && <span className="text-foreground font-medium">{topic.topic}: </span>}
+                          {sub}
+                        </td>
+                        <td className="p-4 text-center">
+                          <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  <tr className="border-t bg-gold/5">
+                    <td className="p-4 font-medium text-foreground">Reuniões dedicadas</td>
+                    <td className="p-4 text-center font-bold text-gold">{totalMeetings}x</td>
+                  </tr>
+                  <tr className="border-t bg-gold/5">
+                    <td className="p-4 font-medium text-foreground">Material de apoio</td>
+                    <td className="p-4 text-center">
+                      <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
+                    </td>
+                  </tr>
+                  <tr className="border-t bg-gold/5">
+                    <td className="p-4 font-medium text-foreground">Gravação das reuniões</td>
+                    <td className="p-4 text-center">
+                      <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </section>
 
           {/* Cases - Optional */}
