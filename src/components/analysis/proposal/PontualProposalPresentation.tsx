@@ -241,13 +241,13 @@ const { user, profile } = useAuth();
           </section>
 
           {/* Cases - Optional */}
-          {proposal.show_cases && cases && cases.length > 0 && (
-            <CasesSection cases={cases} />
+          {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
+            <CasesSection cases={cases!} />
           )}
 
           {/* Feedbacks - Optional */}
-          {proposal.show_feedbacks && feedbacks && feedbacks.length > 0 && (
-            <FeedbacksSection feedbacks={feedbacks} />
+          {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+            <FeedbacksSection feedbacks={feedbacks!} />
           )}
 
           {/* Pricing - Adapted for Pontual */}
