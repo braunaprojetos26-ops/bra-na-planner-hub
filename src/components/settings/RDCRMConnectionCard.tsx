@@ -361,6 +361,43 @@ export function RDCRMConnectionCard() {
                     </div>
                   </div>
                 )}
+
+                <Separator />
+
+                <RDProductMappingsEditor />
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleStartProductsBackfill}
+                  disabled={isStartingBackfillProducts || (productsStatus !== null && productsStatus !== 'done' && productsStatus !== 'error')}
+                >
+                  {isStartingBackfillProducts || (productsStatus && productsStatus !== 'done' && productsStatus !== 'error') ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importando produtos...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="mr-2 h-4 w-4" />
+                      Importar Produtos dos Clientes
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Busca produtos das negociações ganhas no RD CRM e cria contratos locais vinculados aos contatos.
+                </p>
+                {productsProgress && productsStatus && productsStatus !== 'pending' && (
+                  <div className="space-y-2">
+                    <Progress value={productsProgress.total > 0 ? ((productsProgress.created + productsProgress.skipped + productsProgress.errors) / productsProgress.total) * 100 : 0} />
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      <span>{productsProgress.created} criados</span>
+                      <span>{productsProgress.skipped} ignorados</span>
+                      {productsProgress.errors > 0 && <span className="text-destructive">{productsProgress.errors} erros</span>}
+                      <span className="ml-auto">{productsProgress.total} negociações</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
