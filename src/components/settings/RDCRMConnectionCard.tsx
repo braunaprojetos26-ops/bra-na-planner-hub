@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw } from 'lucide-react';
+import { Database, Check, Loader2, Unlink, Plug, Users, Handshake, RefreshCw, Megaphone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,8 @@ export function RDCRMConnectionCard() {
     isDisconnecting,
     startBackfillSources,
     isStartingBackfill,
+    startBackfillCampaigns,
+    isStartingBackfillCampaigns,
     pollJobStatus,
     listUsers,
   } = useRDCRM();
@@ -37,9 +39,16 @@ export function RDCRMConnectionCard() {
   const [backfillUsers, setBackfillUsers] = useState<RDCRMUser[]>([]);
   const [loadingBackfillUsers, setLoadingBackfillUsers] = useState(false);
 
+  // Campaign backfill state
+  const [campaignJobId, setCampaignJobId] = useState<string | null>(null);
+  const [campaignStatus, setCampaignStatus] = useState<string | null>(null);
+  const [campaignProgress, setCampaignProgress] = useState<{ updated: number; skipped: number; errors: number; total: number } | null>(null);
+  const campaignPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (campaignPollRef.current) clearInterval(campaignPollRef.current);
     };
   }, []);
 
@@ -77,6 +86,43 @@ export function RDCRMConnectionCard() {
             pollRef.current = null;
             if (status.status === 'done') {
               toast({ title: 'Fontes atualizadas!', description: `${status.contacts_imported} contatos atualizados.` });
+            } else {
+              toast({ title: 'Erro na atualização', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
+            }
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }, 3000);
+    } catch {
+      // error handled by mutation
+    }
+  };
+
+  const handleStartCampaignBackfill = async () => {
+    try {
+      const userId = backfillRdUserId && backfillRdUserId !== 'all' ? backfillRdUserId : undefined;
+      const jobId = await startBackfillCampaigns(userId);
+      setCampaignJobId(jobId);
+      setCampaignStatus('pending');
+      toast({ title: 'Atualização de campanhas iniciada', description: 'Buscando negociações do RD CRM...' });
+
+      campaignPollRef.current = setInterval(async () => {
+        try {
+          const status = await pollJobStatus(jobId);
+          setCampaignStatus(status.status);
+          setCampaignProgress({
+            updated: status.contacts_imported || 0,
+            skipped: status.contacts_skipped || 0,
+            errors: status.contacts_errors || 0,
+            total: status.deals_found || 0,
+          });
+
+          if (status.status === 'done' || status.status === 'error') {
+            if (campaignPollRef.current) clearInterval(campaignPollRef.current);
+            campaignPollRef.current = null;
+            if (status.status === 'done') {
+              toast({ title: 'Campanhas atualizadas!', description: `${status.contacts_imported} contatos atualizados.` });
             } else {
               toast({ title: 'Erro na atualização', description: status.error_message || 'Erro desconhecido', variant: 'destructive' });
             }
@@ -232,6 +278,39 @@ export function RDCRMConnectionCard() {
                       <span>{backfillProgress.skipped} ignorados</span>
                       {backfillProgress.errors > 0 && <span className="text-destructive">{backfillProgress.errors} erros</span>}
                       <span className="ml-auto">{backfillProgress.total} negociações</span>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleStartCampaignBackfill}
+                  disabled={isStartingBackfillCampaigns || (campaignStatus !== null && campaignStatus !== 'done' && campaignStatus !== 'error')}
+                >
+                  {isStartingBackfillCampaigns || (campaignStatus && campaignStatus !== 'done' && campaignStatus !== 'error') ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Atualizando campanhas...
+                    </>
+                  ) : (
+                    <>
+                      <Megaphone className="mr-2 h-4 w-4" />
+                      Atualizar Campanhas dos Contatos
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Busca a campanha de cada negociação no RD CRM e atualiza nos contatos locais.
+                </p>
+                {campaignProgress && campaignStatus && campaignStatus !== 'pending' && (
+                  <div className="space-y-2">
+                    <Progress value={campaignProgress.total > 0 ? ((campaignProgress.updated + campaignProgress.skipped + campaignProgress.errors) / campaignProgress.total) * 100 : 0} />
+                    <div className="flex gap-3 text-xs text-muted-foreground">
+                      <span>{campaignProgress.updated} atualizados</span>
+                      <span>{campaignProgress.skipped} ignorados</span>
+                      {campaignProgress.errors > 0 && <span className="text-destructive">{campaignProgress.errors} erros</span>}
+                      <span className="ml-auto">{campaignProgress.total} negociações</span>
                     </div>
                   </div>
                 )}

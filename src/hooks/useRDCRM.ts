@@ -161,6 +161,25 @@ export function useRDCRM() {
     },
   });
 
+  // Start backfill campaigns job
+  const startBackfillCampaignsMutation = useMutation({
+    mutationFn: async (rdUserId?: string): Promise<string> => {
+      const { data, error } = await supabase.functions.invoke('rd-crm', {
+        body: { action: 'start_backfill_campaigns', rd_user_id: rdUserId || null },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Falha ao iniciar backfill de campanhas');
+      return data.data.job_id as string;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao iniciar atualização de campanhas',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Start async import job
   const startImportMutation = useMutation({
     mutationFn: async (params: ImportParams): Promise<string> => {
@@ -212,5 +231,8 @@ export function useRDCRM() {
     // Backfill sources
     startBackfillSources: startBackfillSourcesMutation.mutateAsync,
     isStartingBackfill: startBackfillSourcesMutation.isPending,
+    // Backfill campaigns
+    startBackfillCampaigns: startBackfillCampaignsMutation.mutateAsync,
+    isStartingBackfillCampaigns: startBackfillCampaignsMutation.isPending,
   };
 }

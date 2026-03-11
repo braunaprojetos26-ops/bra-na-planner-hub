@@ -327,6 +327,40 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "start_backfill_campaigns": {
+        const rdUserIdFilter = payload.rd_user_id || null;
+        
+        const { data: job, error: jobError } = await supabase
+          .from("import_jobs")
+          .insert({
+            created_by: userId,
+            rd_user_id: rdUserIdFilter || "backfill",
+            import_type: "backfill_campaigns",
+            status: "pending",
+          })
+          .select()
+          .single();
+
+        if (jobError) throw new Error(`Erro ao criar job: ${jobError.message}`);
+
+        const supabaseUrl2 = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey2 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+        fetch(`${supabaseUrl2}/functions/v1/process-rd-backfill-campaigns`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceRoleKey2}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jobId: job.id, rdUserId: rdUserIdFilter }),
+        }).catch((err) => {
+          console.error("Failed to trigger process-rd-backfill-campaigns:", err);
+        });
+
+        result = { job_id: job.id };
+        break;
+      }
+
       default:
         throw new Error(`Ação desconhecida: ${action}`);
     }
