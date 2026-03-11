@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, GripVertical, Trash2, Edit2, Image, Video, Save, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, GripVertical, Trash2, Edit2, Image, Video, Upload, Save, X, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,19 +7,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useMyFeedbacks, useFeedbackMutations } from '@/hooks/usePlannerFeedbacks';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export function PlannerFeedbacksManager() {
   const { data: feedbacks, isLoading } = useMyFeedbacks();
   const { createFeedback, updateFeedback, deleteFeedback } = useFeedbackMutations();
+  const { user } = useAuth();
   
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     client_name: '',
     feedback_text: '',
     media_type: '' as '' | 'image' | 'video',
     media_url: '',
+    media_source: 'upload' as 'upload' | 'url',
   });
 
   const resetForm = () => {
@@ -28,9 +34,55 @@ export function PlannerFeedbacksManager() {
       feedback_text: '',
       media_type: '',
       media_url: '',
+      media_source: 'upload',
     });
     setIsAdding(false);
     setEditingId(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) {
+      toast.error('Apenas imagens e vídeos são permitidos');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo deve ter no máximo 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('planner-feedback-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('planner-feedback-media')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({
+        ...prev,
+        media_type: isImage ? 'image' : 'video',
+        media_url: publicUrl,
+      }));
+      toast.success('Arquivo enviado!');
+    } catch (error) {
+      toast.error('Erro ao enviar arquivo');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -76,6 +128,7 @@ export function PlannerFeedbacksManager() {
       feedback_text: feedback.feedback_text || '',
       media_type: (feedback.media_type as '' | 'image' | 'video') || '',
       media_url: feedback.media_url || '',
+      media_source: feedback.media_url?.includes('planner-feedback-media') ? 'upload' : 'url',
     });
     setEditingId(feedback.id);
     setIsAdding(true);
@@ -136,35 +189,71 @@ export function PlannerFeedbacksManager() {
 
             <div className="space-y-1.5">
               <Label className="text-xs">Mídia (opcional)</Label>
-              <div className="flex gap-2">
+              
+              {/* Upload file */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   type="button"
-                  variant={formData.media_type === 'image' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setFormData(prev => ({ 
-                    ...prev, 
-                    media_type: prev.media_type === 'image' ? '' : 'image' 
-                  }))}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
                 >
-                  <Image className="w-4 h-4 mr-1" />
-                  Imagem
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-1" />
+                  )}
+                  {isUploading ? 'Enviando...' : 'Enviar arquivo'}
                 </Button>
                 <Button
                   type="button"
-                  variant={formData.media_type === 'video' ? 'default' : 'outline'}
+                  variant={formData.media_source === 'url' && formData.media_type ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFormData(prev => ({ 
                     ...prev, 
-                    media_type: prev.media_type === 'video' ? '' : 'video' 
+                    media_source: 'url',
+                    media_type: prev.media_source === 'url' && prev.media_type ? '' : 'video',
+                    media_url: prev.media_source === 'url' ? '' : prev.media_url,
                   }))}
                 >
                   <Video className="w-4 h-4 mr-1" />
-                  Vídeo
+                  URL de vídeo
                 </Button>
               </div>
-              {formData.media_type && (
+
+              {/* Preview uploaded media */}
+              {formData.media_url && formData.media_source === 'upload' && (
+                <div className="relative mt-2">
+                  {formData.media_type === 'image' ? (
+                    <img src={formData.media_url} alt="Preview" className="w-full max-h-32 object-cover rounded-lg border" />
+                  ) : (
+                    <video src={formData.media_url} className="w-full max-h-32 object-cover rounded-lg border" />
+                  )}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => setFormData(prev => ({ ...prev, media_type: '', media_url: '' }))}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+
+              {/* URL input for video */}
+              {formData.media_source === 'url' && formData.media_type === 'video' && (
                 <Input
-                  placeholder={formData.media_type === 'image' ? 'URL da imagem' : 'URL do vídeo (YouTube, Vimeo)'}
+                  placeholder="URL do vídeo (YouTube, Vimeo)"
                   value={formData.media_url}
                   onChange={(e) => setFormData(prev => ({ ...prev, media_url: e.target.value }))}
                 />
