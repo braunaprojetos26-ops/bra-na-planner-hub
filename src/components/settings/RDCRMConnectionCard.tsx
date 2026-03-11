@@ -26,6 +26,8 @@ export function RDCRMConnectionCard() {
     isStartingBackfill,
     startBackfillCampaigns,
     isStartingBackfillCampaigns,
+    startBackfillProducts,
+    isStartingBackfillProducts,
     pollJobStatus,
     listUsers,
   } = useRDCRM();
