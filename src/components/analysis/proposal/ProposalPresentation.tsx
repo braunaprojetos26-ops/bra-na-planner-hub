@@ -132,16 +132,15 @@ const { user, profile } = useAuth();
             <TopicsSection />
           </div>
 
-          {/* Page 4 - Cases & Feedbacks (Optional) */}
-          {((standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) || 
-            (standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0))) && (
-            <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-8">
-              {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
-                <CasesSection cases={cases!} />
-              )}
-              {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
-                <FeedbacksSection feedbacks={feedbacks!} />
-              )}
+          {/* Page 4+ - Cases & Feedbacks (Optional, auto-paginating) */}
+          {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
+            <div className="print-page print-social-proof max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none">
+              <CasesSection cases={cases!} />
+            </div>
+          )}
+          {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
+            <div className="print-page print-social-proof max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none">
+              <FeedbacksSection feedbacks={feedbacks!} />
             </div>
           )}
 
