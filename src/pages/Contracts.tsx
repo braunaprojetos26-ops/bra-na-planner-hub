@@ -224,7 +224,9 @@ interface ContractsTableProps {
     reported_at: string;
     status: string;
     clicksign_status?: string | null;
+    clicksign_document_key?: string | null;
     vindi_status?: string | null;
+    vindi_customer_id?: string | null;
     vindi_subscription_id?: string | null;
     vindi_bill_id?: string | null;
     first_payment_at?: string | null;
@@ -243,9 +245,11 @@ interface ContractsTableProps {
   }>;
   isLoading: boolean;
   vindiStatuses?: Record<string, { status: string; details?: string }>;
+  onSyncContract?: (contractId: string) => void;
+  syncingIds?: Set<string>;
 }
 
-function ContractsTable({ contracts, isLoading, vindiStatuses }: ContractsTableProps) {
+function ContractsTable({ contracts, isLoading, vindiStatuses, onSyncContract, syncingIds }: ContractsTableProps) {
   if (isLoading) {
     return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   }
