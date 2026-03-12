@@ -12,6 +12,45 @@ import type { Proposal } from '@/hooks/useProposals';
 import type { PlannerFeedback } from '@/hooks/usePlannerFeedbacks';
 import type { PlannerCase } from '@/hooks/usePlannerCases';
 
+// Maps pontual topic keys to related case title keywords
+const TOPIC_CASE_MAP: Record<string, string[]> = {
+  viagens_milhas: ['milhas'],
+  viagens_planejamento: ['milhas'],
+  aposentadoria: ['aposentadoria'],
+  carteira_investimentos: ['investimentos'],
+  ensinamento_investimentos: ['investimentos'],
+  fundos_previdenciarios: ['investimentos', 'aposentadoria'],
+  vantagem_tributaria: ['fiscal', 'ir'],
+  quitacao_financiamento: ['imobiliário'],
+  aquisicao_bens: ['imobiliário'],
+  organizacao_financeira: ['mentalidade'],
+  endividamento: ['mentalidade'],
+  troca_divida: ['mentalidade'],
+  seguro_vida: [],
+  planejamento_sucessorio: ['imobiliário'],
+};
+
+function filterCasesByTopics(cases: PlannerCase[], selectedTopics: SelectedTopic[]): PlannerCase[] {
+  const selectedKeys = selectedTopics.map(t => {
+    const topic = PONTUAL_TOPICS.find(pt => pt.name === t.topic);
+    return topic?.key || '';
+  }).filter(Boolean);
+
+  const relevantKeywords = new Set<string>();
+  for (const key of selectedKeys) {
+    const keywords = TOPIC_CASE_MAP[key] || [];
+    keywords.forEach(k => relevantKeywords.add(k));
+  }
+
+  if (relevantKeywords.size === 0) return [];
+
+  return cases.filter(c =>
+    Array.from(relevantKeywords).some(keyword =>
+      c.title.toLowerCase().includes(keyword)
+    )
+  );
+}
+
 // Section components
 import { ProposalCover } from './sections/ProposalCover';
 import { DiagnosticSection } from './sections/DiagnosticSection';
@@ -222,10 +261,12 @@ const { user, profile } = useAuth();
             </div>
           </section>
 
-          {/* Cases - Optional */}
-          {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
-            <CasesSection cases={cases!} />
-          )}
+          {/* Cases - Filtered by selected topics for pontual */}
+          {(() => {
+            const filteredCases = cases ? filterCasesByTopics(cases, selectedTopics) : [];
+            const shouldShow = standaloneMode ? filteredCases.length > 0 : (proposal.show_cases && filteredCases.length > 0);
+            return shouldShow ? <CasesSection cases={filteredCases} /> : null;
+          })()}
 
           {/* Feedbacks - Optional */}
           {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
