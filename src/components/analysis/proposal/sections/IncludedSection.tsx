@@ -1,8 +1,18 @@
-import { Check, FileText, Users, MessageCircle } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 interface IncludedSectionProps {
   meetings: number;
 }
+
+const INCLUDED_ITEMS = [
+  { item: 'Diagnóstico Financeiro Completo', included: true },
+  { item: 'Acompanhamento de especialistas financeiros', included: true },
+  { item: 'Tenha as áreas da Braúna a sua disposição', included: true },
+  { item: 'Suporte técnico sobre produtos financeiros e cotações', included: true },
+  { item: 'Ajuste e inclusão de novos objetivos', included: true },
+  { item: 'Suporte via WhatsApp', included: true },
+  { item: 'Suporte via ligação', included: true },
+];
 
 export function IncludedSection({ meetings }: IncludedSectionProps) {
   return (
@@ -18,67 +28,38 @@ export function IncludedSection({ meetings }: IncludedSectionProps) {
         <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
       </div>
 
-      {/* Cards Grid - Highlighting unique differentiators */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:gap-2">
-        {/* Reuniões de Acompanhamento */}
-        <div className="flex items-start gap-3 p-4 print:p-2 bg-card border rounded-xl print:rounded-lg">
-          <div className="w-10 h-10 print:w-6 print:h-6 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5 print:w-3 print:h-3 text-gold" />
-          </div>
-          <div>
-            <h3 className="font-medium text-foreground print:text-[8pt]">
-              Reuniões de Acompanhamento
-            </h3>
-            <p className="text-2xl print:text-[10pt] font-bold text-gold mt-1">
-              {Math.max(0, meetings - 1)}x
-            </p>
-          </div>
-        </div>
-
-        {/* Reunião de Fechamento Anual */}
-        <div className="flex items-start gap-3 p-4 print:p-2 bg-card border rounded-xl print:rounded-lg">
-          <div className="w-10 h-10 print:w-6 print:h-6 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-            <Check className="w-5 h-5 print:w-3 print:h-3 text-gold" />
-          </div>
-          <div>
-            <h3 className="font-medium text-foreground print:text-[8pt]">
-              Reunião de Fechamento Anual
-            </h3>
-            <p className="text-2xl print:text-[10pt] font-bold text-gold mt-1">
-              1x
-            </p>
-          </div>
-        </div>
-
-        {/* Material de Apoio */}
-        <div className="flex items-start gap-3 p-4 print:p-2 bg-card border rounded-xl print:rounded-lg">
-          <div className="w-10 h-10 print:w-6 print:h-6 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5 print:w-3 print:h-3 text-gold" />
-          </div>
-          <div>
-            <h3 className="font-medium text-foreground print:text-[8pt]">
-              Material de Apoio
-            </h3>
-            <p className="text-sm print:text-[7pt] text-muted-foreground mt-1">
-              Planilhas, templates e recursos exclusivos
-            </p>
-          </div>
-        </div>
-
-        {/* Suporte via WhatsApp */}
-        <div className="flex items-start gap-3 p-4 print:p-2 bg-card border rounded-xl print:rounded-lg">
-          <div className="w-10 h-10 print:w-6 print:h-6 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-            <MessageCircle className="w-5 h-5 print:w-3 print:h-3 text-gold" />
-          </div>
-          <div>
-            <h3 className="font-medium text-foreground print:text-[8pt]">
-              Suporte via WhatsApp
-            </h3>
-            <p className="text-sm print:text-[7pt] text-muted-foreground mt-1">
-              Durante todo o período de acompanhamento
-            </p>
-          </div>
-        </div>
+      {/* Table */}
+      <div className="bg-card border rounded-xl print:rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="text-left p-4 print:p-1.5 print:text-[8pt] font-medium text-foreground">Benefício</th>
+              <th className="text-center p-4 print:p-1.5 print:text-[8pt] font-medium text-foreground w-24 print:w-16">Incluso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {INCLUDED_ITEMS.map((row, index) => (
+              <tr key={index} className="border-t">
+                <td className="p-4 print:p-1.5 print:text-[7pt] text-muted-foreground">{row.item}</td>
+                <td className="p-4 print:p-1.5 text-center">
+                  {row.included ? (
+                    <Check className="w-5 h-5 print:w-3 print:h-3 text-green-500 mx-auto" />
+                  ) : (
+                    <X className="w-5 h-5 print:w-3 print:h-3 text-red-500 mx-auto" />
+                  )}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-t bg-gold/5">
+              <td className="p-4 print:p-1.5 print:text-[7pt] font-medium text-foreground">Reuniões de acompanhamento</td>
+              <td className="p-4 print:p-1.5 print:text-[8pt] text-center font-bold text-gold">{Math.max(0, meetings - 1)}x</td>
+            </tr>
+            <tr className="border-t bg-gold/5">
+              <td className="p-4 print:p-1.5 print:text-[7pt] font-medium text-foreground">Reunião de fechamento anual</td>
+              <td className="p-4 print:p-1.5 print:text-[8pt] text-center font-bold text-gold">1x</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   );
