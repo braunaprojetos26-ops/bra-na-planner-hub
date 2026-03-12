@@ -52,7 +52,7 @@ export function IncludedSection({ meetings }: IncludedSectionProps) {
             ))}
             <tr className="border-t bg-gold/5">
               <td className="p-4 print:p-1.5 print:text-[7pt] font-medium text-foreground">Reuniões de acompanhamento</td>
-              <td className="p-4 print:p-1.5 print:text-[8pt] text-center font-bold text-gold">{meetings}x</td>
+              <td className="p-4 print:p-1.5 print:text-[8pt] text-center font-bold text-gold">{Math.max(0, meetings - 1)}x</td>
             </tr>
             <tr className="border-t bg-gold/5">
               <td className="p-4 print:p-1.5 print:text-[7pt] font-medium text-foreground">Reunião de fechamento anual</td>
