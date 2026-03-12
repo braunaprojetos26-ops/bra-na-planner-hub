@@ -78,10 +78,10 @@ export default function StandaloneProposal() {
 
   const plannerName = proposal ? (proposal as any).__plannerName : undefined;
 
-  // Presentation overlay - renders on top, builders stay mounted underneath
-  if (stage === 'present' && proposal) {
-    if (proposalType === 'pontual') {
-      return (
+  return (
+    <>
+      {/* Presentation overlay - renders on top when presenting */}
+      {stage === 'present' && proposal && proposalType === 'pontual' && (
         <StandalonePontualPresentation
           proposal={proposal}
           clientName={clientName}
@@ -91,71 +91,67 @@ export default function StandaloneProposal() {
           cases={standaloneCases}
           onBack={() => setStage('configure')}
         />
-      );
-    }
+      )}
+      {stage === 'present' && proposal && proposalType !== 'pontual' && (
+        <StandaloneCompletoPresentation
+          proposal={proposal}
+          clientName={clientName}
+          plannerName={plannerName}
+          feedbacks={standaloneFeedbacks}
+          cases={standaloneCases}
+          onBack={() => setStage('configure')}
+        />
+      )}
 
-    return (
-      <StandaloneCompletoPresentation
-        proposal={proposal}
-        clientName={clientName}
-        plannerName={plannerName}
-        feedbacks={standaloneFeedbacks}
-        cases={standaloneCases}
-        onBack={() => setStage('configure')}
-      />
-    );
-  }
+      {/* Main content - hidden during presentation but stays mounted to preserve state */}
+      <div className={`min-h-screen bg-background ${stage === 'present' ? 'hidden' : ''}`}>
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold">Proposta de Planejamento Financeiro</h1>
+            <p className="text-muted-foreground mt-2">
+              Braúna Planejamento Financeiro
+            </p>
+          </div>
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold">Proposta de Planejamento Financeiro</h1>
-          <p className="text-muted-foreground mt-2">
-            Braúna Planejamento Financeiro
-          </p>
-        </div>
+          {stage === 'select' && (
+            <div className="space-y-8">
+              <ProposalTypeSelector onSelect={handleTypeSelect} />
+              <div>
+                <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
+                <StandaloneFeedbacksCasesEditor
+                  feedbacks={standaloneFeedbacks}
+                  onFeedbacksChange={setStandaloneFeedbacks}
+                />
+              </div>
+            </div>
+          )}
 
-        {stage === 'select' && (
-          <div className="space-y-8">
-            <ProposalTypeSelector onSelect={handleTypeSelect} />
+          {/* Completo builder - stays mounted once created */}
+          {proposalType === 'completo' && (
+            <div className={stage !== 'configure' ? 'hidden' : ''}>
+              <button
+                onClick={() => { setStage('select'); setProposalType(null); }}
+                className="mb-4 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                ← Voltar para seleção
+              </button>
+              <StandaloneCompletoBuilder onPresent={handleCompletoPresent} />
+            </div>
+          )}
 
-            {/* Feedbacks & Cases Editor */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
-              <StandaloneFeedbacksCasesEditor
-                feedbacks={standaloneFeedbacks}
-                onFeedbacksChange={setStandaloneFeedbacks}
+          {/* Pontual builder - stays mounted once created */}
+          {proposalType === 'pontual' && (
+            <div className={stage !== 'configure' ? 'hidden' : ''}>
+              <StandalonePontualBuilder
+                onPresent={handlePontualPresent}
+                onBack={() => { setStage('select'); setProposalType(null); }}
               />
             </div>
-          </div>
-        )}
-
-        {/* Completo builder - stays mounted once created */}
-        {proposalType === 'completo' && (
-          <div className={stage !== 'configure' ? 'hidden' : ''}>
-            <button
-              onClick={() => { setStage('select'); setProposalType(null); }}
-              className="mb-4 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              ← Voltar para seleção
-            </button>
-            <StandaloneCompletoBuilder onPresent={handleCompletoPresent} />
-          </div>
-        )}
-
-        {/* Pontual builder - stays mounted once created */}
-        {proposalType === 'pontual' && (
-          <div className={stage !== 'configure' ? 'hidden' : ''}>
-            <StandalonePontualBuilder
-              onPresent={handlePontualPresent}
-              onBack={() => { setStage('select'); setProposalType(null); }}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
