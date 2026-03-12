@@ -76,10 +76,10 @@ export default function StandaloneProposal() {
     setStage('present');
   };
 
-  // Presentation stage
-  if (stage === 'present' && proposal) {
-    const plannerName = (proposal as any).__plannerName;
+  const plannerName = proposal ? (proposal as any).__plannerName : undefined;
 
+  // Presentation overlay - renders on top, builders stay mounted underneath
+  if (stage === 'present' && proposal) {
     if (proposalType === 'pontual') {
       return (
         <StandalonePontualPresentation
@@ -132,8 +132,9 @@ export default function StandaloneProposal() {
           </div>
         )}
 
-        {stage === 'configure' && proposalType === 'completo' && (
-          <div>
+        {/* Completo builder - stays mounted once created */}
+        {proposalType === 'completo' && (
+          <div className={stage !== 'configure' ? 'hidden' : ''}>
             <button
               onClick={() => { setStage('select'); setProposalType(null); }}
               className="mb-4 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
@@ -144,11 +145,14 @@ export default function StandaloneProposal() {
           </div>
         )}
 
-        {stage === 'configure' && proposalType === 'pontual' && (
-          <StandalonePontualBuilder
-            onPresent={handlePontualPresent}
-            onBack={() => { setStage('select'); setProposalType(null); }}
-          />
+        {/* Pontual builder - stays mounted once created */}
+        {proposalType === 'pontual' && (
+          <div className={stage !== 'configure' ? 'hidden' : ''}>
+            <StandalonePontualBuilder
+              onPresent={handlePontualPresent}
+              onBack={() => { setStage('select'); setProposalType(null); }}
+            />
+          </div>
         )}
       </div>
     </div>
