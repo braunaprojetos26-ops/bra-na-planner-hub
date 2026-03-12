@@ -261,10 +261,12 @@ const { user, profile } = useAuth();
             </div>
           </section>
 
-          {/* Cases - Optional */}
-          {(standaloneMode ? (cases && cases.length > 0) : (proposal.show_cases && cases && cases.length > 0)) && (
-            <CasesSection cases={cases!} />
-          )}
+          {/* Cases - Filtered by selected topics for pontual */}
+          {(() => {
+            const filteredCases = cases ? filterCasesByTopics(cases, selectedTopics) : [];
+            const shouldShow = standaloneMode ? filteredCases.length > 0 : (proposal.show_cases && filteredCases.length > 0);
+            return shouldShow ? <CasesSection cases={filteredCases} /> : null;
+          })()}
 
           {/* Feedbacks - Optional */}
           {(standaloneMode ? (feedbacks && feedbacks.length > 0) : (proposal.show_feedbacks && feedbacks && feedbacks.length > 0)) && (
