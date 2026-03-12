@@ -206,7 +206,7 @@ const { user, profile } = useAuth();
             </div>
           </section>
 
-          {/* What's Included - Matching Completo table style */}
+          {/* What's Included - Cards highlighting unique differentiators */}
           <section className="space-y-8">
             <div className="text-center space-y-2">
               <p className="text-gold text-sm tracking-[0.2em] uppercase font-medium">
@@ -218,46 +218,51 @@ const { user, profile } = useAuth();
               <div className="w-16 h-px bg-gradient-to-r from-transparent via-gold to-transparent mx-auto" />
             </div>
 
-            <div className="bg-card border rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="text-left p-4 font-medium text-foreground">Benefício</th>
-                    <th className="text-center p-4 font-medium text-foreground w-24">Incluso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topicDetails.map(topic =>
-                    topic.subtopics.map((sub, i) => (
-                      <tr key={`${topic.topic}-${i}`} className="border-t">
-                        <td className="p-4 text-muted-foreground">
-                          {i === 0 && <span className="text-foreground font-medium">{topic.topic}: </span>}
-                          {sub}
-                        </td>
-                        <td className="p-4 text-center">
-                          <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                  <tr className="border-t bg-gold/5">
-                    <td className="p-4 font-medium text-foreground">Reuniões dedicadas</td>
-                    <td className="p-4 text-center font-bold text-gold">{totalMeetings}x</td>
-                  </tr>
-                  <tr className="border-t bg-gold/5">
-                    <td className="p-4 font-medium text-foreground">Material de apoio</td>
-                    <td className="p-4 text-center">
-                      <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
-                    </td>
-                  </tr>
-                  <tr className="border-t bg-gold/5">
-                    <td className="p-4 font-medium text-foreground">Gravação das reuniões</td>
-                    <td className="p-4 text-center">
-                      <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Reuniões dedicadas */}
+              <div className="flex items-start gap-3 p-4 bg-card border rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-5 h-5 text-gold" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground">
+                    Reuniões dedicadas
+                  </h3>
+                  <p className="text-2xl font-bold text-gold mt-1">
+                    {totalMeetings}x
+                  </p>
+                </div>
+              </div>
+
+              {/* Material de apoio */}
+              <div className="flex items-start gap-3 p-4 bg-card border rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                  <Download className="w-5 h-5 text-gold" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground">
+                    Material de apoio
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Planilhas e recursos exclusivos
+                  </p>
+                </div>
+              </div>
+
+              {/* Suporte via WhatsApp */}
+              <div className="flex items-start gap-3 p-4 bg-card border rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5 text-gold" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground">
+                    Suporte via WhatsApp
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Durante o período do planejamento
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
 
