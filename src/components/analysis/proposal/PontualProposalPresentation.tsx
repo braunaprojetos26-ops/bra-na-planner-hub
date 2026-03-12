@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Download, CheckCircle, MessageCircle } from 'lucide-react';
 import { SummarySection } from './sections/SummarySection';
 import { useProposalMutations } from '@/hooks/useProposals';
 import { useMyFeedbacks } from '@/hooks/usePlannerFeedbacks';
