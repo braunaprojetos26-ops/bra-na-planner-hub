@@ -58,6 +58,10 @@ export default function StandaloneProposal() {
     window.scrollTo(0, 0);
   }, [stage]);
 
+  useEffect(() => {
+    document.title = 'Sistema de Proposta | Braúna';
+  }, []);
+
   const handleTypeSelect = (type: 'completo' | 'pontual') => {
     setProposalType(type);
     setStage('configure');
