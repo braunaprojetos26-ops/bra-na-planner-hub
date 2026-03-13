@@ -122,7 +122,7 @@ export default function StandaloneProposal() {
             <div className="space-y-8">
               <ProposalTypeSelector onSelect={handleTypeSelect} />
               <div>
-                <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
+                <h2 className="text-lg font-semibold mb-3">Cadastro de Feedbacks de Clientes (para mostrar na proposta)</h2>
                 <StandaloneFeedbacksCasesEditor
                   feedbacks={standaloneFeedbacks}
                   onFeedbacksChange={setStandaloneFeedbacks}
