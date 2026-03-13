@@ -105,6 +105,7 @@ export default function StandaloneProposal() {
           plannerName={plannerName}
           feedbacks={standaloneFeedbacks}
           cases={standaloneCases}
+          customMeetingThemes={customMeetingThemes}
           onBack={() => setStage('configure')}
         />
       )}
