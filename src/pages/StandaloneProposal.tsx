@@ -52,6 +52,7 @@ export default function StandaloneProposal() {
   const [clientName, setClientName] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<SelectedTopic[]>([]);
   const [standaloneFeedbacks, setStandaloneFeedbacks] = useState<PlannerFeedback[]>([]);
+  const [customMeetingThemes, setCustomMeetingThemes] = useState<string[]>([]);
   const standaloneCases = HARDCODED_CASES;
 
   useEffect(() => {
@@ -67,9 +68,10 @@ export default function StandaloneProposal() {
     setStage('configure');
   };
 
-  const handleCompletoPresent = (p: Proposal, name: string) => {
+  const handleCompletoPresent = (p: Proposal, name: string, themes: string[]) => {
     setProposal(p);
     setClientName(name);
+    setCustomMeetingThemes(themes);
     setStage('present');
   };
 
@@ -103,6 +105,7 @@ export default function StandaloneProposal() {
           plannerName={plannerName}
           feedbacks={standaloneFeedbacks}
           cases={standaloneCases}
+          customMeetingThemes={customMeetingThemes}
           onBack={() => setStage('configure')}
         />
       )}
@@ -122,7 +125,7 @@ export default function StandaloneProposal() {
             <div className="space-y-8">
               <ProposalTypeSelector onSelect={handleTypeSelect} />
               <div>
-                <h2 className="text-lg font-semibold mb-3">Conteúdo da Proposta (opcional)</h2>
+                <h2 className="text-lg font-semibold mb-3">Cadastro de Feedbacks de Clientes (para mostrar na proposta)</h2>
                 <StandaloneFeedbacksCasesEditor
                   feedbacks={standaloneFeedbacks}
                   onFeedbacksChange={setStandaloneFeedbacks}
@@ -166,6 +169,7 @@ function StandaloneCompletoPresentation({
   plannerName,
   feedbacks,
   cases,
+  customMeetingThemes,
   onBack,
 }: {
   proposal: Proposal;
@@ -173,6 +177,7 @@ function StandaloneCompletoPresentation({
   plannerName?: string;
   feedbacks: PlannerFeedback[];
   cases: PlannerCase[];
+  customMeetingThemes?: string[];
   onBack: () => void;
 }) {
   return (
@@ -185,6 +190,7 @@ function StandaloneCompletoPresentation({
       standalonePlannerName={plannerName}
       standaloneFeedbacks={feedbacks}
       standaloneCases={cases}
+      customMeetingThemes={customMeetingThemes}
     />
   );
 }
