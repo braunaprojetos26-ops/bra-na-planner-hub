@@ -130,7 +130,7 @@ const { user, profile } = useAuth();
 
           {/* Page 3 - Jornada + Temas */}
           <div className="print-page print-content-page max-w-4xl mx-auto px-6 py-12 print:py-0 print:px-0 print:max-w-none space-y-16 print:space-y-4">
-            <MeetingsSection meetings={proposal.meetings} />
+            <MeetingsSection meetings={proposal.meetings} customTopics={customMeetingThemes} />
             <TopicsSection />
           </div>
 
