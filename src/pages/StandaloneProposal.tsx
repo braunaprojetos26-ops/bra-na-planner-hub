@@ -52,6 +52,7 @@ export default function StandaloneProposal() {
   const [clientName, setClientName] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<SelectedTopic[]>([]);
   const [standaloneFeedbacks, setStandaloneFeedbacks] = useState<PlannerFeedback[]>([]);
+  const [customMeetingThemes, setCustomMeetingThemes] = useState<string[]>([]);
   const standaloneCases = HARDCODED_CASES;
 
   useEffect(() => {
