@@ -44,6 +44,7 @@ export function ProposalPresentation({
   standalonePlannerName,
   standaloneFeedbacks,
   standaloneCases,
+  customMeetingThemes,
 }: ProposalPresentationProps) {
 const { user, profile } = useAuth();
 
