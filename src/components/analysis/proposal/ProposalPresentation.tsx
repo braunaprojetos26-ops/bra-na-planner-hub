@@ -32,6 +32,7 @@ interface ProposalPresentationProps {
   standalonePlannerName?: string;
   standaloneFeedbacks?: PlannerFeedback[];
   standaloneCases?: PlannerCase[];
+  customMeetingThemes?: string[];
 }
 
 export function ProposalPresentation({
