@@ -68,9 +68,10 @@ export default function StandaloneProposal() {
     setStage('configure');
   };
 
-  const handleCompletoPresent = (p: Proposal, name: string) => {
+  const handleCompletoPresent = (p: Proposal, name: string, themes: string[]) => {
     setProposal(p);
     setClientName(name);
+    setCustomMeetingThemes(themes);
     setStage('present');
   };
 
