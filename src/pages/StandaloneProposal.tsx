@@ -169,6 +169,7 @@ function StandaloneCompletoPresentation({
   plannerName,
   feedbacks,
   cases,
+  customMeetingThemes,
   onBack,
 }: {
   proposal: Proposal;
@@ -176,6 +177,7 @@ function StandaloneCompletoPresentation({
   plannerName?: string;
   feedbacks: PlannerFeedback[];
   cases: PlannerCase[];
+  customMeetingThemes?: string[];
   onBack: () => void;
 }) {
   return (
@@ -188,6 +190,7 @@ function StandaloneCompletoPresentation({
       standalonePlannerName={plannerName}
       standaloneFeedbacks={feedbacks}
       standaloneCases={cases}
+      customMeetingThemes={customMeetingThemes}
     />
   );
 }
