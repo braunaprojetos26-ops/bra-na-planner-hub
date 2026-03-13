@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,10 +26,42 @@ import {
   parseCurrencyInput,
   formatCurrencyInput,
 } from '@/lib/proposalPricing';
+import { MeetingThemesEditor, type MeetingTheme } from './MeetingThemesEditor';
 import type { Proposal } from '@/hooks/useProposals';
 
 interface StandaloneCompletoBuilderProps {
-  onPresent: (proposal: Proposal, clientName: string) => void;
+  onPresent: (proposal: Proposal, clientName: string, meetingThemes: string[]) => void;
+}
+
+const LOCKED_THEMES = [
+  'Planejamento Macro',
+  'Planejamento Patrimonial e Gestão de Riscos',
+  'Gestão Financeira e Fluxo de Caixa',
+];
+
+const DEFAULT_EDITABLE_THEMES = [
+  'Investimentos alinhados aos objetivos',
+  'Milhas e cartões de crédito',
+  'Planejamento de Independência Financeira',
+  'Planejamento de Objetivos',
+];
+
+function buildDefaultThemes(meetingCount: number): MeetingTheme[] {
+  const themes: MeetingTheme[] = LOCKED_THEMES.map((name, i) => ({
+    id: `locked-${i}`,
+    name,
+    locked: true,
+  }));
+
+  const editableCount = Math.max(0, meetingCount - 3);
+  for (let i = 0; i < editableCount; i++) {
+    const name = i < DEFAULT_EDITABLE_THEMES.length
+      ? DEFAULT_EDITABLE_THEMES[i]
+      : 'A definir conforme andamento do planejamento';
+    themes.push({ id: `editable-${i}`, name, locked: false });
+  }
+
+  return themes;
 }
 
 export function StandaloneCompletoBuilder({ onPresent }: StandaloneCompletoBuilderProps) {
@@ -41,6 +73,34 @@ export function StandaloneCompletoBuilder({ onPresent }: StandaloneCompletoBuild
   const [monthsOfIncome, setMonthsOfIncome] = useState('1');
   const [installments, setInstallments] = useState('12');
   const [discountApplied, setDiscountApplied] = useState(false);
+  const [meetingThemes, setMeetingThemes] = useState<MeetingTheme[]>(() => buildDefaultThemes(6));
+
+  // Adjust themes when meeting count changes
+  useEffect(() => {
+    const count = parseInt(meetings);
+    setMeetingThemes((prev) => {
+      const locked = prev.filter((t) => t.locked);
+      const editable = prev.filter((t) => !t.locked);
+      const editableCount = Math.max(0, count - 3);
+
+      if (editable.length === editableCount) return prev;
+
+      if (editable.length < editableCount) {
+        const toAdd = editableCount - editable.length;
+        const newEditable = [...editable];
+        for (let i = 0; i < toAdd; i++) {
+          const idx = editable.length + i;
+          const name = idx < DEFAULT_EDITABLE_THEMES.length
+            ? DEFAULT_EDITABLE_THEMES[idx]
+            : 'A definir conforme andamento do planejamento';
+          newEditable.push({ id: `editable-${Date.now()}-${i}`, name, locked: false });
+        }
+        return [...locked, ...newEditable];
+      }
+
+      return [...locked, ...editable.slice(0, editableCount)];
+    });
+  }, [meetings]);
 
   const pricing = useMemo(() => {
     const incomeValue = parseCurrencyInput(monthlyIncome);
@@ -69,7 +129,6 @@ export function StandaloneCompletoBuilder({ onPresent }: StandaloneCompletoBuild
     if (!pricing || !clientName.trim()) return;
     const incomeValue = parseCurrencyInput(monthlyIncome);
 
-    // Build a Proposal-like object in memory (no DB)
     const fakeProposal: Proposal = {
       id: 'standalone',
       contact_id: '',
@@ -96,10 +155,9 @@ export function StandaloneCompletoBuilder({ onPresent }: StandaloneCompletoBuild
       updated_at: new Date().toISOString(),
     };
 
-    // Store planner name for presentation
     (fakeProposal as any).__plannerName = plannerName.trim() || undefined;
 
-    onPresent(fakeProposal, clientName.trim());
+    onPresent(fakeProposal, clientName.trim(), meetingThemes.map((t) => t.name));
   };
 
   return (
@@ -220,6 +278,9 @@ export function StandaloneCompletoBuilder({ onPresent }: StandaloneCompletoBuild
           </div>
         </CardContent>
       </Card>
+
+      {/* Meeting Themes Editor */}
+      <MeetingThemesEditor themes={meetingThemes} onThemesChange={setMeetingThemes} />
 
       {/* Pricing Table */}
       {pricing && (

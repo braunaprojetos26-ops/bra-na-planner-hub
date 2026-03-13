@@ -2,6 +2,7 @@ import { Calendar, CheckCircle2 } from 'lucide-react';
 
 interface MeetingsSectionProps {
   meetings: number;
+  customTopics?: string[];
 }
 
 const MANDATORY_MEETINGS = [
@@ -14,12 +15,10 @@ const MANDATORY_MEETINGS = [
 ];
 
 function generateMeetingTopics(totalMeetings: number): string[] {
-  // Para contratos com até 6 reuniões, usar apenas as mandatórias necessárias
   if (totalMeetings <= 6) {
     return MANDATORY_MEETINGS.slice(0, totalMeetings);
   }
   
-  // Para 9 ou 12 reuniões, usar as 6 mandatórias + extras flexíveis
   const topics = [...MANDATORY_MEETINGS];
   const extraMeetings = totalMeetings - 6;
   
@@ -30,8 +29,8 @@ function generateMeetingTopics(totalMeetings: number): string[] {
   return topics;
 }
 
-export function MeetingsSection({ meetings }: MeetingsSectionProps) {
-  const topics = generateMeetingTopics(meetings);
+export function MeetingsSection({ meetings, customTopics }: MeetingsSectionProps) {
+  const topics = customTopics && customTopics.length > 0 ? customTopics : generateMeetingTopics(meetings);
 
   return (
     <section className="space-y-8 print:space-y-2">
